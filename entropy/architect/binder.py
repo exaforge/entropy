@@ -77,18 +77,23 @@ def _topological_sort(attributes: list[HydratedAttribute]) -> list[str]:
 
 def bind_constraints(
     attributes: list[HydratedAttribute],
+    context: list[AttributeSpec] | None = None,
 ) -> tuple[list[AttributeSpec], list[str]]:
     """
     Build dependency graph and determine sampling order.
     
     This step:
-    1. Validates all dependencies reference existing attributes
+    1. Validates all dependencies reference existing or context attributes
     2. Checks for circular dependencies
     3. Computes topological sort for sampling order
     4. Converts HydratedAttribute to final AttributeSpec
     
+    When context is provided (overlay mode), dependencies on context
+    attributes are valid - they're treated as already-sampled.
+    
     Args:
         attributes: List of HydratedAttribute from hydrator
+        context: Existing attributes from base population (for overlay mode)
     
     Returns:
         Tuple of (list of AttributeSpec, sampling_order)
@@ -96,17 +101,27 @@ def bind_constraints(
     Raises:
         CircularDependencyError: If circular dependencies exist
         ValueError: If dependencies reference unknown attributes
+    
+    Example:
+        # Base mode
+        >>> specs, order = bind_constraints(hydrated_attrs)
+        
+        # Overlay mode - allows dependencies on context attrs
+        >>> specs, order = bind_constraints(overlay_attrs, context=base_spec.attributes)
     """
     attr_names = {a.name for a in attributes}
+    context_names = {a.name for a in context} if context else set()
+    known_names = attr_names | context_names
     
     # Validate dependencies
     for attr in attributes:
-        unknown_deps = set(attr.depends_on) - attr_names
+        unknown_deps = set(attr.depends_on) - known_names
         if unknown_deps:
             # Remove unknown dependencies with warning (they might be computed elsewhere)
-            attr.depends_on = [d for d in attr.depends_on if d in attr_names]
+            attr.depends_on = [d for d in attr.depends_on if d in known_names]
     
-    # Compute sampling order
+    # Compute sampling order (only for new attributes, not context)
+    # Context attributes are already sampled, so they don't need ordering
     sampling_order = _topological_sort(attributes)
     
     # Convert to AttributeSpec

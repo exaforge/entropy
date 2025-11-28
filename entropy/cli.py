@@ -134,6 +134,240 @@ def _display_spec_summary(spec: PopulationSpec) -> None:
     console.print()
 
 
+def _display_overlay_attributes(
+    base_count: int,
+    new_attributes: list[DiscoveredAttribute],
+    geography: str | None,
+) -> None:
+    """Display overlay attributes with base context."""
+    console.print()
+    console.print("┌" + "─" * 58 + "┐")
+    console.print("│" + " NEW SCENARIO ATTRIBUTES".center(58) + "│")
+    console.print("└" + "─" * 58 + "┘")
+    console.print()
+    
+    console.print(f"[dim]Base population: {base_count} existing attributes[/dim]")
+    console.print()
+    
+    for attr in new_attributes:
+        type_str = f"[dim]({attr.type})[/dim]"
+        dep_str = ""
+        if attr.depends_on:
+            dep_str = f" [cyan]← depends on: {', '.join(attr.depends_on)}[/cyan]"
+        console.print(f"  • {attr.name} {type_str}{dep_str}")
+    
+    console.print()
+
+
+@app.command("overlay")
+def overlay_command(
+    base_spec: Path = typer.Argument(..., help="Base population spec YAML file"),
+    scenario: str = typer.Option(..., "--scenario", "-s", help="Scenario description"),
+    output: Path = typer.Option(..., "--output", "-o", help="Output merged spec YAML"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompts"),
+):
+    """
+    Layer scenario-specific attributes on a base population.
+    
+    Loads an existing population spec and adds behavioral attributes
+    for a specific scenario. The new attributes can depend on base
+    attributes (e.g., age, income) for realistic correlations.
+    
+    Example:
+        entropy overlay surgeons_base.yaml -s "AI diagnostic tool adoption" -o surgeons_ai.yaml
+        entropy overlay farmers.yaml -s "Drought response behavior" -o farmers_drought.yaml
+    """
+    start_time = time.time()
+    console.print()
+    
+    # =========================================================================
+    # Load Base Spec
+    # =========================================================================
+    
+    if not base_spec.exists():
+        console.print(f"[red]✗[/red] Base spec not found: {base_spec}")
+        raise typer.Exit(1)
+    
+    with console.status("[cyan]Loading base spec...[/cyan]"):
+        try:
+            base = PopulationSpec.from_yaml(base_spec)
+        except Exception as e:
+            console.print(f"[red]✗[/red] Failed to load base spec: {e}")
+            raise typer.Exit(1)
+    
+    console.print(f"[green]✓[/green] Loaded base: [bold]{base.meta.description}[/bold] ({len(base.attributes)} attributes)")
+    
+    # =========================================================================
+    # Step 1: Attribute Selection (Overlay Mode)
+    # =========================================================================
+    
+    console.print()
+    selection_start = time.time()
+    new_attributes = None
+    selection_done = Event()
+    selection_error = None
+    
+    def do_selection():
+        nonlocal new_attributes, selection_error
+        try:
+            # Pass base attributes as context - selector won't rediscover them
+            new_attributes = select_attributes(
+                description=scenario,
+                size=base.meta.size,
+                geography=base.meta.geography,
+                context=base.attributes,  # KEY: pass context
+            )
+        except Exception as e:
+            selection_error = e
+        finally:
+            selection_done.set()
+    
+    selection_thread = Thread(target=do_selection, daemon=True)
+    selection_thread.start()
+    
+    with Live(console=console, refresh_per_second=1, transient=True) as live:
+        while not selection_done.is_set():
+            elapsed = time.time() - selection_start
+            live.update(f"[cyan]⠋[/cyan] Discovering scenario attributes... {_format_elapsed(elapsed)}")
+            time.sleep(0.1)
+    
+    selection_elapsed = time.time() - selection_start
+    
+    if selection_error:
+        console.print(f"[red]✗[/red] Attribute selection failed: {selection_error}")
+        raise typer.Exit(1)
+    
+    console.print(f"[green]✓[/green] Found {len(new_attributes)} NEW attributes ({_format_elapsed(selection_elapsed)})")
+    
+    # =========================================================================
+    # Human Checkpoint #1: Confirm New Attributes
+    # =========================================================================
+    
+    _display_overlay_attributes(len(base.attributes), new_attributes, base.meta.geography)
+    
+    if not yes:
+        choice = typer.prompt(
+            "[Y] Proceed  [n] Cancel",
+            default="Y",
+            show_default=False,
+        ).strip().lower()
+        
+        if choice == "n":
+            console.print("[dim]Cancelled.[/dim]")
+            raise typer.Exit(0)
+    
+    # =========================================================================
+    # Step 2: Distribution Research (with Context)
+    # =========================================================================
+    
+    console.print()
+    hydration_start = time.time()
+    hydrated = None
+    sources = []
+    hydration_done = Event()
+    hydration_error = None
+    
+    def do_hydration():
+        nonlocal hydrated, sources, hydration_error
+        try:
+            # Pass base attributes as context - hydrator can reference them in formulas
+            hydrated, sources = hydrate_attributes(
+                attributes=new_attributes,
+                description=f"{base.meta.description} + {scenario}",
+                geography=base.meta.geography,
+                context=base.attributes,  # KEY: pass context
+            )
+        except Exception as e:
+            hydration_error = e
+        finally:
+            hydration_done.set()
+    
+    hydration_thread = Thread(target=do_hydration, daemon=True)
+    hydration_thread.start()
+    
+    with Live(console=console, refresh_per_second=1, transient=True) as live:
+        while not hydration_done.is_set():
+            elapsed = time.time() - hydration_start
+            live.update(f"[cyan]⠋[/cyan] Researching distributions... {_format_elapsed(elapsed)}")
+            time.sleep(0.1)
+    
+    hydration_elapsed = time.time() - hydration_start
+    
+    if hydration_error:
+        console.print(f"[red]✗[/red] Distribution research failed: {hydration_error}")
+        raise typer.Exit(1)
+    
+    console.print(f"[green]✓[/green] Researched distributions ({_format_elapsed(hydration_elapsed)}, {len(sources)} sources)")
+    
+    # =========================================================================
+    # Step 3: Constraint Binding (with Context)
+    # =========================================================================
+    
+    with console.status("[cyan]Binding constraints...[/cyan]"):
+        try:
+            # Pass base attributes as context for cross-layer dependencies
+            bound_attrs, sampling_order = bind_constraints(
+                hydrated,
+                context=base.attributes,  # KEY: pass context
+            )
+        except CircularDependencyError as e:
+            console.print(f"[red]✗[/red] Circular dependency detected: {e}")
+            raise typer.Exit(1)
+        except Exception as e:
+            console.print(f"[red]✗[/red] Constraint binding failed: {e}")
+            raise typer.Exit(1)
+    
+    console.print(f"[green]✓[/green] Constraints bound")
+    
+    # =========================================================================
+    # Step 4: Build Overlay Spec and Merge
+    # =========================================================================
+    
+    with console.status("[cyan]Building and merging specs...[/cyan]"):
+        # Build overlay spec
+        overlay_spec = build_spec(
+            description=scenario,
+            size=base.meta.size,
+            geography=base.meta.geography,
+            attributes=bound_attrs,
+            sampling_order=sampling_order,
+            sources=sources,
+        )
+        
+        # Merge base + overlay
+        merged_spec = base.merge(overlay_spec)
+    
+    console.print(f"[green]✓[/green] Merged: {len(base.attributes)} base + {len(bound_attrs)} overlay = {len(merged_spec.attributes)} total")
+    
+    # =========================================================================
+    # Human Checkpoint #2: Confirm and Save
+    # =========================================================================
+    
+    _display_spec_summary(merged_spec)
+    
+    if not yes:
+        choice = typer.prompt(
+            "[Y] Save spec  [n] Cancel",
+            default="Y",
+            show_default=False,
+        ).strip().lower()
+        
+        if choice == "n":
+            console.print("[dim]Cancelled.[/dim]")
+            raise typer.Exit(0)
+    
+    # Save to YAML
+    merged_spec.to_yaml(output)
+    
+    elapsed = time.time() - start_time
+    
+    console.print()
+    console.print("═" * 60)
+    console.print(f"[green]✓[/green] Merged spec saved to [bold]{output}[/bold]")
+    console.print(f"[dim]Total time: {_format_elapsed(elapsed)}[/dim]")
+    console.print("═" * 60)
+
+
 @app.command("spec")
 def spec_command(
     description: str = typer.Argument(..., help="Natural language population description"),

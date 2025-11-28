@@ -233,6 +233,111 @@ class PopulationSpec(BaseModel):
 
         return "\n".join(lines)
 
+    def merge(self, overlay: "PopulationSpec") -> "PopulationSpec":
+        """
+        Merge an overlay spec into this base spec.
+        
+        The overlay adds new attributes that can depend on base attributes.
+        Base attributes are preserved; overlay attributes are appended.
+        Sampling order is recomputed to handle cross-layer dependencies.
+        
+        Args:
+            overlay: The overlay spec to merge (scenario-specific attributes)
+        
+        Returns:
+            New PopulationSpec with merged attributes
+        """
+        # Combine attributes (base first, then overlay)
+        base_names = {attr.name for attr in self.attributes}
+        merged_attributes = list(self.attributes)
+        
+        for attr in overlay.attributes:
+            if attr.name not in base_names:
+                merged_attributes.append(attr)
+        
+        # Merge sources (deduplicate)
+        all_sources = list(set(self.grounding.sources + overlay.grounding.sources))
+        
+        # Recompute grounding summary
+        strong_count = sum(1 for a in merged_attributes if a.grounding.level == "strong")
+        medium_count = sum(1 for a in merged_attributes if a.grounding.level == "medium")
+        low_count = sum(1 for a in merged_attributes if a.grounding.level == "low")
+        total = len(merged_attributes)
+        
+        if total == 0:
+            overall = "low"
+        elif strong_count / total >= 0.6:
+            overall = "strong"
+        elif (strong_count + medium_count) / total >= 0.5:
+            overall = "medium"
+        else:
+            overall = "low"
+        
+        merged_grounding = GroundingSummary(
+            overall=overall,
+            sources_count=len(all_sources),
+            strong_count=strong_count,
+            medium_count=medium_count,
+            low_count=low_count,
+            sources=all_sources,
+        )
+        
+        # Recompute sampling order via topological sort
+        merged_order = self._compute_sampling_order(merged_attributes)
+        
+        # Create merged metadata
+        merged_meta = SpecMeta(
+            description=f"{self.meta.description} + {overlay.meta.description}",
+            size=self.meta.size,  # Keep base size
+            geography=self.meta.geography,
+            created_at=datetime.now(),
+            version=self.meta.version,
+        )
+        
+        return PopulationSpec(
+            meta=merged_meta,
+            grounding=merged_grounding,
+            attributes=merged_attributes,
+            sampling_order=merged_order,
+        )
+
+    @staticmethod
+    def _compute_sampling_order(attributes: list["AttributeSpec"]) -> list[str]:
+        """Compute sampling order via topological sort."""
+        from collections import defaultdict
+        
+        # Build adjacency list and in-degree count
+        graph = defaultdict(list)
+        in_degree = {a.name: 0 for a in attributes}
+        attr_names = {a.name for a in attributes}
+        
+        for attr in attributes:
+            for dep in attr.sampling.depends_on:
+                if dep in attr_names:
+                    graph[dep].append(attr.name)
+                    in_degree[attr.name] += 1
+        
+        # Kahn's algorithm
+        queue = [name for name, degree in in_degree.items() if degree == 0]
+        order = []
+        
+        while queue:
+            queue.sort()  # Deterministic ordering
+            node = queue.pop(0)
+            order.append(node)
+            
+            for dependent in graph[node]:
+                in_degree[dependent] -= 1
+                if in_degree[dependent] == 0:
+                    queue.append(dependent)
+        
+        # If cycle detected, return partial order + remaining
+        if len(order) != len(attributes):
+            remaining = [a.name for a in attributes if a.name not in order]
+            order.extend(remaining)
+        
+        return order
+
 
 # =============================================================================
 # Intermediate Types (used during spec building)

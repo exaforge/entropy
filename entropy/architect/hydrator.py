@@ -6,6 +6,7 @@ using GPT-5 with agentic web search.
 
 from ..llm import agentic_research
 from ..spec import (
+    AttributeSpec,
     DiscoveredAttribute,
     HydratedAttribute,
     SamplingConfig,
@@ -67,7 +68,7 @@ def _build_hydration_schema(attributes: list[DiscoveredAttribute]) -> dict:
                             "multiply": {"type": ["number", "null"]},
                             "add": {"type": ["number", "null"]},
                         },
-                        "required": ["when"],
+                        "required": ["when", "multiply", "add"],
                         "additionalProperties": False,
                     },
                 },
@@ -81,7 +82,7 @@ def _build_hydration_schema(attributes: list[DiscoveredAttribute]) -> dict:
                             "value": {"type": ["number", "null"]},
                             "expression": {"type": ["string", "null"]},
                         },
-                        "required": ["type"],
+                        "required": ["type", "value", "expression"],
                         "additionalProperties": False,
                     },
                 },
@@ -147,7 +148,7 @@ def _build_hydration_schema(attributes: list[DiscoveredAttribute]) -> dict:
                                     "multiply": {"type": ["number", "null"]},
                                     "add": {"type": ["number", "null"]},
                                 },
-                                "required": ["when"],
+                                "required": ["when", "multiply", "add"],
                                 "additionalProperties": False,
                             },
                         },
@@ -160,7 +161,7 @@ def _build_hydration_schema(attributes: list[DiscoveredAttribute]) -> dict:
                                     "value": {"type": ["number", "null"]},
                                     "expression": {"type": ["string", "null"]},
                                 },
-                                "required": ["type"],
+                                "required": ["type", "value", "expression"],
                                 "additionalProperties": False,
                             },
                         },
@@ -260,6 +261,7 @@ def hydrate_attributes(
     attributes: list[DiscoveredAttribute],
     description: str,
     geography: str | None = None,
+    context: list[AttributeSpec] | None = None,
     model: str = "gpt-5",
     reasoning_effort: str = "low",
 ) -> tuple[list[HydratedAttribute], list[str]]:
@@ -271,15 +273,30 @@ def hydrate_attributes(
     2. Determine appropriate distributions
     3. Assess grounding quality per attribute
     
+    When context is provided (overlay mode), the model can reference
+    context attributes in formulas and modifiers but should NOT define
+    distributions for them.
+    
     Args:
         attributes: List of DiscoveredAttribute from selector
         description: Original population description
         geography: Geographic scope for research
+        context: Existing attributes from base population (for overlay mode)
         model: Model to use
         reasoning_effort: "low", "medium", or "high"
     
     Returns:
         Tuple of (list of HydratedAttribute, list of source URLs)
+    
+    Example:
+        # Base mode
+        >>> hydrated, sources = hydrate_attributes(attrs, "German surgeons", "Germany")
+        
+        # Overlay mode - can reference base attributes in formulas
+        >>> overlay_hydrated, sources = hydrate_attributes(
+        ...     scenario_attrs, "AI adoption scenario", "Germany",
+        ...     context=base_spec.attributes
+        ... )
     """
     if not attributes:
         return [], []
@@ -293,7 +310,27 @@ def hydrate_attributes(
         for attr in attributes
     )
     
-    prompt = f"""Research realistic distributions for these attributes of {description}{geo_context}:
+    # Build context section if we have existing attributes
+    context_section = ""
+    if context:
+        context_items = "\n".join(
+            f"- {attr.name} ({attr.type}): {attr.description}"
+            for attr in context
+        )
+        context_section = f"""
+## READ-ONLY CONTEXT ATTRIBUTES
+
+The following attributes ALREADY EXIST in the base population.
+You can reference them in formulas (derived) or modifier conditions (conditional),
+but do NOT define distributions for them.
+
+{context_items}
+
+---
+
+"""
+    
+    prompt = f"""{context_section}Research realistic distributions for these NEW attributes of {description}{geo_context}:
 
 {attr_list}
 
@@ -317,10 +354,11 @@ Based on attribute type, provide:
 Python expression using other attribute names, e.g.:
 - "max(0, age - 28)"
 - "income * 0.3"
+- "tech_optimism * (1 - age/100)"  # Can use context attributes if available
 
 ### 4. Modifiers (for conditional only)
 List of conditions that modify the base distribution:
-- when: Python condition (e.g., "specialty == 'cardiology'")
+- when: Python condition (e.g., "specialty == 'cardiology'")  # Can use context attributes
 - multiply: factor to multiply (e.g., 1.25 for 25% increase)
 - add: value to add
 

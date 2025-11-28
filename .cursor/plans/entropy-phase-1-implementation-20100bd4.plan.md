@@ -1,156 +1,274 @@
-<!-- 20100bd4-6d7f-479e-b396-f92ce82b6481 2e27fd88-5256-46d9-941d-a79975cf34f7 -->
-# Entropy Phase 1 Implementation
+<!-- 20100bd4-6d7f-479e-b396-f92ce82b6481 1b44bd15-704d-44d8-97f5-07482b25297a -->
+# Context Injection Architecture
 
-## Agent Schema Design
+## Problem Statement
 
-Based on social science models, each agent will have:
+### Current Limitations
+
+1. **Wasted Compute**: Every new scenario re-researches the same demographics (age, income, location)
+2. **No Reusability**: Can't reuse a "German Surgeons" base for multiple scenarios
+3. **Clone vs Chaos**: No mechanism to link behavioral attributes to demographics while preserving variance
+
+### What We're Building
+
+A two-layer system where:
+
+- **Layer 1 (Base)**: Identity attributes — researched once, cached, reusable
+- **Layer 2 (Overlay)**: Behavioral attributes — scenario-specific, linked to base via formulas/modifiers
+
+---
+
+## CLI Commands
+
+### Command 1: `entropy spec` (unchanged)
+
+Single-pass generation for simple use cases.
+
+```bash
+entropy spec "500 German surgeons" -o surgeons.yaml
+```
+
+Still works. Creates a complete spec in one pass.
+
+### Command 2: `entropy overlay` (new)
+
+Layer a scenario on top of an existing base spec.
+
+```bash
+entropy overlay surgeons_base.yaml \
+    --scenario "AI diagnostic tool adoption" \
+    -o surgeons_ai_adoption.yaml
+```
+
+**Flow:**
+
+1. Load `surgeons_base.yaml` as context
+2. Discover NEW attributes for the scenario (not in base)
+3. Research distributions, allowing dependencies on base attributes
+4. Merge base + overlay into final spec
+
+### Command 3: `entropy merge` (new, optional)
+
+Manually merge two specs (for advanced users).
+
+```bash
+entropy merge base.yaml overlay.yaml -o merged.yaml
+```
+
+---
+
+## File Changes
+
+### 1. `entropy/spec.py` — Add Merge Capability
 
 ```python
-demographics = {
-    "age": int,
-    "gender": str,
-    "income": int,
-    "education": str,  # high_school, bachelors, masters, doctorate
-    "occupation": str,
-    "location": {"state": str, "urban_rural": str},
-    "ethnicity": str,
-    "marital_status": str,
-    "household_size": int
-}
-
-psychographics = {
-    "openness": float,        # Big Five (0-1 scale)
-    "conscientiousness": float,
-    "extraversion": float,
-    "agreeableness": float,
-    "neuroticism": float,
-    "values": list[str],      # e.g., ["family", "achievement", "security"]
-    "interests": list[str]
-}
-
-cognitive = {
-    "information_processing": str,  # analytical, intuitive, balanced
-    "openness_to_change": float,    # 0-1
-    "trust_in_institutions": float, # 0-1
-    "confirmation_bias": float,     # 0-1, affects processing of contradicting info
-    "persuadability": float         # 0-1, affects social influence susceptibility
-}
-
-information_env = {
-    "news_sources": list[str],
-    "social_media": list[str],
-    "media_hours_daily": float,
-    "trust_in_media": float,  # 0-1
-    "exposure_rate": float    # 0-1, how likely to see new info
-}
-
-# DYNAMIC - populated by research phase based on context
-situation = {}  # Empty base, filled per context (Netflix: tenure, plan, satisfaction, etc.)
-
-# Network position
-network = {
-    "connections": list[dict],  # [{target_id, strength, type}]
-    "influence_score": float    # Derived from network position
-}
-
-# Mutable state for simulation (Phase 3)
-state = {
-    "beliefs": dict,        # Updated during simulation
-    "exposures": list,      # Events they've seen
-    "emotional_state": str  # Current state
-}
+class PopulationSpec(BaseModel):
+    # ... existing fields ...
+    
+    def merge(self, overlay: "PopulationSpec") -> "PopulationSpec":
+        """Merge an overlay spec into this base spec."""
+        # Combine attributes (overlay can override)
+        # Recompute sampling order with cross-layer dependencies
+        # Merge sources and grounding summaries
 ```
 
-**Key: `situation` is fully dynamic.** Research phase determines what attributes matter for the context, LLM generates schema + distributions, sampling fills values. No templates.
+### 2. `entropy/architect/selector.py` — Context-Aware Selection
 
-## Implementation Order
-
-### 1. Project Scaffolding
-
-- Create `pyproject.toml` with dependencies (typer, fastapi, openai, numpy, scipy, networkx, pydantic)
-- Set up folder structure per spec
-- Create `.env.example`
-
-### 2. Core Infrastructure
-
-- `entropy/config.py` - Pydantic settings from .env
-- `entropy/models.py` - All data models (ParsedContext, Agent, Population, etc.)
-- `entropy/db.py` - SQLite CRUD for populations
-
-### 3. LLM and Search
-
-- `entropy/llm.py` - OpenAI client wrapper with web search capability
-- `entropy/search.py` - High-level research functions using OpenAI's web search tool
-
-### 4. Population Pipeline (`entropy/population.py`)
-
-The core logic, implementing each pipeline step:
-
-1. **parse_context()** - Single OpenAI call to extract structured context
-2. **research_demographics()** - Web search + extraction for real data
-3. **build_distributions()** - Convert research to scipy distributions with correlations
-4. **sample_agents()** - Statistical sampling using copulas for correlated attributes
-5. **generate_network()** - Hybrid Watts-Strogatz + similarity-weighted edges
-6. **synthesize_personas()** - Template-based persona generation
-7. **create_population()** - Orchestrates the full pipeline
-
-### 5. CLI (`entropy/cli.py`)
-
-- `entropy create "<context>" --name <name>` - Full pipeline
-- `entropy list` - Show all populations
-- `entropy inspect <name>` - Show population details
-- `entropy delete <name>` - Remove population
-
-### 6. Stub Files for Future Phases
-
-- `entropy/scenario.py` - Placeholder for Phase 2
-- `entropy/simulation.py` - Placeholder for Phase 3
-- `entropy/api.py` - FastAPI stub for future web UI
-
-## Key Implementation Details
-
-**Correlations**: Use Gaussian copulas to sample correlated attributes (age-income, education-income, etc.)
-
-**Network**: Watts-Strogatz with k=6, p=0.1, then weight edges by agent similarity (shared demographics, psychographics)
-
-**Template Persona**: Jinja2-style templating that reads naturally:
-
-```
-"A {age}-year-old {gender} from {location}, working as a {occupation}. 
-{pronoun} tends to be {openness_desc} and {extraversion_desc}..."
+```python
+def select_attributes(
+    description: str,
+    size: int,
+    geography: str | None = None,
+    context: list[AttributeSpec] | None = None,  # NEW
+    model: str = "gpt-5",
+    reasoning_effort: str = "low",
+) -> list[DiscoveredAttribute]:
 ```
 
-**Caching**: Cache web search results in `data/cache/` to avoid redundant API calls for similar queries
+**Prompt change:**
 
-## Files to Create
+```
+## Existing Context (DO NOT REDISCOVER)
+The following attributes already exist in the base population:
+- age (int)
+- income (float)
+- specialty (categorical)
 
-| File | Purpose |
+Only discover NEW attributes relevant to: "{scenario}"
+You may reference existing attributes in dependencies.
+```
 
-|------|---------|
+### 3. `entropy/architect/hydrator.py` — Context-Aware Hydration
 
-| `pyproject.toml` | Dependencies, project metadata |
+```python
+def hydrate_attributes(
+    attributes: list[DiscoveredAttribute],
+    description: str,
+    geography: str | None = None,
+    context: list[AttributeSpec] | None = None,  # NEW
+    model: str = "gpt-5",
+    reasoning_effort: str = "low",
+) -> tuple[list[HydratedAttribute], list[str]]:
+```
 
-| `entropy/__init__.py` | Package init |
+**Prompt change:**
 
-| `entropy/config.py` | Environment config |
+```
+## Read-Only Context Attributes
+These attributes exist in the base population. You can:
+- Use them in "formula" (derived strategy)
+- Use them in "modifiers" (conditional strategy)
+Do NOT define distributions for them.
 
-| `entropy/models.py` | Pydantic models |
+Context:
+- age (int): Agent's age in years
+- income (float): Annual income in EUR
+- specialty (categorical): Medical specialty
+```
 
-| `entropy/db.py` | SQLite operations |
+### 4. `entropy/architect/binder.py` — Cross-Layer Dependencies
 
-| `entropy/llm.py` | OpenAI client |
+Update topological sort to handle:
 
-| `entropy/search.py` | Web search wrapper |
+- Overlay attributes depending on base attributes
+- Base attributes appearing in overlay formulas
+```python
+def bind_constraints(
+    attributes: list[HydratedAttribute],
+    context: list[AttributeSpec] | None = None,  # NEW
+) -> tuple[list[AttributeSpec], list[str]]:
+```
 
-| `entropy/population.py` | Phase 1 pipeline |
 
-| `entropy/cli.py` | Typer CLI |
+### 5. `entropy/cli.py` — New `overlay` Command
 
-| `entropy/scenario.py` | Phase 2 stub |
+```python
+@app.command("overlay")
+def overlay_command(
+    base_spec: Path = typer.Argument(..., help="Base population spec YAML"),
+    scenario: str = typer.Option(..., "--scenario", "-s", help="Scenario description"),
+    output: Path = typer.Option(..., "--output", "-o", help="Output merged spec"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmations"),
+):
+    """
+    Layer scenario-specific attributes on a base population.
+    
+    Example:
+        entropy overlay surgeons.yaml -s "AI adoption study" -o surgeons_ai.yaml
+    """
+```
 
-| `entropy/simulation.py` | Phase 3 stub |
+---
 
-| `entropy/api.py` | FastAPI stub |
+## The Solving Matrix
+
+| Problem | How It's Solved |
+
+|---------|-----------------|
+
+| Wasted compute on demographics | Base spec cached, only overlay researched |
+
+| No reusability | Same base used for multiple scenarios |
+
+| Clone problem (deterministic) | Overlay uses stochastic sampling with demographic nudges |
+
+| Chaos problem (random) | Formulas/modifiers link behavior to identity |
+
+| Cool Grandpa effect | Conditional distributions preserve outliers |
+
+---
+
+## Example Flow
+
+### Step 1: Create Base (Once)
+
+```bash
+$ entropy spec "German surgeons" -o surgeons_base.yaml
+
+✓ Found 32 attributes
+✓ Researched distributions (89s, 45 sources)
+✓ Saved to surgeons_base.yaml
+```
+
+**surgeons_base.yaml contains:**
+
+- age, gender, income, location (universal)
+- specialty, years_practice, hospital_type (population-specific)
+- openness, conscientiousness, risk_tolerance (personality)
+
+### Step 2: Layer Scenario (Fast)
+
+```bash
+$ entropy overlay surgeons_base.yaml \
+    --scenario "New AI diagnostic tool adoption" \
+    -o surgeons_ai.yaml
+
+Loading base: surgeons_base.yaml (32 attributes)
+
+✓ Found 6 NEW attributes for scenario
+  • tech_optimism (float) — independent
+  • ai_familiarity (categorical) — independent  
+  • adoption_likelihood (float) ← depends on: age, tech_optimism, risk_tolerance
+  • training_willingness (float) ← depends on: years_practice
+  • peer_influence_susceptibility (float) ← depends on: hospital_type
+  • early_adopter_score (float) — derived: tech_optimism * (1 - age/100) * risk_tolerance
+
+✓ Researched distributions (23s, 12 sources)
+✓ Merged: 32 base + 6 overlay = 38 total attributes
+✓ Saved to surgeons_ai.yaml
+```
+
+### Step 3: Run Different Scenario (Reuse Base)
+
+```bash
+$ entropy overlay surgeons_base.yaml \
+    --scenario "Response to hospital merger announcement" \
+    -o surgeons_merger.yaml
+
+# Different overlay, same base — no re-research of demographics
+```
+
+---
+
+## Sampling Order Example
+
+After merge, the binder computes a unified sampling order:
+
+```
+Base attributes (sampled first):
+  age → gender → location → specialty → years_practice → income → risk_tolerance
+
+Overlay attributes (sampled after, can reference base):
+  tech_optimism → ai_familiarity → adoption_likelihood → early_adopter_score
+                                          ↑
+                              formula: f(age, tech_optimism, risk_tolerance)
+```
+
+---
+
+## Files Summary
+
+| File | Status | Changes |
+
+|------|--------|---------|
+
+| `spec.py` | Modify | Add `merge()` method |
+
+| `selector.py` | Modify | Add `context` param, update prompt |
+
+| `hydrator.py` | Modify | Add `context` param, update prompt |
+
+| `binder.py` | Modify | Handle cross-layer deps in topo sort |
+
+| `cli.py` | Modify | Add `overlay` command |
+
+---
+
+## Out of Scope
+
+- Caching base specs to disk/DB (future)
+- Version control for specs (future)
+- Automatic scenario detection (future)
 
 ### To-dos
 
@@ -163,3 +281,22 @@ The core logic, implementing each pipeline step:
 - [ ] Implement full population pipeline in population.py
 - [ ] Implement Typer CLI commands in cli.py
 - [ ] Create placeholder files for Phase 2/3 (scenario.py, simulation.py, api.py)
+- [ ] Add validate_situation_attributes() in llm.py using gpt-5-instant
+- [ ] Update research prompt to clarify per-agent vs aggregate
+- [ ] Call validation in search.py and filter out aggregate attributes
+- [ ] Add CLI confirmation step with rich summary before generation
+- [ ] Add live progress timer with elapsed time during research
+- [ ] Create project structure, pyproject.toml, .env.example
+- [ ] Implement Pydantic models in models.py
+- [ ] Implement config.py with Pydantic settings
+- [ ] Implement SQLite CRUD operations in db.py
+- [ ] Implement OpenAI client with web search in llm.py
+- [ ] Implement research functions in search.py
+- [ ] Implement full population pipeline in population.py
+- [ ] Implement Typer CLI commands in cli.py
+- [ ] Create placeholder files for Phase 2/3 (scenario.py, simulation.py, api.py)
+- [ ] Add merge() method to PopulationSpec in spec.py
+- [ ] Add context param to select_attributes, update prompt
+- [ ] Add context param to hydrate_attributes, update prompt
+- [ ] Update bind_constraints for cross-layer dependencies
+- [ ] Add entropy overlay command to cli.py

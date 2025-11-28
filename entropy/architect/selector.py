@@ -8,7 +8,7 @@ Discovers all relevant attributes for a population across four categories:
 """
 
 from ..llm import reasoning_call
-from ..spec import DiscoveredAttribute
+from ..spec import AttributeSpec, DiscoveredAttribute
 
 
 # JSON schema for attribute selection response
@@ -66,6 +66,7 @@ def select_attributes(
     description: str,
     size: int,
     geography: str | None = None,
+    context: list[AttributeSpec] | None = None,
     model: str = "gpt-5",
     reasoning_effort: str = "low",
 ) -> list[DiscoveredAttribute]:
@@ -78,10 +79,15 @@ def select_attributes(
     - Geographic/cultural context
     - Dependencies between attributes
     
+    When context is provided (overlay mode), only discovers NEW attributes
+    not already in the base population. Can reference context attributes
+    in dependencies.
+    
     Args:
         description: Natural language population description
         size: Number of agents (for context)
         geography: Geographic scope if known
+        context: Existing attributes from base population (for overlay mode)
         model: Model to use
         reasoning_effort: "low", "medium", or "high"
     
@@ -92,11 +98,54 @@ def select_attributes(
         >>> attrs = select_attributes("German surgeons", 500, "Germany")
         >>> [a.name for a in attrs[:3]]
         ['age', 'gender', 'specialty']
+        
+        # Overlay mode
+        >>> overlay_attrs = select_attributes(
+        ...     "AI device adoption scenario", 500, "Germany",
+        ...     context=base_spec.attributes
+        ... )
     """
     geo_context = f" in {geography}" if geography else ""
     geo_label = geography or "the relevant region"
     
-    prompt = f"""## Intent
+    # Build context section if we have existing attributes
+    context_section = ""
+    if context:
+        context_items = "\n".join(
+            f"- {attr.name} ({attr.type}): {attr.description}"
+            for attr in context
+        )
+        context_section = f"""
+## EXISTING CONTEXT (DO NOT REDISCOVER)
+
+The following {len(context)} attributes ALREADY EXIST in the base population.
+**DO NOT include these in your output.** You may reference them in depends_on.
+
+{context_items}
+
+---
+
+"""
+        # In overlay mode, adjust constraints
+        constraint_note = f"""## Constraints (OVERLAY MODE)
+
+- **Only discover NEW attributes for this scenario** (5-15 attributes typical)
+- You may reference existing attributes in depends_on
+- Focus on behavioral/situational attributes relevant to: "{description}"
+- Max 3 dependencies per attribute (can include base attributes)
+- NO duplicates with existing attributes above"""
+    else:
+        constraint_note = """## Constraints (STRICT)
+
+- **Total: 25-40 attributes maximum**
+- Universal demographics: 8-12 attributes
+- Population-specific: 10-18 attributes
+- Personality/behavioral: 5-8 attributes
+- Max 3 dependencies per attribute
+- NO duplicates
+- Only attributes where real statistical data likely exists"""
+    
+    prompt = f"""{context_section}## Intent
 
 We are building a synthetic population for **agent-based simulation**. These agents will:
 - Have scenarios injected (events, information, decisions)
@@ -112,15 +161,7 @@ The goal is realistic variance, not exhaustive detail. We need attributes that:
 
 "{description}" ({size} agents{geo_context})
 
-## Constraints (STRICT)
-
-- **Total: 25-40 attributes maximum**
-- Universal demographics: 8-12 attributes
-- Population-specific: 10-18 attributes
-- Personality/behavioral: 5-8 attributes
-- Max 3 dependencies per attribute
-- NO duplicates
-- Only attributes where real statistical data likely exists
+{constraint_note}
 
 ## Geography & Context
 
