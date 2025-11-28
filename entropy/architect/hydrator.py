@@ -22,7 +22,7 @@ from ..spec import (
 
 def _build_hydration_schema(attributes: list[DiscoveredAttribute]) -> dict:
     """Build JSON schema for hydration response based on discovered attributes."""
-    
+
     # Build per-attribute schema
     attribute_schemas = []
     for attr in attributes:
@@ -78,7 +78,10 @@ def _build_hydration_schema(attributes: list[DiscoveredAttribute]) -> dict:
                     "items": {
                         "type": "object",
                         "properties": {
-                            "type": {"type": "string", "enum": ["min", "max", "expression"]},
+                            "type": {
+                                "type": "string",
+                                "enum": ["min", "max", "expression"],
+                            },
                             "value": {"type": ["number", "null"]},
                             "expression": {"type": ["string", "null"]},
                         },
@@ -99,15 +102,28 @@ def _build_hydration_schema(attributes: list[DiscoveredAttribute]) -> dict:
                 "grounding_note": {"type": ["string", "null"]},
             },
             "required": [
-                "name", "sampling_strategy", "distribution_type",
-                "mean", "std", "min", "max", "options", "weights", "probability_true",
-                "formula", "modifiers", "constraints",
-                "grounding_level", "grounding_method", "grounding_source", "grounding_note",
+                "name",
+                "sampling_strategy",
+                "distribution_type",
+                "mean",
+                "std",
+                "min",
+                "max",
+                "options",
+                "weights",
+                "probability_true",
+                "formula",
+                "modifiers",
+                "constraints",
+                "grounding_level",
+                "grounding_method",
+                "grounding_source",
+                "grounding_note",
             ],
             "additionalProperties": False,
         }
         attribute_schemas.append(attr_schema)
-    
+
     return {
         "type": "object",
         "properties": {
@@ -123,7 +139,13 @@ def _build_hydration_schema(attributes: list[DiscoveredAttribute]) -> dict:
                         },
                         "distribution_type": {
                             "type": ["string", "null"],
-                            "enum": ["normal", "uniform", "categorical", "boolean", None],
+                            "enum": [
+                                "normal",
+                                "uniform",
+                                "categorical",
+                                "boolean",
+                                None,
+                            ],
                         },
                         "mean": {"type": ["number", "null"]},
                         "std": {"type": ["number", "null"]},
@@ -157,7 +179,10 @@ def _build_hydration_schema(attributes: list[DiscoveredAttribute]) -> dict:
                             "items": {
                                 "type": "object",
                                 "properties": {
-                                    "type": {"type": "string", "enum": ["min", "max", "expression"]},
+                                    "type": {
+                                        "type": "string",
+                                        "enum": ["min", "max", "expression"],
+                                    },
                                     "value": {"type": ["number", "null"]},
                                     "expression": {"type": ["string", "null"]},
                                 },
@@ -165,16 +190,40 @@ def _build_hydration_schema(attributes: list[DiscoveredAttribute]) -> dict:
                                 "additionalProperties": False,
                             },
                         },
-                        "grounding_level": {"type": "string", "enum": ["strong", "medium", "low"]},
-                        "grounding_method": {"type": "string", "enum": ["researched", "extrapolated", "estimated", "computed"]},
+                        "grounding_level": {
+                            "type": "string",
+                            "enum": ["strong", "medium", "low"],
+                        },
+                        "grounding_method": {
+                            "type": "string",
+                            "enum": [
+                                "researched",
+                                "extrapolated",
+                                "estimated",
+                                "computed",
+                            ],
+                        },
                         "grounding_source": {"type": ["string", "null"]},
                         "grounding_note": {"type": ["string", "null"]},
                     },
                     "required": [
-                        "name", "sampling_strategy", "distribution_type",
-                        "mean", "std", "min", "max", "options", "weights", "probability_true",
-                        "formula", "modifiers", "constraints",
-                        "grounding_level", "grounding_method", "grounding_source", "grounding_note",
+                        "name",
+                        "sampling_strategy",
+                        "distribution_type",
+                        "mean",
+                        "std",
+                        "min",
+                        "max",
+                        "options",
+                        "weights",
+                        "probability_true",
+                        "formula",
+                        "modifiers",
+                        "constraints",
+                        "grounding_level",
+                        "grounding_method",
+                        "grounding_source",
+                        "grounding_note",
                     ],
                     "additionalProperties": False,
                 },
@@ -192,7 +241,7 @@ def _build_hydration_schema(attributes: list[DiscoveredAttribute]) -> dict:
 def _parse_distribution(attr_data: dict, attr_type: str):
     """Parse distribution from hydration response."""
     dist_type = attr_data.get("distribution_type")
-    
+
     if dist_type == "normal":
         return NormalDistribution(
             mean=attr_data.get("mean", 0),
@@ -218,7 +267,7 @@ def _parse_distribution(attr_data: dict, attr_type: str):
         return BooleanDistribution(
             probability_true=attr_data.get("probability_true", 0.5),
         )
-    
+
     # Default based on attribute type
     if attr_type == "int":
         return NormalDistribution(mean=50, std=15, min=0, max=100)
@@ -234,14 +283,16 @@ def _parse_modifiers(modifiers_data: list[dict] | None) -> list[Modifier]:
     """Parse modifiers from hydration response."""
     if not modifiers_data:
         return []
-    
+
     modifiers = []
     for mod in modifiers_data:
-        modifiers.append(Modifier(
-            when=mod["when"],
-            multiply=mod.get("multiply"),
-            add=mod.get("add"),
-        ))
+        modifiers.append(
+            Modifier(
+                when=mod["when"],
+                multiply=mod.get("multiply"),
+                add=mod.get("add"),
+            )
+        )
     return modifiers
 
 
@@ -249,11 +300,13 @@ def _parse_constraints(constraints_data: list[dict]) -> list[Constraint]:
     """Parse constraints from hydration response."""
     constraints = []
     for c in constraints_data:
-        constraints.append(Constraint(
-            type=c["type"],
-            value=c.get("value"),
-            expression=c.get("expression"),
-        ))
+        constraints.append(
+            Constraint(
+                type=c["type"],
+                value=c.get("value"),
+                expression=c.get("expression"),
+            )
+        )
     return constraints
 
 
@@ -267,16 +320,16 @@ def hydrate_attributes(
 ) -> tuple[list[HydratedAttribute], list[str]]:
     """
     Research distributions for discovered attributes using agentic web search.
-    
+
     The model will:
     1. Search for real demographic/statistical data
     2. Determine appropriate distributions
     3. Assess grounding quality per attribute
-    
+
     When context is provided (overlay mode), the model can reference
     context attributes in formulas and modifiers but should NOT define
     distributions for them.
-    
+
     Args:
         attributes: List of DiscoveredAttribute from selector
         description: Original population description
@@ -284,14 +337,14 @@ def hydrate_attributes(
         context: Existing attributes from base population (for overlay mode)
         model: Model to use
         reasoning_effort: "low", "medium", or "high"
-    
+
     Returns:
         Tuple of (list of HydratedAttribute, list of source URLs)
-    
+
     Example:
         # Base mode
         >>> hydrated, sources = hydrate_attributes(attrs, "German surgeons", "Germany")
-        
+
         # Overlay mode - can reference base attributes in formulas
         >>> overlay_hydrated, sources = hydrate_attributes(
         ...     scenario_attrs, "AI adoption scenario", "Germany",
@@ -300,22 +353,21 @@ def hydrate_attributes(
     """
     if not attributes:
         return [], []
-    
+
     geo_context = f" in {geography}" if geography else ""
-    
+
     # Build attribute list for prompt
     attr_list = "\n".join(
         f"- {attr.name} ({attr.type}, {attr.category}): {attr.description}"
         + (f" [depends on: {', '.join(attr.depends_on)}]" if attr.depends_on else "")
         for attr in attributes
     )
-    
+
     # Build context section if we have existing attributes
     context_section = ""
     if context:
         context_items = "\n".join(
-            f"- {attr.name} ({attr.type}): {attr.description}"
-            for attr in context
+            f"- {attr.name} ({attr.type}): {attr.description}" for attr in context
         )
         context_section = f"""
 ## READ-ONLY CONTEXT ATTRIBUTES
@@ -329,7 +381,7 @@ but do NOT define distributions for them.
 ---
 
 """
-    
+
     prompt = f"""{context_section}Research realistic distributions for these NEW attributes of {description}{geo_context}:
 
 {attr_list}
@@ -385,7 +437,7 @@ For EACH attribute, honestly assess:
 Search for data on each attribute category before filling in distributions."""
 
     schema = _build_hydration_schema(attributes)
-    
+
     data, sources = agentic_research(
         prompt=prompt,
         response_schema=schema,
@@ -393,30 +445,38 @@ Search for data on each attribute category before filling in distributions."""
         model=model,
         reasoning_effort=reasoning_effort,
     )
-    
+
     # Build lookup for original attributes
     attr_lookup = {a.name: a for a in attributes}
-    
+
     # Parse response into HydratedAttributes
     hydrated = []
     for attr_data in data.get("attributes", []):
         name = attr_data.get("name")
         original = attr_lookup.get(name)
-        
+
         if not original:
             continue
-        
+
         # Build sampling config
         strategy = attr_data.get("sampling_strategy", "independent")
-        
+
         sampling = SamplingConfig(
             strategy=strategy,
-            distribution=_parse_distribution(attr_data, original.type) if strategy != "derived" else None,
+            distribution=(
+                _parse_distribution(attr_data, original.type)
+                if strategy != "derived"
+                else None
+            ),
             formula=attr_data.get("formula") if strategy == "derived" else None,
             depends_on=original.depends_on,
-            modifiers=_parse_modifiers(attr_data.get("modifiers")) if strategy == "conditional" else [],
+            modifiers=(
+                _parse_modifiers(attr_data.get("modifiers"))
+                if strategy == "conditional"
+                else []
+            ),
         )
-        
+
         # Build grounding info
         grounding = GroundingInfo(
             level=attr_data.get("grounding_level", "low"),
@@ -424,17 +484,18 @@ Search for data on each attribute category before filling in distributions."""
             source=attr_data.get("grounding_source"),
             note=attr_data.get("grounding_note"),
         )
-        
-        hydrated.append(HydratedAttribute(
-            name=original.name,
-            type=original.type,
-            category=original.category,
-            description=original.description,
-            depends_on=original.depends_on,
-            sampling=sampling,
-            grounding=grounding,
-            constraints=_parse_constraints(attr_data.get("constraints", [])),
-        ))
-    
-    return hydrated, sources
 
+        hydrated.append(
+            HydratedAttribute(
+                name=original.name,
+                type=original.type,
+                category=original.category,
+                description=original.description,
+                depends_on=original.depends_on,
+                sampling=sampling,
+                grounding=grounding,
+                constraints=_parse_constraints(attr_data.get("constraints", [])),
+            )
+        )
+
+    return hydrated, sources

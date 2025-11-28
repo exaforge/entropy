@@ -21,7 +21,9 @@ context = ParsedContext(
 )
 
 print("=" * 60)
-print(f"Researching: {context.context_entity} {context.context_type}s in {context.geography}")
+print(
+    f"Researching: {context.context_entity} {context.context_type}s in {context.geography}"
+)
 print("Step 1: GPT-5 agentic search (demographics + situation)")
 print("Step 2: GPT-5-instant validation (filter aggregate stats)")
 print("=" * 60)

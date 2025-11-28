@@ -42,20 +42,20 @@ def check_sufficiency(
 ) -> SufficiencyResult:
     """
     Check if a population description is sufficient for spec generation.
-    
+
     A sufficient description should specify:
     1. Who they are (identity/profession/demographic)
     2. Size (number of agents) - optional, defaults to 1000
     3. Geographic scope - optional but helpful
-    
+
     Args:
         description: Natural language population description
         default_size: Default size if not specified
         model: Model to use (gpt-5-mini recommended for speed)
-    
+
     Returns:
         SufficiencyResult with sufficient flag, size, and any clarifications needed
-    
+
     Example:
         >>> result = check_sufficiency("500 German surgeons")
         >>> result.sufficient
@@ -93,11 +93,10 @@ Be lenient - if you can reasonably infer a specific population, mark as sufficie
         schema_name="sufficiency_check",
         model=model,
     )
-    
+
     return SufficiencyResult(
         sufficient=data.get("sufficient", False),
         size=data.get("size", default_size),
         geography=data.get("geography"),
         clarifications_needed=data.get("clarifications_needed", []),
     )
-

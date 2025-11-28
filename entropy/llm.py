@@ -33,7 +33,7 @@ def _log_request_response(
     logs_dir = _get_logs_dir()
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_file = logs_dir / f"{timestamp}_{function_name}.json"
-    
+
     # Convert response to dict if possible
     response_dict = None
     if hasattr(response, "model_dump"):
@@ -42,7 +42,7 @@ def _log_request_response(
         response_dict = str(response)
     else:
         response_dict = str(response)
-    
+
     log_data = {
         "timestamp": datetime.now().isoformat(),
         "function": function_name,
@@ -50,10 +50,10 @@ def _log_request_response(
         "response": response_dict,
         "sources_extracted": sources or [],
     }
-    
+
     with open(log_file, "w") as f:
         json.dump(log_data, f, indent=2, default=str)
-    
+
     print(f"  [Logged to {log_file}]")
 
 
@@ -72,24 +72,24 @@ def simple_call(
 ) -> dict:
     """
     Simple LLM call with structured output, no reasoning, no web search.
-    
+
     Use for fast, cheap tasks:
     - Context sufficiency checks
     - Simple classification
     - Validation
-    
+
     Args:
         prompt: The prompt
         response_schema: JSON schema for the response
         schema_name: Name for the schema
         model: Model to use (gpt-5-mini recommended)
         log: Whether to log request/response to file
-    
+
     Returns:
         Structured data matching the schema
     """
     client = get_openai_client()
-    
+
     request_params = {
         "model": model,
         "input": prompt,
@@ -102,9 +102,9 @@ def simple_call(
             }
         },
     }
-    
+
     response = client.responses.create(**request_params)
-    
+
     # Extract structured data
     structured_data = None
     for item in response.output:
@@ -113,14 +113,14 @@ def simple_call(
                 if hasattr(content_item, "type") and content_item.type == "output_text":
                     if hasattr(content_item, "text"):
                         structured_data = json.loads(content_item.text)
-    
+
     if log:
         _log_request_response(
             function_name="simple_call",
             request=request_params,
             response=response,
         )
-    
+
     return structured_data or {}
 
 
@@ -134,12 +134,12 @@ def reasoning_call(
 ) -> dict:
     """
     GPT-5 with reasoning and structured output, but NO web search.
-    
+
     Use this for tasks that require reasoning but not external data:
     - Attribute selection/categorization
     - Schema design
     - Logical analysis
-    
+
     Args:
         prompt: What to reason about
         response_schema: JSON schema for the response
@@ -147,12 +147,12 @@ def reasoning_call(
         model: Model to use (gpt-5, gpt-5.1, etc.)
         reasoning_effort: "low", "medium", or "high"
         log: Whether to log request/response to file
-    
+
     Returns:
         Structured data matching the schema
     """
     client = get_openai_client()
-    
+
     request_params = {
         "model": model,
         "reasoning": {"effort": reasoning_effort},
@@ -166,9 +166,9 @@ def reasoning_call(
             }
         },
     }
-    
+
     response = client.responses.create(**request_params)
-    
+
     # Extract structured data
     structured_data = None
     for item in response.output:
@@ -177,14 +177,14 @@ def reasoning_call(
                 if hasattr(content_item, "type") and content_item.type == "output_text":
                     if hasattr(content_item, "text"):
                         structured_data = json.loads(content_item.text)
-    
+
     if log:
         _log_request_response(
             function_name="reasoning_call",
             request=request_params,
             response=response,
         )
-    
+
     return structured_data or {}
 
 
@@ -198,13 +198,13 @@ def agentic_research(
 ) -> tuple[dict, list[str]]:
     """
     Perform agentic research with web search and structured output.
-    
+
     The model will:
     1. Decide what to search for
     2. Search the web (possibly multiple times)
     3. Reason about the results
     4. Return structured data matching the schema
-    
+
     Args:
         prompt: What to research
         response_schema: JSON schema for the response
@@ -212,12 +212,12 @@ def agentic_research(
         model: Model to use (gpt-5, gpt-5.1, etc.)
         reasoning_effort: "low", "medium", or "high"
         log: Whether to log request/response to file
-    
+
     Returns:
         Tuple of (structured_data, source_urls)
     """
     client = get_openai_client()
-    
+
     request_params = {
         "model": model,
         "input": prompt,
@@ -233,13 +233,13 @@ def agentic_research(
         },
         "include": ["web_search_call.action.sources"],
     }
-    
+
     response = client.responses.create(**request_params)
-    
+
     # Extract structured data and sources
     structured_data = None
     sources = []
-    
+
     for item in response.output:
         # Check for web search results - sources are here
         if hasattr(item, "type") and item.type == "web_search_call":
@@ -248,19 +248,25 @@ def agentic_research(
                     for source in item.action.sources:
                         if hasattr(source, "url"):
                             sources.append(source.url)
-        
+
         # Check message content
         if hasattr(item, "type") and item.type == "message":
             for content_item in item.content:
                 if hasattr(content_item, "type") and content_item.type == "output_text":
                     if hasattr(content_item, "text"):
                         structured_data = json.loads(content_item.text)
-                    if hasattr(content_item, "annotations") and content_item.annotations:
+                    if (
+                        hasattr(content_item, "annotations")
+                        and content_item.annotations
+                    ):
                         for annotation in content_item.annotations:
-                            if hasattr(annotation, "type") and annotation.type == "url_citation":
+                            if (
+                                hasattr(annotation, "type")
+                                and annotation.type == "url_citation"
+                            ):
                                 if hasattr(annotation, "url"):
                                     sources.append(annotation.url)
-    
+
     if log:
         _log_request_response(
             function_name="agentic_research",
@@ -268,5 +274,5 @@ def agentic_research(
             response=response,
             sources=list(set(sources)),
         )
-    
+
     return structured_data or {}, list(set(sources))

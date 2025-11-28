@@ -31,7 +31,12 @@ ATTRIBUTE_SELECTION_SCHEMA = {
                     },
                     "category": {
                         "type": "string",
-                        "enum": ["universal", "population_specific", "context_specific", "personality"],
+                        "enum": [
+                            "universal",
+                            "population_specific",
+                            "context_specific",
+                            "personality",
+                        ],
                         "description": "Category of the attribute",
                     },
                     "description": {
@@ -72,17 +77,17 @@ def select_attributes(
 ) -> list[DiscoveredAttribute]:
     """
     Discover all relevant attributes for a population.
-    
+
     Uses GPT-5 with reasoning to analyze the population and identify
     attributes across all applicable categories. The model considers:
     - What makes this population unique
     - Geographic/cultural context
     - Dependencies between attributes
-    
+
     When context is provided (overlay mode), only discovers NEW attributes
     not already in the base population. Can reference context attributes
     in dependencies.
-    
+
     Args:
         description: Natural language population description
         size: Number of agents (for context)
@@ -90,15 +95,15 @@ def select_attributes(
         context: Existing attributes from base population (for overlay mode)
         model: Model to use
         reasoning_effort: "low", "medium", or "high"
-    
+
     Returns:
         List of DiscoveredAttribute objects
-    
+
     Example:
         >>> attrs = select_attributes("German surgeons", 500, "Germany")
         >>> [a.name for a in attrs[:3]]
         ['age', 'gender', 'specialty']
-        
+
         # Overlay mode
         >>> overlay_attrs = select_attributes(
         ...     "AI device adoption scenario", 500, "Germany",
@@ -107,13 +112,12 @@ def select_attributes(
     """
     geo_context = f" in {geography}" if geography else ""
     geo_label = geography or "the relevant region"
-    
+
     # Build context section if we have existing attributes
     context_section = ""
     if context:
         context_items = "\n".join(
-            f"- {attr.name} ({attr.type}): {attr.description}"
-            for attr in context
+            f"- {attr.name} ({attr.type}): {attr.description}" for attr in context
         )
         context_section = f"""
 ## EXISTING CONTEXT (DO NOT REDISCOVER)
@@ -144,7 +148,7 @@ The following {len(context)} attributes ALREADY EXIST in the base population.
 - Max 3 dependencies per attribute
 - NO duplicates
 - Only attributes where real statistical data likely exists"""
-    
+
     prompt = f"""{context_section}## Intent
 
 We are building a synthetic population for **agent-based simulation**. These agents will:
@@ -217,7 +221,7 @@ For each attribute:
         model=model,
         reasoning_effort=reasoning_effort,
     )
-    
+
     attributes = []
     for attr_data in data.get("attributes", []):
         attr = DiscoveredAttribute(
@@ -228,21 +232,28 @@ For each attribute:
             depends_on=attr_data.get("depends_on", []),
         )
         attributes.append(attr)
-    
+
     # Add Big Five if recommended and not already present
     if data.get("include_big_five", False):
-        big_five_names = {"openness", "conscientiousness", "extraversion", "agreeableness", "neuroticism"}
+        big_five_names = {
+            "openness",
+            "conscientiousness",
+            "extraversion",
+            "agreeableness",
+            "neuroticism",
+        }
         existing_names = {a.name for a in attributes}
-        
+
         for trait in big_five_names:
             if trait not in existing_names:
-                attributes.append(DiscoveredAttribute(
-                    name=trait,
-                    type="float",
-                    category="personality",
-                    description=f"Big Five personality trait: {trait} (0-1 scale)",
-                    depends_on=[],
-                ))
-    
-    return attributes
+                attributes.append(
+                    DiscoveredAttribute(
+                        name=trait,
+                        type="float",
+                        category="personality",
+                        description=f"Big Five personality trait: {trait} (0-1 scale)",
+                        depends_on=[],
+                    )
+                )
 
+    return attributes

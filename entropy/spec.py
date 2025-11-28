@@ -68,7 +68,12 @@ class BooleanDistribution(BaseModel):
     probability_true: float = Field(ge=0, le=1)
 
 
-Distribution = NormalDistribution | UniformDistribution | CategoricalDistribution | BooleanDistribution
+Distribution = (
+    NormalDistribution
+    | UniformDistribution
+    | CategoricalDistribution
+    | BooleanDistribution
+)
 
 
 # =============================================================================
@@ -91,7 +96,8 @@ class SamplingConfig(BaseModel):
         description="independent: sample directly; derived: compute from formula; conditional: sample then modify"
     )
     distribution: Distribution | None = Field(
-        default=None, description="Distribution to sample from (for independent/conditional)"
+        default=None,
+        description="Distribution to sample from (for independent/conditional)",
     )
     formula: str | None = Field(
         default=None, description="Python expression for derived attributes"
@@ -100,7 +106,8 @@ class SamplingConfig(BaseModel):
         default_factory=list, description="Attributes this depends on"
     )
     modifiers: list[Modifier] = Field(
-        default_factory=list, description="Conditional modifiers (for conditional strategy)"
+        default_factory=list,
+        description="Conditional modifiers (for conditional strategy)",
     )
 
 
@@ -115,7 +122,9 @@ class Constraint(BaseModel):
     type: Literal["min", "max", "expression"] = Field(
         description="min/max for bounds, expression for complex constraints"
     )
-    value: float | None = Field(default=None, description="Value for min/max constraints")
+    value: float | None = Field(
+        default=None, description="Value for min/max constraints"
+    )
     expression: str | None = Field(
         default=None, description="Python expression for expression constraints"
     )
@@ -133,9 +142,9 @@ class AttributeSpec(BaseModel):
     type: Literal["int", "float", "categorical", "boolean"] = Field(
         description="Data type of the attribute"
     )
-    category: Literal["universal", "population_specific", "context_specific", "personality"] = Field(
-        description="Category of attribute"
-    )
+    category: Literal[
+        "universal", "population_specific", "context_specific", "personality"
+    ] = Field(description="Category of attribute")
     description: str = Field(description="What this attribute represents")
     sampling: SamplingConfig
     grounding: GroundingInfo
@@ -197,7 +206,9 @@ class PopulationSpec(BaseModel):
         data = self.model_dump(mode="json")
 
         with open(path, "w") as f:
-            yaml.dump(data, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+            yaml.dump(
+                data, f, default_flow_style=False, sort_keys=False, allow_unicode=True
+            )
 
     @classmethod
     def from_yaml(cls, path: Path | str) -> "PopulationSpec":
@@ -229,41 +240,47 @@ class PopulationSpec(BaseModel):
         for i, attr_name in enumerate(self.sampling_order, 1):
             attr = self.get_attribute(attr_name)
             if attr:
-                lines.append(f"  {i}. {attr_name} ({attr.type}) - {attr.grounding.level}")
+                lines.append(
+                    f"  {i}. {attr_name} ({attr.type}) - {attr.grounding.level}"
+                )
 
         return "\n".join(lines)
 
     def merge(self, overlay: "PopulationSpec") -> "PopulationSpec":
         """
         Merge an overlay spec into this base spec.
-        
+
         The overlay adds new attributes that can depend on base attributes.
         Base attributes are preserved; overlay attributes are appended.
         Sampling order is recomputed to handle cross-layer dependencies.
-        
+
         Args:
             overlay: The overlay spec to merge (scenario-specific attributes)
-        
+
         Returns:
             New PopulationSpec with merged attributes
         """
         # Combine attributes (base first, then overlay)
         base_names = {attr.name for attr in self.attributes}
         merged_attributes = list(self.attributes)
-        
+
         for attr in overlay.attributes:
             if attr.name not in base_names:
                 merged_attributes.append(attr)
-        
+
         # Merge sources (deduplicate)
         all_sources = list(set(self.grounding.sources + overlay.grounding.sources))
-        
+
         # Recompute grounding summary
-        strong_count = sum(1 for a in merged_attributes if a.grounding.level == "strong")
-        medium_count = sum(1 for a in merged_attributes if a.grounding.level == "medium")
+        strong_count = sum(
+            1 for a in merged_attributes if a.grounding.level == "strong"
+        )
+        medium_count = sum(
+            1 for a in merged_attributes if a.grounding.level == "medium"
+        )
         low_count = sum(1 for a in merged_attributes if a.grounding.level == "low")
         total = len(merged_attributes)
-        
+
         if total == 0:
             overall = "low"
         elif strong_count / total >= 0.6:
@@ -272,7 +289,7 @@ class PopulationSpec(BaseModel):
             overall = "medium"
         else:
             overall = "low"
-        
+
         merged_grounding = GroundingSummary(
             overall=overall,
             sources_count=len(all_sources),
@@ -281,10 +298,10 @@ class PopulationSpec(BaseModel):
             low_count=low_count,
             sources=all_sources,
         )
-        
+
         # Recompute sampling order via topological sort
         merged_order = self._compute_sampling_order(merged_attributes)
-        
+
         # Create merged metadata
         merged_meta = SpecMeta(
             description=f"{self.meta.description} + {overlay.meta.description}",
@@ -293,7 +310,7 @@ class PopulationSpec(BaseModel):
             created_at=datetime.now(),
             version=self.meta.version,
         )
-        
+
         return PopulationSpec(
             meta=merged_meta,
             grounding=merged_grounding,
@@ -305,37 +322,37 @@ class PopulationSpec(BaseModel):
     def _compute_sampling_order(attributes: list["AttributeSpec"]) -> list[str]:
         """Compute sampling order via topological sort."""
         from collections import defaultdict
-        
+
         # Build adjacency list and in-degree count
         graph = defaultdict(list)
         in_degree = {a.name: 0 for a in attributes}
         attr_names = {a.name for a in attributes}
-        
+
         for attr in attributes:
             for dep in attr.sampling.depends_on:
                 if dep in attr_names:
                     graph[dep].append(attr.name)
                     in_degree[attr.name] += 1
-        
+
         # Kahn's algorithm
         queue = [name for name, degree in in_degree.items() if degree == 0]
         order = []
-        
+
         while queue:
             queue.sort()  # Deterministic ordering
             node = queue.pop(0)
             order.append(node)
-            
+
             for dependent in graph[node]:
                 in_degree[dependent] -= 1
                 if in_degree[dependent] == 0:
                     queue.append(dependent)
-        
+
         # If cycle detected, return partial order + remaining
         if len(order) != len(attributes):
             remaining = [a.name for a in attributes if a.name not in order]
             order.extend(remaining)
-        
+
         return order
 
 
@@ -349,7 +366,9 @@ class DiscoveredAttribute(BaseModel):
 
     name: str
     type: Literal["int", "float", "categorical", "boolean"]
-    category: Literal["universal", "population_specific", "context_specific", "personality"]
+    category: Literal[
+        "universal", "population_specific", "context_specific", "personality"
+    ]
     description: str
     depends_on: list[str] = Field(default_factory=list)
 
@@ -359,7 +378,9 @@ class HydratedAttribute(BaseModel):
 
     name: str
     type: Literal["int", "float", "categorical", "boolean"]
-    category: Literal["universal", "population_specific", "context_specific", "personality"]
+    category: Literal[
+        "universal", "population_specific", "context_specific", "personality"
+    ]
     description: str
     depends_on: list[str] = Field(default_factory=list)
     sampling: SamplingConfig
@@ -374,4 +395,3 @@ class SufficiencyResult(BaseModel):
     size: int = Field(default=1000, description="Extracted or default population size")
     geography: str | None = None
     clarifications_needed: list[str] = Field(default_factory=list)
-

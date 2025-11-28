@@ -18,22 +18,23 @@ from ..spec import (
 
 class CircularDependencyError(Exception):
     """Raised when circular dependencies are detected in attributes."""
+
     pass
 
 
 def _topological_sort(attributes: list[HydratedAttribute]) -> list[str]:
     """
     Topological sort of attributes based on dependencies.
-    
+
     Uses Kahn's algorithm to determine a valid sampling order
     where all dependencies are sampled before dependents.
-    
+
     Args:
         attributes: List of HydratedAttribute with depends_on fields
-    
+
     Returns:
         List of attribute names in sampling order
-    
+
     Raises:
         CircularDependencyError: If circular dependencies exist
     """
@@ -41,37 +42,37 @@ def _topological_sort(attributes: list[HydratedAttribute]) -> list[str]:
     graph = defaultdict(list)  # attr -> list of attrs that depend on it
     in_degree = {a.name: 0 for a in attributes}
     attr_names = {a.name for a in attributes}
-    
+
     for attr in attributes:
         for dep in attr.depends_on:
             # Only count dependencies on attributes we're tracking
             if dep in attr_names:
                 graph[dep].append(attr.name)
                 in_degree[attr.name] += 1
-    
+
     # Start with nodes that have no dependencies
     queue = [name for name, degree in in_degree.items() if degree == 0]
     order = []
-    
+
     while queue:
         # Sort for deterministic ordering
         queue.sort()
         node = queue.pop(0)
         order.append(node)
-        
+
         # Reduce in-degree for dependents
         for dependent in graph[node]:
             in_degree[dependent] -= 1
             if in_degree[dependent] == 0:
                 queue.append(dependent)
-    
+
     # Check for cycles
     if len(order) != len(attributes):
         remaining = [a.name for a in attributes if a.name not in order]
         raise CircularDependencyError(
             f"Circular dependency detected involving: {remaining}"
         )
-    
+
     return order
 
 
@@ -81,49 +82,49 @@ def bind_constraints(
 ) -> tuple[list[AttributeSpec], list[str]]:
     """
     Build dependency graph and determine sampling order.
-    
+
     This step:
     1. Validates all dependencies reference existing or context attributes
     2. Checks for circular dependencies
     3. Computes topological sort for sampling order
     4. Converts HydratedAttribute to final AttributeSpec
-    
+
     When context is provided (overlay mode), dependencies on context
     attributes are valid - they're treated as already-sampled.
-    
+
     Args:
         attributes: List of HydratedAttribute from hydrator
         context: Existing attributes from base population (for overlay mode)
-    
+
     Returns:
         Tuple of (list of AttributeSpec, sampling_order)
-    
+
     Raises:
         CircularDependencyError: If circular dependencies exist
         ValueError: If dependencies reference unknown attributes
-    
+
     Example:
         # Base mode
         >>> specs, order = bind_constraints(hydrated_attrs)
-        
+
         # Overlay mode - allows dependencies on context attrs
         >>> specs, order = bind_constraints(overlay_attrs, context=base_spec.attributes)
     """
     attr_names = {a.name for a in attributes}
     context_names = {a.name for a in context} if context else set()
     known_names = attr_names | context_names
-    
+
     # Validate dependencies
     for attr in attributes:
         unknown_deps = set(attr.depends_on) - known_names
         if unknown_deps:
             # Remove unknown dependencies with warning (they might be computed elsewhere)
             attr.depends_on = [d for d in attr.depends_on if d in known_names]
-    
+
     # Compute sampling order (only for new attributes, not context)
     # Context attributes are already sampled, so they don't need ordering
     sampling_order = _topological_sort(attributes)
-    
+
     # Convert to AttributeSpec
     specs = []
     for attr in attributes:
@@ -137,7 +138,7 @@ def bind_constraints(
             constraints=attr.constraints,
         )
         specs.append(spec)
-    
+
     return specs, sampling_order
 
 
@@ -149,9 +150,9 @@ def _compute_grounding_summary(
     strong_count = sum(1 for a in attributes if a.grounding.level == "strong")
     medium_count = sum(1 for a in attributes if a.grounding.level == "medium")
     low_count = sum(1 for a in attributes if a.grounding.level == "low")
-    
+
     total = len(attributes)
-    
+
     # Determine overall level
     if total == 0:
         overall = "low"
@@ -161,7 +162,7 @@ def _compute_grounding_summary(
         overall = "medium"
     else:
         overall = "low"
-    
+
     return GroundingSummary(
         overall=overall,
         sources_count=len(sources),
@@ -182,7 +183,7 @@ def build_spec(
 ) -> PopulationSpec:
     """
     Assemble the final PopulationSpec from all components.
-    
+
     Args:
         description: Original population description
         size: Number of agents
@@ -190,7 +191,7 @@ def build_spec(
         attributes: List of AttributeSpec
         sampling_order: Order for sampling
         sources: List of source URLs from research
-    
+
     Returns:
         Complete PopulationSpec ready for YAML export
     """
@@ -200,13 +201,12 @@ def build_spec(
         geography=geography,
         created_at=datetime.now(),
     )
-    
+
     grounding = _compute_grounding_summary(attributes, sources)
-    
+
     return PopulationSpec(
         meta=meta,
         grounding=grounding,
         attributes=attributes,
         sampling_order=sampling_order,
     )
-
