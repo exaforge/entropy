@@ -731,6 +731,12 @@ Return JSON array with modifiers for each conditional attribute."""
 # =============================================================================
 
 
+from typing import Callable
+
+# Type alias for progress callback: (step: str, status: str, count: int | None) -> None
+ProgressCallback = Callable[[str, str, int | None], None]
+
+
 def hydrate_attributes(
     attributes: list[DiscoveredAttribute],
     description: str,
@@ -738,6 +744,7 @@ def hydrate_attributes(
     context: list[AttributeSpec] | None = None,
     model: str = "gpt-5",
     reasoning_effort: str = "low",
+    on_progress: ProgressCallback | None = None,
 ) -> tuple[list[HydratedAttribute], list[str]]:
     """
     Research distributions for discovered attributes using split hydration.
@@ -758,6 +765,7 @@ def hydrate_attributes(
         context: Existing attributes from base population (for overlay mode)
         model: Model to use
         reasoning_effort: "low", "medium", or "high"
+        on_progress: Optional callback for progress updates (step, status, count)
 
     Returns:
         Tuple of (list of HydratedAttribute, list of source URLs)
@@ -768,8 +776,18 @@ def hydrate_attributes(
     all_sources = []
     population = description
 
+    def report(step: str, status: str, count: int | None = None):
+        """Report progress via callback or print."""
+        if on_progress:
+            on_progress(step, status, count)
+        else:
+            if count is not None:
+                print(f"  {step}: {status} ({count})")
+            else:
+                print(f"  {step}: {status}")
+
     # Step 2a: Independent attributes
-    print("  Step 2a: Hydrating independent attributes...")
+    report("2a", "Researching independent distributions...")
     independent_attrs, independent_sources = hydrate_independent(
         attributes=attributes,
         population=population,
@@ -779,10 +797,10 @@ def hydrate_attributes(
         reasoning_effort=reasoning_effort,
     )
     all_sources.extend(independent_sources)
-    print(f"    → Hydrated {len(independent_attrs)} independent attributes ({len(independent_sources)} sources)")
+    report("2a", f"Hydrated {len(independent_attrs)} independent", len(independent_sources))
 
     # Step 2b: Derived attributes
-    print("  Step 2b: Hydrating derived attributes...")
+    report("2b", "Specifying derived formulas...")
     derived_attrs = hydrate_derived(
         attributes=attributes,
         population=population,
@@ -792,10 +810,10 @@ def hydrate_attributes(
         model=model,
         reasoning_effort=reasoning_effort,
     )
-    print(f"    → Hydrated {len(derived_attrs)} derived attributes")
+    report("2b", f"Hydrated {len(derived_attrs)} derived", 0)
 
     # Step 2c: Conditional base distributions
-    print("  Step 2c: Hydrating conditional base distributions...")
+    report("2c", "Researching conditional distributions...")
     conditional_base_attrs, conditional_sources = hydrate_conditional_base(
         attributes=attributes,
         population=population,
@@ -807,10 +825,10 @@ def hydrate_attributes(
         reasoning_effort=reasoning_effort,
     )
     all_sources.extend(conditional_sources)
-    print(f"    → Hydrated {len(conditional_base_attrs)} conditional base distributions ({len(conditional_sources)} sources)")
+    report("2c", f"Hydrated {len(conditional_base_attrs)} conditional", len(conditional_sources))
 
     # Step 2d: Conditional modifiers
-    print("  Step 2d: Hydrating conditional modifiers...")
+    report("2d", "Specifying conditional modifiers...")
     conditional_attrs, modifier_sources = hydrate_conditional_modifiers(
         conditional_attrs=conditional_base_attrs,
         population=population,
@@ -822,7 +840,7 @@ def hydrate_attributes(
         reasoning_effort=reasoning_effort,
     )
     all_sources.extend(modifier_sources)
-    print(f"    → Added modifiers to {len(conditional_attrs)} conditional attributes ({len(modifier_sources)} sources)")
+    report("2d", f"Added modifiers to {len(conditional_attrs)}", len(modifier_sources))
 
     # Combine all hydrated attributes
     all_hydrated = independent_attrs + derived_attrs + conditional_attrs
