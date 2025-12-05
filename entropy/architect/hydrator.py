@@ -482,6 +482,7 @@ def hydrate_independent(
     attributes: list[DiscoveredAttribute],
     population: str,
     geography: str | None = None,
+    context: list[AttributeSpec] | None = None,
     model: str = "gpt-5",
     reasoning_effort: str = "low",
 ) -> tuple[list[HydratedAttribute], list[str]]:
@@ -494,6 +495,7 @@ def hydrate_independent(
         attributes: List of DiscoveredAttribute with strategy=independent
         population: Population description (e.g., "German surgeons")
         geography: Geographic scope (e.g., "Germany")
+        context: Existing attributes from base population (for overlay mode)
         model: Model to use
         reasoning_effort: "low", "medium", or "high"
 
@@ -510,13 +512,22 @@ def hydrate_independent(
 
     geo_context = f" in {geography}" if geography else ""
 
+    # Build context section for overlay mode
+    context_section = ""
+    if context:
+        context_section = "## READ-ONLY CONTEXT ATTRIBUTES (from base population)\n\n"
+        context_section += "These attributes already exist. Do NOT redefine them, but you may reference them.\n\n"
+        for attr in context:
+            context_section += f"- {attr.name} ({attr.type}): {attr.description}\n"
+        context_section += "\n---\n\n"
+
     # Build attribute summary for prompt
     attr_list = "\n".join(
         f"- {attr.name} ({attr.type}, {attr.category}): {attr.description}"
         for attr in independent_attrs
     )
 
-    prompt = f"""Research realistic distributions for these INDEPENDENT attributes of {population}{geo_context}:
+    prompt = f"""{context_section}Research realistic distributions for these INDEPENDENT attributes of {population}{geo_context}:
 
 {attr_list}
 
@@ -658,6 +669,7 @@ def hydrate_derived(
     population: str,
     geography: str | None = None,
     independent_attrs: list[HydratedAttribute] | None = None,
+    context: list[AttributeSpec] | None = None,
     model: str = "gpt-5",
     reasoning_effort: str = "low",
 ) -> list[HydratedAttribute]:
@@ -671,6 +683,7 @@ def hydrate_derived(
         population: Population description
         geography: Geographic scope
         independent_attrs: Already hydrated independent attributes for reference
+        context: Existing attributes from base population (for overlay mode)
         model: Model to use
         reasoning_effort: "low", "medium", or "high"
 
@@ -685,10 +698,19 @@ def hydrate_derived(
     if not derived_attrs:
         return []
 
+    # Build context section for overlay mode
+    context_section = ""
+    if context:
+        context_section = "## READ-ONLY CONTEXT ATTRIBUTES (from base population)\n\n"
+        context_section += "These attributes already exist. You can reference them in formulas.\n\n"
+        for attr in context:
+            context_section += f"- {attr.name} ({attr.type}): {attr.description}\n"
+        context_section += "\n---\n\n"
+
     # Build context from independent attributes
-    independent_summary = ""
+    independent_summary = context_section
     if independent_attrs:
-        independent_summary = "## Available Upstream Attributes (already hydrated)\n\n"
+        independent_summary += "## Available Upstream Attributes (already hydrated)\n\n"
         for attr in independent_attrs:
             dist_info = ""
             if attr.sampling.distribution:
@@ -826,6 +848,7 @@ def hydrate_conditional_base(
     geography: str | None = None,
     independent_attrs: list[HydratedAttribute] | None = None,
     derived_attrs: list[HydratedAttribute] | None = None,
+    context: list[AttributeSpec] | None = None,
     model: str = "gpt-5",
     reasoning_effort: str = "low",
 ) -> tuple[list[HydratedAttribute], list[str]]:
@@ -840,6 +863,7 @@ def hydrate_conditional_base(
         geography: Geographic scope
         independent_attrs: Already hydrated independent attributes
         derived_attrs: Already hydrated derived attributes
+        context: Existing attributes from base population (for overlay mode)
         model: Model to use
         reasoning_effort: "low", "medium", or "high"
 
@@ -856,11 +880,20 @@ def hydrate_conditional_base(
 
     geo_context = f" in {geography}" if geography else ""
 
+    # Build context section for overlay mode
+    context_section = ""
+    if context:
+        context_section = "## READ-ONLY CONTEXT ATTRIBUTES (from base population)\n\n"
+        context_section += "These attributes already exist. You can reference them in mean_formula.\n\n"
+        for attr in context:
+            context_section += f"- {attr.name} ({attr.type}): {attr.description}\n"
+        context_section += "\n---\n\n"
+
     # Build context summary
-    context_summary = ""
+    context_summary = context_section
     all_hydrated = (independent_attrs or []) + (derived_attrs or [])
     if all_hydrated:
-        context_summary = "## Context: Already Hydrated Attributes\n\n"
+        context_summary += "## Context: Already Hydrated Attributes\n\n"
         for attr in all_hydrated:
             dist_info = ""
             if attr.sampling.distribution:
@@ -1022,6 +1055,7 @@ def hydrate_conditional_modifiers(
     geography: str | None = None,
     independent_attrs: list[HydratedAttribute] | None = None,
     derived_attrs: list[HydratedAttribute] | None = None,
+    context: list[AttributeSpec] | None = None,
     model: str = "gpt-5",
     reasoning_effort: str = "low",
 ) -> tuple[list[HydratedAttribute], list[str]]:
@@ -1036,6 +1070,7 @@ def hydrate_conditional_modifiers(
         geography: Geographic scope
         independent_attrs: Already hydrated independent attributes
         derived_attrs: Already hydrated derived attributes
+        context: Existing attributes from base population (for overlay mode)
         model: Model to use
         reasoning_effort: "low", "medium", or "high"
 
@@ -1047,8 +1082,17 @@ def hydrate_conditional_modifiers(
 
     geo_context = f" in {geography}" if geography else ""
 
+    # Build context section for overlay mode
+    context_section = ""
+    if context:
+        context_section = "## READ-ONLY CONTEXT ATTRIBUTES (from base population)\n\n"
+        context_section += "These attributes already exist. You can reference them in 'when' conditions.\n\n"
+        for attr in context:
+            context_section += f"- {attr.name} ({attr.type}): {attr.description}\n"
+        context_section += "\n---\n\n"
+
     # Build full context
-    context_summary = "## Full Context\n\n"
+    context_summary = context_section + "## Full Context\n\n"
 
     if independent_attrs:
         context_summary += "**Independent Attributes:**\n"
@@ -1289,6 +1333,7 @@ def hydrate_attributes(
         attributes=attributes,
         population=population,
         geography=geography,
+        context=context,
         model=model,
         reasoning_effort=reasoning_effort,
     )
@@ -1302,6 +1347,7 @@ def hydrate_attributes(
         population=population,
         geography=geography,
         independent_attrs=independent_attrs,
+        context=context,
         model=model,
         reasoning_effort=reasoning_effort,
     )
@@ -1315,6 +1361,7 @@ def hydrate_attributes(
         geography=geography,
         independent_attrs=independent_attrs,
         derived_attrs=derived_attrs,
+        context=context,
         model=model,
         reasoning_effort=reasoning_effort,
     )
@@ -1329,6 +1376,7 @@ def hydrate_attributes(
         geography=geography,
         independent_attrs=independent_attrs,
         derived_attrs=derived_attrs,
+        context=context,
         model=model,
         reasoning_effort=reasoning_effort,
     )
