@@ -9,6 +9,8 @@ This module implements the split hydration approach:
 Each step is processed separately with specialized prompts and validation.
 """
 
+from typing import Callable
+
 from ..llm import agentic_research, reasoning_call
 from ..models import (
     AttributeSpec,
@@ -352,7 +354,10 @@ Return JSON array with formula for each attribute."""
             )
         )
 
+    # Build set of all known attribute names (independent + derived + context)
     all_names = {a.name for a in (independent_attrs or [])} | {a.name for a in derived_attrs}
+    if context:
+        all_names |= {a.name for a in context}
     errors = validate_derived_hydration(hydrated, all_names)
     return hydrated, errors
 
@@ -709,9 +714,6 @@ Return JSON array with modifiers for each conditional attribute."""
 # =============================================================================
 # Main Orchestrator
 # =============================================================================
-
-
-from typing import Callable
 
 # Type alias for progress callback: (step: str, status: str, count: int | None) -> None
 ProgressCallback = Callable[[str, str, int | None], None]

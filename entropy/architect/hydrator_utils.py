@@ -106,8 +106,12 @@ def validate_derived_hydration(
 
         used_names = extract_names_from_formula(attr.sampling.formula)
         for name in used_names:
-            if name not in attr.depends_on and name not in BUILTIN_NAMES:
+            if name in BUILTIN_NAMES:
+                continue
+            if name not in attr.depends_on:
                 errors.append(f"{attr.name}: formula references '{name}' not in depends_on")
+            elif name not in all_attribute_names:
+                errors.append(f"{attr.name}: formula references unknown attribute '{name}'")
 
     return errors
 
