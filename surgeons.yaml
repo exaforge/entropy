@@ -1,0 +1,2076 @@
+meta:
+  description: 500 German surgeons
+  size: 500
+  geography: Germany
+  created_at: '2025-12-13T20:24:34.299647'
+  version: '1.0'
+grounding:
+  overall: medium
+  sources_count: 78
+  strong_count: 0
+  medium_count: 24
+  low_count: 10
+  sources:
+  - https://www.destatis.de/DE/Themen/Gesellschaft-Umwelt/Gesundheit/Vorsorgeeinrichtungen-Rehabilitationseinrichtungen/Tabellen/personal-reha-bl.html
+  - https://aerztestellen.aerzteblatt.de/de/redaktion/facharzt-weiterbildung/facharzt-weiterbildung-allgemeinchirurgie
+  - https://www.aekno.de/aerzte/rheinisches-aerzteblatt/ausgabe/artikel/2023/maerz-2023/frauenanteil-bei-der-facharztanerkennung-betrug-rund-20-prozent
+  - https://pubmed.ncbi.nlm.nih.gov/29260896/
+  - https://www.aok.de/pp/gg/update/so-viele-aerzte-wie-noch-nie-arbeiten-im-ambulanten-sektor/
+  - https://kommunen.nrw/aktuelles/archiv/mitteilungen/2024/juni/knapp-ein-drittel-der-aerztinnen-und-aerzte-ist-55-jahre-und-aelter/
+  - https://www.destatis.de/DE/Presse/Pressemitteilungen/2024/05/PD24_N022_12_21.html
+  - https://www.welt.de/article68a5734e7b99884fce7026a1
+  - https://arxiv.org/abs/2506.08258
+  - https://www.aekno.de/aerzte/rheinisches-aerzteblatt/ausgabe/artikel/2025/mai-2025/kbv-deutschland-ist-praxenland-noch
+  - https://www.blaek.de/meta/presse/presseinformationen/presseinformationen-2023/zahlen-daten-fakten
+  - https://www.welt.de/article693bc826840050c47691099d
+  - https://www.welt.de/article68bac76972019652f128b5de
+  - https://www.sciencedirect.com/science/article/pii/S0022480421004364
+  - https://www.dw.com/en/how-are-foreign-doctors-faring-in-germany/a-68826201
+  - https://www.kbv.de/infothek/zahlen-und-fakten/gesundheitsdaten/statistik-belegaerzte
+  - https://pubmed.ncbi.nlm.nih.gov/10818330/
+  - https://www.welt.de/article68b595eecf33b514cb80e286
+  - https://www.dkgev.de/dkg/presse/details/krankenhaeuser-haben-massiv-personal-aufgebaut/
+  - https://de.statista.com/statistik/daten/studie/6704/umfrage/anzahl-der-berufstaetigen-aerzte-in-deutschland-seit-1960/
+  - https://www.welt.de/article68a5734e56d29713c923a550
+  - https://www.bundesaerztekammer.de/presse/aktuelles/detail/zahlen-daten-fakten
+  - https://www.iww.de/pfb/wirtschaftsberatung/berufsstatistik-kbv-arztzahlstatistik-2023-n165236
+  - https://hartmannbund.cld.bz/HB-Magazin-2-2025/30-31/
+  - https://pubmed.ncbi.nlm.nih.gov/38943163/
+  - https://www.praktischarzt.de/magazin/ranking-in-diesen-fachbereichen-fehlen-assistenzaerztinnen-und-assistenzaerzte/
+  - https://de.wikipedia.org/wiki/Brandenburg
+  - https://pubmed.ncbi.nlm.nih.gov/22002734/
+  - https://www.destatis.de/DE/Themen/Gesellschaft-Umwelt/Gesundheit/Krankenhaeuser/Tabellen/eckzahlen-krankenhaeuser.html
+  - https://pubmed.ncbi.nlm.nih.gov/32838444/
+  - https://pubmed.ncbi.nlm.nih.gov/34371282/
+  - https://de.wikipedia.org/wiki/Promotion_%28Doktor%29
+  - https://www.bundesaerztekammer.de/baek/ueber-uns/aerztestatistik/2023
+  - https://www.umweltbundesamt.de/daten/private-haushalte-konsum/strukturdaten-privater-haushalte/bevoelkerungsentwicklung-struktur-privater
+  - https://www.bundesaerztekammer.de/presse/aktuelles/detail/arztzahlstatistik-zeigt-jede-r-zweite-berufstaetige-aerztin-arzt-ist-50-jahre-und-aelter
+  - https://listflix.de/statistik/aerzte/
+  - https://www.bundesgesundheitsministerium.de/themen/krankenversicherung/ambulante-versorgung/aerztliche-versorgung
+  - https://www.hashtag.al/en/index.php/2024/03/04/numri-i-mjekeve-te-huaj-ne-gjermani-me-i-madh-se-kurre-me-pare/
+  - https://academic.oup.com/bjs/article-abstract/109/11/1156/6646048
+  - https://www.linkedin.com/posts/ivan-relja_did-you-notice-some-doctors-in-germany-have-activity-7367843620579643392-7kYQ
+  - https://www.bpb.de/kurz-knapp/zahlen-und-fakten/sozialbericht-2024/553016/bevoelkerungsstand-und-entwicklung/
+  - https://pubmed.ncbi.nlm.nih.gov/36064500/
+  - https://www.welt.de/article68e6513e14154520ea137112
+  - https://www.kommunen.nrw/informationen/mitteilungen/datenbank/detailansicht/dokument/knapp-ein-drittel-der-aerztinnen-und-aerzte-ist-55-jahre-und-aelter.html
+  - https://link.springer.com/chapter/10.1007/978-3-662-70947-4_26
+  - https://www.bdc.de/personalbemessung-in-der-chirurgie-wie-ist-der-ist-zustand/page/3/
+  - https://www.welt.de/article689b490af3b330071983f732
+  - https://aerztestellen.aerzteblatt.de/de/redaktion/facharzt-weiterbildung/beliebteste-facharztrichtungen-es-bleibt-der-chirurg-und-die
+  - https://pubmed.ncbi.nlm.nih.gov/29982214/
+  - https://aerztestellen.aerzteblatt.de/de/redaktion/fachgebiete-die-meisten-aerzte-ueber-60
+  - https://pubmed.ncbi.nlm.nih.gov/21672480/
+  - https://link.springer.com/article/10.1007/s00772-023-01059-4
+  - https://service.destatis.de/DE/karten/migration_integration_regionen.html
+  - https://www.thieme-connect.com/products/ejournals/abstract/10.1055/s-0038-1660757
+  - https://www.destatis.de/DE/Themen/Gesellschaft-Umwelt/Gesundheit/Krankenhaeuser/Tabellen/krankenhaeuser-fa.html
+  - https://www.welt.de/article68b54f075d3e123a945b217a
+  - https://de.statista.com/statistik/daten/studie/158869/umfrage/anzahl-der-aerzte-in-deutschland-seit-1990/
+  - https://de.statista.com/statistik/daten/studie/6713/umfrage/stationaeren-aerzteschaft-in-deutschland-seit-2008/
+  - https://de.statista.com/statistik/daten/studie/6711/umfrage/taetigkeitsbereiche-der-aerzteschaft/
+  - https://www.oecd.org/en/publications/health-at-a-glance-2025_8f9e3f98-en/full-report/international-migration-of-doctors_17ff3227.html
+  - https://pubmed.ncbi.nlm.nih.gov/35241372/
+  - https://www.welt.de/politik/deutschland/plus250581314/Zuwanderung-Ohne-auslaendische-Aerzte-geht-es-einfach-nicht.html
+  - https://www.welt.de/article693bc6bea2b27337507d9879
+  - https://www.welt.de/article690dfad60580923d0998a812
+  - https://www.welt.de/regionales/sachsen-anhalt/article693bcf2ea2b27337507d98e6/in-sachsen-anhalt-bald-unter-zwei-millionen-einwohner.html
+  - https://www.doctari.de/magazin/wissenswertes/aktuelles/aerztestatistik-2025-teil-2/
+  - https://bmchealthservres.biomedcentral.com/articles/10.1186/s12913-022-08682-z
+  - https://www.ad-hoc-news.de/wirtschaft/die-zahl-der-praxisaerzte-in-deutschland-nimmt-weiter-zu-die/66900411
+  - https://pubmed.ncbi.nlm.nih.gov/24874115/
+  - https://www.n-tv.de/ticker/Bevoelkerung-in-Deutschland-ist-auf-rund-84-7-Millionen-Menschen-angewachsen-article24687898.html
+  - https://pure.johnshopkins.edu/en/publications/correlation-between-the-big-five-personality-traits-and-burnout-i-2/
+  - https://www.iamexpat.de/career/employment-news/record-number-non-german-doctors-now-working-germany
+  - https://de.linkedin.com/posts/statistisches-bundesamt-destatis_zuz%C3%BCge-bev%C3%B6lkerung-statistischesbundesamt-activity-7238849227731218432-UGFV
+  - https://pubmed.ncbi.nlm.nih.gov/40873690/
+  - https://link.springer.com/article/10.1186/s13741-024-00424-5
+  - https://www.umweltbundesamt.de/daten/private-haushalte-konsum/strukturdaten-privater-haushalte/demografischer-wandel
+  - https://www.iamexpat.de/expat-info/germany-news/non-germans-make-fifth-doctors-brandenburg
+  - https://www.kbv.de/infothek/zahlen-und-fakten/gesundheitsdaten/aerzte-nach-taetigkeit-und-herkunft
+attributes:
+- name: age
+  type: int
+  category: universal
+  description: Age in full years.
+  sampling:
+    strategy: independent
+    distribution:
+      type: normal
+      mean: 45.0
+      std: 9.0
+      min: 26.0
+      max: 72.0
+      mean_formula: null
+      std_formula: null
+    formula: null
+    depends_on: []
+    modifiers: []
+  grounding:
+    level: medium
+    method: extrapolated
+    source: https://www.destatis.de/DE/Presse/Pressemitteilungen/2024/05/PD24_N022_12_21.html
+    note: 'Destatis reports physicians’ age structure in 2023: 21% <35, 48% 35–54,
+      31% 55+. Surgeons skew a bit younger than office-based GPs but older than residents;
+      normal with mean≈45 and SD≈9 fits those bands. citeturn2search4turn1search3'
+  constraints:
+  - type: hard_min
+    value: 24.0
+    expression: null
+    reason: Lower bound allows early graduates; rare but possible with fast study
+      and immediate surgical training start.
+  - type: hard_max
+    value: 78.0
+    expression: null
+    reason: Upper bound allows practicing beyond typical retirement for part-time
+      locum/consultant work.
+- name: gender
+  type: categorical
+  category: universal
+  description: Self-described gender (e.g., male, female, diverse).
+  sampling:
+    strategy: independent
+    distribution:
+      type: categorical
+      options:
+      - male
+      - female
+      - diverse
+      weights:
+      - 0.78
+      - 0.21
+      - 0.01
+    formula: null
+    depends_on: []
+    modifiers: []
+  grounding:
+    level: medium
+    method: researched
+    source: https://hartmannbund.cld.bz/HB-Magazin-2-2025/30-31/
+    note: Female share among surgeons is substantially lower than in the overall physician
+      workforce. KBV data show ~17% women among ambulatory surgeons/orthopedists;
+      hospital surgical specialties often ~20–25% women. We set 21% women, 1% diverse
+      as an upper-bound inclusive category. citeturn1search1
+  constraints:
+  - type: expression
+    value: null
+    expression: weights_sum == 1.0
+    reason: Probabilities must sum to 1
+- name: state
+  type: categorical
+  category: universal
+  description: German federal state (Bundesland) of primary residence.
+  sampling:
+    strategy: independent
+    distribution:
+      type: categorical
+      options:
+      - Baden-Württemberg
+      - Bayern
+      - Berlin
+      - Brandenburg
+      - Bremen
+      - Hamburg
+      - Hessen
+      - Mecklenburg-Vorpommern
+      - Niedersachsen
+      - Nordrhein-Westfalen
+      - Rheinland-Pfalz
+      - Saarland
+      - Sachsen
+      - Sachsen-Anhalt
+      - Schleswig-Holstein
+      - Thüringen
+      weights:
+      - 0.129
+      - 0.159
+      - 0.046
+      - 0.03
+      - 0.008
+      - 0.023
+      - 0.069
+      - 0.02
+      - 0.099
+      - 0.219
+      - 0.049
+      - 0.013
+      - 0.052
+      - 0.025
+      - 0.035
+      - 0.025
+    formula: null
+    depends_on: []
+    modifiers: []
+  grounding:
+    level: low
+    method: estimated
+    source: https://www.umweltbundesamt.de/daten/private-haushalte-konsum/strukturdaten-privater-haushalte/demografischer-wandel
+    note: Approximated by 2023/2024 population shares by Bundesland (NRW≈22%, BY≈16%,
+      BW≈13% …). Physician residence broadly tracks population and physician density;
+      better precision would use BÄK/GBE-Bund tables by Bundesland if available for
+      surgeons specifically. citeturn12search3
+  constraints:
+  - type: expression
+    value: null
+    expression: weights_sum == 1.0
+    reason: Probabilities must sum to 1
+- name: marital_status
+  type: categorical
+  category: universal
+  description: Current marital/partnership status.
+  sampling:
+    strategy: independent
+    distribution:
+      type: categorical
+      options:
+      - single
+      - married_or_registered
+      - divorced_or_separated
+      - widowed
+      weights:
+      - 0.2
+      - 0.65
+      - 0.13
+      - 0.02
+    formula: null
+    depends_on: []
+    modifiers: []
+  grounding:
+    level: low
+    method: estimated
+    source: null
+    note: No current national breakdown for German surgeons found. Pattern reflects
+      high marriage rates among physicians in EU surveys and age structure (older
+      cohorts more likely married/divorced). Treat as a placeholder until microcensus
+      or chamber survey by specialty is located.
+  constraints:
+  - type: expression
+    value: null
+    expression: weights_sum == 1.0
+    reason: Probabilities must sum to 1
+- name: education_level
+  type: categorical
+  category: universal
+  description: Highest completed education/degree (e.g., Staatsexamen Medizin, Dr.
+    med., PhD).
+  sampling:
+    strategy: independent
+    distribution:
+      type: categorical
+      options:
+      - Staatsexamen Medizin (no doctorate)
+      - Dr. med.
+      - Dr. med. habil. / Habilitation
+      - PhD (non-med.)/Dr. rer. nat. or equivalent
+      weights:
+      - 0.35
+      - 0.58
+      - 0.04
+      - 0.03
+    formula: null
+    depends_on: []
+    modifiers: []
+  grounding:
+    level: low
+    method: estimated
+    source: General literature on doctoral prevalence; explicit up-to-date share among
+      German physicians varies by cohort and specialty; no single official 2023 figure
+      located.
+    note: In Germany all licensed physicians hold the Staatsexamen; many (especially
+      surgeons) hold Dr. med. Estimates here reflect common reporting (majority physicians
+      titled), with small shares holding habilitation or non-medical PhD. Please replace
+      with chamber-level stats if accessible via GBE-Bund/BÄK tables.
+  constraints:
+  - type: expression
+    value: null
+    expression: weights_sum == 1.0
+    reason: Probabilities must sum to 1
+- name: citizenship
+  type: categorical
+  category: universal
+  description: Citizenship group (German, EU/EEA/Swiss, non-EU).
+  sampling:
+    strategy: independent
+    distribution:
+      type: categorical
+      options:
+      - German
+      - EU/EEA/Swiss (non-German)
+      - non-EU
+      weights:
+      - 0.88
+      - 0.06
+      - 0.06
+    formula: null
+    depends_on: []
+    modifiers: []
+  grounding:
+    level: medium
+    method: researched
+    source: https://www.destatis.de/DE/Presse/Pressemitteilungen/2024/05/PD24_N022_12_21.html
+    note: Destatis (2023) reports ~12% of physicians without German citizenship; BÄK
+      lists most common origin countries (EU and Middle East). Split 6/6 between EU
+      and non‑EU as a neutral approximation. citeturn2search4turn4search3
+  constraints:
+  - type: expression
+    value: null
+    expression: weights_sum == 1.0
+    reason: Probabilities must sum to 1
+- name: board_certified_specialty
+  type: categorical
+  category: population_specific
+  description: Primary surgical specialty of certification or current training track
+    (e.g., General/Visceral, Orthopedics/Trauma, Neurosurgery, Cardiothoracic).
+  sampling:
+    strategy: independent
+    distribution:
+      type: categorical
+      options:
+      - General/Visceral Surgery
+      - Orthopedics & Trauma
+      - Vascular Surgery
+      - Cardiothoracic Surgery
+      - Neurosurgery
+      - Plastic/Hand Surgery
+      - Pediatric Surgery
+      - Other surgical (e.g., Oral/Maxillofacial in surgical roles)
+      weights:
+      - 0.34
+      - 0.32
+      - 0.1
+      - 0.06
+      - 0.07
+      - 0.06
+      - 0.03
+      - 0.02
+    formula: null
+    depends_on: []
+    modifiers: []
+  grounding:
+    level: low
+    method: extrapolated
+    source: https://www.bdc.de/personalbemessung-in-der-chirurgie-wie-ist-der-ist-zustand/page/3/
+    note: Weights derived from BDC survey’s specialty mix (not population-representative)
+      and adjusted using hospital department presence (Destatis tables list counts
+      of surgical departments). Use DGCH/BÄK specialty headcounts for stronger grounding
+      when available. citeturn7search2turn7search0
+  constraints:
+  - type: expression
+    value: null
+    expression: weights_sum == 1.0
+    reason: Probabilities must sum to 1
+- name: professional_role
+  type: categorical
+  category: population_specific
+  description: Current role (e.g., Resident/Assistenzarzt, Specialist/Facharzt, Senior
+    Physician/Oberarzt, Chief/Chefarzt, Niedergelassener).
+  sampling:
+    strategy: independent
+    distribution:
+      type: categorical
+      options:
+      - Resident (Assistenzarzt/-ärztin)
+      - Specialist (Facharzt/-ärztin)
+      - Senior Physician (Oberarzt/-ärztin)
+      - Chief/Head (Chefarzt/-ärztin)
+      - Self-employed surgeon (Niedergelassen/MVZ partner)
+      weights:
+      - 0.35
+      - 0.3
+      - 0.22
+      - 0.04
+      - 0.09
+    formula: null
+    depends_on: []
+    modifiers: []
+  grounding:
+    level: low
+    method: estimated
+    source: Hospital workforce structure and career pyramid; see 2023 hospital personnel
+      structure and gender by hierarchy for context.
+    note: Springer hospital stats show women 55% at resident level, 36% at senior,
+      16% among leaders, consistent with a pyramid; exact national counts by role
+      for surgeons not published centrally. citeturn5search6
+  constraints:
+  - type: expression
+    value: null
+    expression: weights_sum == 1.0
+    reason: Probabilities must sum to 1
+- name: employer_type
+  type: categorical
+  category: population_specific
+  description: Primary employer type (university hospital, public non-university,
+    private for-profit, non-profit, MVZ/ambulatory surgery center, private practice).
+  sampling:
+    strategy: independent
+    distribution:
+      type: categorical
+      options:
+      - University hospital
+      - Public non-university hospital
+      - Private for-profit hospital
+      - Non-profit (freigemeinnützig) hospital
+      - MVZ/ambulatory surgery center
+      - Private practice
+      weights:
+      - 0.12
+      - 0.4
+      - 0.18
+      - 0.1
+      - 0.1
+      - 0.1
+    formula: null
+    depends_on: []
+    modifiers: []
+  grounding:
+    level: low
+    method: extrapolated
+    source: https://www.destatis.de/DE/Themen/Gesellschaft-Umwelt/Gesundheit/Krankenhaeuser/Tabellen/eckzahlen-krankenhaeuser.html
+    note: Over half of physicians work in hospitals (~52%); ownership mix (public,
+      private, non-profit) from Destatis. Surgeons are hospital-heavy; we allocate
+      a notable share to university hospitals and the rest across ownerships; ambulatory
+      shares (MVZ/private) reflect KBV growth of ambulatory workforce. citeturn3search0turn5search1
+  constraints:
+  - type: expression
+    value: null
+    expression: weights_sum == 1.0
+    reason: Probabilities must sum to 1
+- name: openness
+  type: float
+  category: personality
+  description: Big Five trait reflecting openness to new experiences and ideas.
+  sampling:
+    strategy: independent
+    distribution:
+      type: beta
+      alpha: 8.06
+      beta: 4.94
+      min: null
+      max: null
+    formula: null
+    depends_on: []
+    modifiers: []
+  grounding:
+    level: medium
+    method: extrapolated
+    source: https://pubmed.ncbi.nlm.nih.gov/29982214/
+    note: Meta and comparative studies suggest surgeons equal/higher openness vs internists
+      and general population; set mean ~0.62 (approx. >50th percentile), moderate
+      concentration (alpha,beta chosen to yield mean and reasonable variance). citeturn8search6
+  constraints:
+  - type: hard_min
+    value: 0.0
+    expression: null
+    reason: Trait scores bounded [0,1].
+  - type: hard_max
+    value: 1.0
+    expression: null
+    reason: Trait scores bounded [0,1].
+- name: conscientiousness
+  type: float
+  category: personality
+  description: Big Five trait reflecting organization, diligence, and reliability.
+  sampling:
+    strategy: independent
+    distribution:
+      type: beta
+      alpha: 9.8
+      beta: 4.2
+      min: null
+      max: null
+    formula: null
+    depends_on: []
+    modifiers: []
+  grounding:
+    level: medium
+    method: extrapolated
+    source: https://pubmed.ncbi.nlm.nih.gov/36064500/
+    note: Surgical cohorts consistently show high conscientiousness; mean ~0.7 set
+      using resident/attending comparisons and orthopedics cohorts. citeturn8search5turn8search0
+  constraints:
+  - type: hard_min
+    value: 0.0
+    expression: null
+    reason: Trait scores bounded [0,1].
+  - type: hard_max
+    value: 1.0
+    expression: null
+    reason: Trait scores bounded [0,1].
+- name: extraversion
+  type: float
+  category: personality
+  description: Big Five trait reflecting sociability and assertiveness.
+  sampling:
+    strategy: independent
+    distribution:
+      type: beta
+      alpha: 7.0
+      beta: 5.0
+      min: null
+      max: null
+    formula: null
+    depends_on: []
+    modifiers: []
+  grounding:
+    level: medium
+    method: researched
+    source: https://pubmed.ncbi.nlm.nih.gov/21672480/
+    note: Surgeons tend to be more extraverted than non-surgeons; urologists highest.
+      Mean set moderately above population midpoint. citeturn8search1
+  constraints:
+  - type: hard_min
+    value: 0.0
+    expression: null
+    reason: Trait scores bounded [0,1].
+  - type: hard_max
+    value: 1.0
+    expression: null
+    reason: Trait scores bounded [0,1].
+- name: agreeableness
+  type: float
+  category: personality
+  description: Big Five trait reflecting cooperativeness and empathy.
+  sampling:
+    strategy: independent
+    distribution:
+      type: beta
+      alpha: 6.6
+      beta: 5.4
+      min: null
+      max: null
+    formula: null
+    depends_on: []
+    modifiers: []
+  grounding:
+    level: low
+    method: estimated
+    source: Evidence is mixed; some studies show lower agreeableness vs general population,
+      others higher vs internists.
+    note: Set slightly above midpoint acknowledging variability across surgical subspecialties
+      and career stages. See review/meta for heterogeneity. citeturn8search8turn8search3
+  constraints:
+  - type: hard_min
+    value: 0.0
+    expression: null
+    reason: Trait scores bounded [0,1].
+  - type: hard_max
+    value: 1.0
+    expression: null
+    reason: Trait scores bounded [0,1].
+- name: neuroticism
+  type: float
+  category: personality
+  description: Big Five trait reflecting emotional volatility and stress sensitivity.
+  sampling:
+    strategy: independent
+    distribution:
+      type: beta
+      alpha: 4.55
+      beta: 8.45
+      min: null
+      max: null
+    formula: null
+    depends_on: []
+    modifiers: []
+  grounding:
+    level: medium
+    method: researched
+    source: https://pubmed.ncbi.nlm.nih.gov/36064500/
+    note: Surgeons generally show lower neuroticism (higher emotional stability) than
+      norms; OR/trauma residents ~36th percentile reported. Mean ~0.35 reflects that.
+      citeturn8search0turn8search5
+  constraints:
+  - type: hard_min
+    value: 0.0
+    expression: null
+    reason: Trait scores bounded [0,1].
+  - type: hard_max
+    value: 1.0
+    expression: null
+    reason: Trait scores bounded [0,1].
+- name: risk_tolerance
+  type: float
+  category: personality
+  description: Tolerance for clinical and professional risk-taking under uncertainty.
+  sampling:
+    strategy: independent
+    distribution:
+      type: beta
+      alpha: 5.5
+      beta: 4.5
+      min: null
+      max: null
+    formula: null
+    depends_on: []
+    modifiers: []
+  grounding:
+    level: low
+    method: extrapolated
+    source: https://www.sciencedirect.com/science/article/pii/S0022480421004364
+    note: Studies show wide variation across surgeons; older surgeons tend to be more
+      risk-averse; we center slightly above neutral. Use age-conditioned sampling
+      if modeling interactions. citeturn9search7turn9search0
+  constraints:
+  - type: hard_min
+    value: 0.0
+    expression: null
+    reason: Bounded [0,1].
+  - type: hard_max
+    value: 1.0
+    expression: null
+    reason: Bounded [0,1].
+- name: adherence_to_guidelines
+  type: float
+  category: personality
+  description: Propensity to follow clinical guidelines and institutional protocols.
+  sampling:
+    strategy: independent
+    distribution:
+      type: beta
+      alpha: 9.1
+      beta: 3.9
+      min: null
+      max: null
+    formula: null
+    depends_on: []
+    modifiers: []
+  grounding:
+    level: medium
+    method: extrapolated
+    source: https://pubmed.ncbi.nlm.nih.gov/22002734/
+    note: German multicenter study of surgical antibiotic prophylaxis reported ~71%
+      adherence; perioperative evaluation guideline adherence mixed. We set mean≈0.7
+      with moderate variance. citeturn9search8turn9search5
+  constraints:
+  - type: hard_min
+    value: 0.0
+    expression: null
+    reason: Bounded [0,1].
+  - type: hard_max
+    value: 1.0
+    expression: null
+    reason: Bounded [0,1].
+- name: district_type
+  type: categorical
+  category: universal
+  description: Urban-rural classification of residence district (e.g., kreisfreie
+    Stadt, urban district, rural district).
+  sampling:
+    strategy: conditional
+    distribution:
+      type: categorical
+      options:
+      - kreisfreie Stadt (independent city)
+      - urban district (städtischer Kreis)
+      - rural district (ländlicher Kreis)
+      weights:
+      - 0.45
+      - 0.35
+      - 0.2
+    formula: null
+    depends_on:
+    - state
+    modifiers:
+    - when: state in ['Berlin','Hamburg','Bremen']
+      multiply: null
+      add: null
+      weight_overrides:
+        kreisfreie Stadt: 0.85
+        urban district (städtischer Kreis): 0.1
+        rural district (ländlicher Kreis): 0.05
+      probability_override: null
+    - when: state in ['Bayern','Nordrhein-Westfalen']
+      multiply: null
+      add: null
+      weight_overrides:
+        kreisfreie Stadt: 0.4
+        urban district (städtischer Kreis): 0.35
+        rural district (ländlicher Kreis): 0.25
+      probability_override: null
+    - when: state in ['Baden-Württemberg','Hessen','Niedersachsen','Rheinland-Pfalz','Sachsen','Schleswig-Holstein']
+      multiply: null
+      add: null
+      weight_overrides:
+        kreisfreie Stadt: 0.3
+        urban district (städtischer Kreis): 0.35
+        rural district (ländlicher Kreis): 0.35
+      probability_override: null
+    - when: state in ['Brandenburg','Mecklenburg-Vorpommern','Sachsen-Anhalt','Thüringen','Saarland']
+      multiply: null
+      add: null
+      weight_overrides:
+        kreisfreie Stadt: 0.2
+        urban district (städtischer Kreis): 0.3
+        rural district (ländlicher Kreis): 0.5
+      probability_override: null
+  grounding:
+    level: medium
+    method: estimated
+    source: null
+    note: Surgeons are disproportionately urban; weights reflect urban bias relative
+      to general population.
+  constraints:
+  - type: expression
+    value: null
+    expression: 1 == 1
+    reason: No hard numeric bounds; categorical baseline before state-based modifiers.
+- name: household_size
+  type: int
+  category: universal
+  description: Number of people living in the household.
+  sampling:
+    strategy: conditional
+    distribution:
+      type: categorical
+      options:
+      - '1'
+      - '2'
+      - '3'
+      - '4'
+      - '5'
+      - '6'
+      weights:
+      - 0.2
+      - 0.35
+      - 0.22
+      - 0.15
+      - 0.06
+      - 0.02
+    formula: null
+    depends_on:
+    - marital_status
+    modifiers:
+    - when: marital_status == 'single'
+      multiply: null
+      add: null
+      weight_overrides:
+        '1': 0.55
+        '2': 0.3
+        '3': 0.1
+        '4': 0.04
+        '5': 0.01
+        '6': 0.0
+      probability_override: null
+    - when: marital_status == 'married_or_registered'
+      multiply: null
+      add: null
+      weight_overrides:
+        '1': 0.05
+        '2': 0.25
+        '3': 0.3
+        '4': 0.28
+        '5': 0.08
+        '6': 0.04
+      probability_override: null
+    - when: marital_status == 'divorced_or_separated'
+      multiply: null
+      add: null
+      weight_overrides:
+        '1': 0.45
+        '2': 0.35
+        '3': 0.12
+        '4': 0.06
+        '5': 0.02
+        '6': 0.0
+      probability_override: null
+    - when: marital_status == 'widowed'
+      multiply: null
+      add: null
+      weight_overrides:
+        '1': 0.7
+        '2': 0.2
+        '3': 0.06
+        '4': 0.03
+        '5': 0.01
+        '6': 0.0
+      probability_override: null
+  grounding:
+    level: medium
+    method: extrapolated
+    source: null
+    note: Centered near 2–3 reflecting higher dual-income professional households.
+  constraints:
+  - type: hard_min
+    value: 1.0
+    expression: null
+    reason: At least one person in a household.
+  - type: hard_max
+    value: 8.0
+    expression: null
+    reason: Very wide upper bound for household counts.
+- name: years_in_germany
+  type: int
+  category: universal
+  description: Years continuously residing in Germany.
+  sampling:
+    strategy: conditional
+    distribution:
+      type: normal
+      mean: null
+      std: 6.0
+      min: null
+      max: null
+      mean_formula: max(age - 4, 1)
+      std_formula: null
+    formula: null
+    depends_on:
+    - age
+    - citizenship
+    modifiers:
+    - when: citizenship == 'German'
+      multiply: 1.05
+      add: 2.0
+      weight_overrides: null
+      probability_override: null
+    - when: citizenship == 'EU/EEA/Swiss (non-German)' and age >= 35
+      multiply: 0.95
+      add: -2.0
+      weight_overrides: null
+      probability_override: null
+    - when: citizenship == 'EU/EEA/Swiss (non-German)' and age < 35
+      multiply: 0.9
+      add: -4.0
+      weight_overrides: null
+      probability_override: null
+    - when: citizenship == 'non-EU' and age >= 35
+      multiply: 0.85
+      add: -6.0
+      weight_overrides: null
+      probability_override: null
+    - when: citizenship == 'non-EU' and age < 35
+      multiply: 0.8
+      add: -8.0
+      weight_overrides: null
+      probability_override: null
+  grounding:
+    level: low
+    method: estimated
+    source: null
+    note: Baseline assumes many are German-born (≈age) with small offset; wide SD
+      to allow immigrants and returnees.
+  constraints:
+  - type: hard_min
+    value: 0.0
+    expression: null
+    reason: Cannot be negative.
+  - type: expression
+    value: null
+    expression: years_in_germany <= age
+    reason: Residence in Germany cannot exceed age.
+  - type: hard_max
+    value: 120.0
+    expression: null
+    reason: Wide demographic cap.
+- name: household_gross_income_eur
+  type: float
+  category: universal
+  description: Total annual gross household income in EUR.
+  sampling:
+    strategy: conditional
+    distribution:
+      type: normal
+      mean: 180000.0
+      std: 60000.0
+      min: null
+      max: null
+      mean_formula: null
+      std_formula: null
+    formula: null
+    depends_on:
+    - marital_status
+    - household_size
+    - state
+    modifiers:
+    - when: marital_status == 'married_or_registered'
+      multiply: 1.2
+      add: 10000.0
+      weight_overrides: null
+      probability_override: null
+    - when: household_size >= 4
+      multiply: 1.1
+      add: 5000.0
+      weight_overrides: null
+      probability_override: null
+    - when: state in ['Bayern','Baden-Württemberg','Hessen','Hamburg','Berlin']
+      multiply: 1.1
+      add: 7000.0
+      weight_overrides: null
+      probability_override: null
+    - when: state in ['Mecklenburg-Vorpommern','Sachsen-Anhalt','Brandenburg','Thüringen','Saarland']
+      multiply: 0.92
+      add: -4000.0
+      weight_overrides: null
+      probability_override: null
+    - when: marital_status in ['single','divorced_or_separated','widowed'] and household_size
+        == 1
+      multiply: 0.95
+      add: -3000.0
+      weight_overrides: null
+      probability_override: null
+  grounding:
+    level: medium
+    method: extrapolated
+    source: null
+    note: Combines a surgeon income plus possible partner income; before marital/state
+      modifiers.
+  constraints:
+  - type: hard_min
+    value: 30000.0
+    expression: null
+    reason: Below this is implausible for surgeon households.
+  - type: hard_max
+    value: 500000.0
+    expression: null
+    reason: Wide cap to include dual-high-earner households.
+- name: language_proficiency_german
+  type: categorical
+  category: universal
+  description: 'German language proficiency (CEFR: A2–C2).'
+  sampling:
+    strategy: conditional
+    distribution:
+      type: categorical
+      options:
+      - A2
+      - B1
+      - B2
+      - C1
+      - C2
+      weights:
+      - 0.005
+      - 0.015
+      - 0.07
+      - 0.36
+      - 0.55
+    formula: null
+    depends_on:
+    - citizenship
+    - years_in_germany
+    modifiers:
+    - when: citizenship == 'German'
+      multiply: null
+      add: null
+      weight_overrides:
+        A2: 0.0
+        B1: 0.02
+        B2: 0.08
+        C1: 0.35
+        C2: 0.55
+      probability_override: null
+    - when: citizenship == 'EU/EEA/Swiss (non-German)' and years_in_germany >= 10
+      multiply: null
+      add: null
+      weight_overrides:
+        A2: 0.02
+        B1: 0.08
+        B2: 0.25
+        C1: 0.4
+        C2: 0.25
+      probability_override: null
+    - when: citizenship == 'EU/EEA/Swiss (non-German)' and years_in_germany < 10
+      multiply: null
+      add: null
+      weight_overrides:
+        A2: 0.06
+        B1: 0.2
+        B2: 0.34
+        C1: 0.28
+        C2: 0.12
+      probability_override: null
+    - when: citizenship == 'non-EU' and years_in_germany >= 10
+      multiply: null
+      add: null
+      weight_overrides:
+        A2: 0.03
+        B1: 0.12
+        B2: 0.3
+        C1: 0.35
+        C2: 0.2
+      probability_override: null
+    - when: citizenship == 'non-EU' and years_in_germany < 10
+      multiply: null
+      add: null
+      weight_overrides:
+        A2: 0.1
+        B1: 0.28
+        B2: 0.32
+        C1: 0.22
+        C2: 0.08
+      probability_override: null
+  grounding:
+    level: medium
+    method: researched
+    source: null
+    note: Clinical practice typically requires C1/C2; small mass on lower CEFR to
+      allow for edge cases (e.g., supervised training).
+  constraints:
+  - type: expression
+    value: null
+    expression: 1 == 1
+    reason: Categorical; no numeric constraints needed.
+- name: sub_specialization
+  type: categorical
+  category: population_specific
+  description: Focused area within the specialty (e.g., colorectal, hand surgery,
+    spine).
+  sampling:
+    strategy: conditional
+    distribution:
+      type: categorical
+      options:
+      - colorectal
+      - hepatobiliary/pancreas
+      - upper GI
+      - endocrine
+      - bariatric/metabolic
+      - hernia/abdominal wall
+      - trauma
+      - hand
+      - spine
+      - arthroplasty
+      - sports medicine
+      - foot/ankle
+      - vascular (open)
+      - endovascular
+      - neuro-oncology
+      - cardiac
+      - thoracic
+      - transplant
+      - pediatric surgery
+      - breast/endocrine
+      weights:
+      - 0.08
+      - 0.05
+      - 0.04
+      - 0.04
+      - 0.03
+      - 0.05
+      - 0.12
+      - 0.06
+      - 0.08
+      - 0.08
+      - 0.04
+      - 0.03
+      - 0.05
+      - 0.04
+      - 0.03
+      - 0.02
+      - 0.03
+      - 0.02
+      - 0.02
+      - 0.05
+    formula: null
+    depends_on:
+    - board_certified_specialty
+    modifiers:
+    - when: board_certified_specialty == 'General/Visceral Surgery'
+      multiply: null
+      add: null
+      weight_overrides:
+        colorectal: 0.18
+        hepatobiliary/pancreas: 0.12
+        upper GI: 0.1
+        endocrine: 0.08
+        bariatric/metabolic: 0.08
+        hernia/abdominal wall: 0.18
+        trauma: 0.03
+        hand: 0.0
+        spine: 0.0
+        arthroplasty: 0.0
+        sports medicine: 0.0
+        foot/ankle: 0.0
+        vascular (open): 0.02
+        endovascular: 0.01
+        neuro-oncology: 0.0
+        cardiac: 0.0
+        thoracic: 0.06
+        transplant: 0.06
+        pediatric surgery: 0.04
+        breast/endocrine: 0.04
+      probability_override: null
+    - when: board_certified_specialty == 'Orthopedics & Trauma'
+      multiply: null
+      add: null
+      weight_overrides:
+        colorectal: 0.0
+        hepatobiliary/pancreas: 0.0
+        upper GI: 0.0
+        endocrine: 0.0
+        bariatric/metabolic: 0.0
+        hernia/abdominal wall: 0.0
+        trauma: 0.28
+        hand: 0.1
+        spine: 0.16
+        arthroplasty: 0.22
+        sports medicine: 0.14
+        foot/ankle: 0.08
+        vascular (open): 0.0
+        endovascular: 0.0
+        neuro-oncology: 0.0
+        cardiac: 0.0
+        thoracic: 0.0
+        transplant: 0.0
+        pediatric surgery: 0.0
+        breast/endocrine: 0.02
+      probability_override: null
+    - when: board_certified_specialty == 'Vascular Surgery'
+      multiply: null
+      add: null
+      weight_overrides:
+        colorectal: 0.0
+        hepatobiliary/pancreas: 0.0
+        upper GI: 0.0
+        endocrine: 0.0
+        bariatric/metabolic: 0.0
+        hernia/abdominal wall: 0.0
+        trauma: 0.0
+        hand: 0.0
+        spine: 0.0
+        arthroplasty: 0.0
+        sports medicine: 0.0
+        foot/ankle: 0.0
+        vascular (open): 0.55
+        endovascular: 0.4
+        neuro-oncology: 0.0
+        cardiac: 0.0
+        thoracic: 0.0
+        transplant: 0.0
+        pediatric surgery: 0.0
+        breast/endocrine: 0.05
+      probability_override: null
+    - when: board_certified_specialty == 'Cardiothoracic Surgery'
+      multiply: null
+      add: null
+      weight_overrides:
+        colorectal: 0.0
+        hepatobiliary/pancreas: 0.0
+        upper GI: 0.0
+        endocrine: 0.0
+        bariatric/metabolic: 0.0
+        hernia/abdominal wall: 0.0
+        trauma: 0.0
+        hand: 0.0
+        spine: 0.0
+        arthroplasty: 0.0
+        sports medicine: 0.0
+        foot/ankle: 0.0
+        vascular (open): 0.02
+        endovascular: 0.03
+        neuro-oncology: 0.0
+        cardiac: 0.65
+        thoracic: 0.25
+        transplant: 0.05
+        pediatric surgery: 0.0
+        breast/endocrine: 0.0
+      probability_override: null
+    - when: board_certified_specialty == 'Neurosurgery'
+      multiply: null
+      add: null
+      weight_overrides:
+        colorectal: 0.0
+        hepatobiliary/pancreas: 0.0
+        upper GI: 0.0
+        endocrine: 0.0
+        bariatric/metabolic: 0.0
+        hernia/abdominal wall: 0.0
+        trauma: 0.04
+        hand: 0.0
+        spine: 0.46
+        arthroplasty: 0.0
+        sports medicine: 0.0
+        foot/ankle: 0.0
+        vascular (open): 0.0
+        endovascular: 0.05
+        neuro-oncology: 0.4
+        cardiac: 0.0
+        thoracic: 0.0
+        transplant: 0.0
+        pediatric surgery: 0.03
+        breast/endocrine: 0.02
+      probability_override: null
+    - when: board_certified_specialty == 'Plastic/Hand Surgery'
+      multiply: null
+      add: null
+      weight_overrides:
+        colorectal: 0.0
+        hepatobiliary/pancreas: 0.0
+        upper GI: 0.0
+        endocrine: 0.0
+        bariatric/metabolic: 0.0
+        hernia/abdominal wall: 0.0
+        trauma: 0.08
+        hand: 0.45
+        spine: 0.0
+        arthroplasty: 0.0
+        sports medicine: 0.0
+        foot/ankle: 0.07
+        vascular (open): 0.0
+        endovascular: 0.0
+        neuro-oncology: 0.0
+        cardiac: 0.0
+        thoracic: 0.0
+        transplant: 0.0
+        pediatric surgery: 0.05
+        breast/endocrine: 0.35
+      probability_override: null
+    - when: board_certified_specialty == 'Pediatric Surgery'
+      multiply: null
+      add: null
+      weight_overrides:
+        colorectal: 0.1
+        hepatobiliary/pancreas: 0.06
+        upper GI: 0.08
+        endocrine: 0.05
+        bariatric/metabolic: 0.0
+        hernia/abdominal wall: 0.15
+        trauma: 0.15
+        hand: 0.02
+        spine: 0.02
+        arthroplasty: 0.0
+        sports medicine: 0.0
+        foot/ankle: 0.02
+        vascular (open): 0.02
+        endovascular: 0.0
+        neuro-oncology: 0.04
+        cardiac: 0.0
+        thoracic: 0.06
+        transplant: 0.08
+        pediatric surgery: 0.15
+        breast/endocrine: 0.0
+      probability_override: null
+    - when: board_certified_specialty == 'Other surgical (e.g., Oral/Maxillofacial
+        in surgical roles)'
+      multiply: null
+      add: null
+      weight_overrides:
+        colorectal: 0.02
+        hepatobiliary/pancreas: 0.02
+        upper GI: 0.03
+        endocrine: 0.03
+        bariatric/metabolic: 0.01
+        hernia/abdominal wall: 0.05
+        trauma: 0.1
+        hand: 0.1
+        spine: 0.06
+        arthroplasty: 0.04
+        sports medicine: 0.06
+        foot/ankle: 0.06
+        vascular (open): 0.04
+        endovascular: 0.03
+        neuro-oncology: 0.05
+        cardiac: 0.02
+        thoracic: 0.04
+        transplant: 0.02
+        pediatric surgery: 0.04
+        breast/endocrine: 0.18
+      probability_override: null
+  grounding:
+    level: low
+    method: extrapolated
+    source: null
+    note: Proportions reflect typical hospital service lines in Germany; to be reweighted
+      by actual board-certified specialty.
+  constraints:
+  - type: expression
+    value: null
+    expression: 1 == 1
+    reason: Base mix across surgical fields; specialty-specific modifiers applied
+      later.
+- name: years_experience
+  type: int
+  category: population_specific
+  description: Years of post-licensure surgical practice (excluding medical school).
+  sampling:
+    strategy: conditional
+    distribution:
+      type: normal
+      mean: null
+      std: 4.0
+      min: null
+      max: null
+      mean_formula: max(age - 30, 0)
+      std_formula: null
+    formula: null
+    depends_on:
+    - age
+    modifiers:
+    - when: age < 35
+      multiply: 0.9
+      add: -2.0
+      weight_overrides: null
+      probability_override: null
+    - when: age >= 35 and age < 50
+      multiply: 1.05
+      add: 1.0
+      weight_overrides: null
+      probability_override: null
+    - when: age >= 50
+      multiply: 1.15
+      add: 3.0
+      weight_overrides: null
+      probability_override: null
+  grounding:
+    level: medium
+    method: estimated
+    source: null
+    note: Assumes independent practice starts ~age 30 (post-licensure + training);
+      SD allows earlier/later starts.
+  constraints:
+  - type: hard_min
+    value: 0.0
+    expression: null
+    reason: Experience cannot be negative.
+  - type: expression
+    value: null
+    expression: years_experience <= age
+    reason: Upper bound by age.
+  - type: hard_max
+    value: 60.0
+    expression: null
+    reason: Very wide cap for career length.
+- name: weekly_hours
+  type: float
+  category: population_specific
+  description: Average total working hours per week (clinical + admin + research).
+  sampling:
+    strategy: conditional
+    distribution:
+      type: normal
+      mean: 55.0
+      std: 8.0
+      min: null
+      max: null
+      mean_formula: null
+      std_formula: null
+    formula: null
+    depends_on:
+    - professional_role
+    - employer_type
+    modifiers:
+    - when: professional_role == 'Resident (Assistenzarzt/-ärztin)'
+      multiply: 1.08
+      add: 4.0
+      weight_overrides: null
+      probability_override: null
+    - when: professional_role == 'Senior Physician (Oberarzt/-ärztin)'
+      multiply: 1.05
+      add: 3.0
+      weight_overrides: null
+      probability_override: null
+    - when: professional_role == 'Chief/Head (Chefarzt/-ärztin)'
+      multiply: 0.95
+      add: -2.0
+      weight_overrides: null
+      probability_override: null
+    - when: employer_type == 'University hospital'
+      multiply: 1.08
+      add: 3.0
+      weight_overrides: null
+      probability_override: null
+    - when: employer_type in ['MVZ/ambulatory surgery center','Private practice']
+      multiply: 0.9
+      add: -5.0
+      weight_overrides: null
+      probability_override: null
+  grounding:
+    level: medium
+    method: extrapolated
+    source: null
+    note: Includes clinical, admin, and research time across hospital and ambulatory
+      settings.
+  constraints:
+  - type: hard_min
+    value: 30.0
+    expression: null
+    reason: Below 30 is atypical for full-time surgeons.
+  - type: hard_max
+    value: 90.0
+    expression: null
+    reason: Wide cap for heavy workloads.
+- name: on_call_nights_per_month
+  type: int
+  category: population_specific
+  description: Average number of night on-call duties per month.
+  sampling:
+    strategy: conditional
+    distribution:
+      type: normal
+      mean: 4.5
+      std: 2.0
+      min: null
+      max: null
+      mean_formula: null
+      std_formula: null
+    formula: null
+    depends_on:
+    - professional_role
+    - employer_type
+    modifiers:
+    - when: professional_role == 'Resident (Assistenzarzt/-ärztin)'
+      multiply: 1.2
+      add: 1.0
+      weight_overrides: null
+      probability_override: null
+    - when: professional_role == 'Senior Physician (Oberarzt/-ärztin)'
+      multiply: 1.05
+      add: 0.0
+      weight_overrides: null
+      probability_override: null
+    - when: professional_role == 'Chief/Head (Chefarzt/-ärztin)'
+      multiply: 0.7
+      add: -1.0
+      weight_overrides: null
+      probability_override: null
+    - when: employer_type == 'University hospital'
+      multiply: 1.1
+      add: 0.0
+      weight_overrides: null
+      probability_override: null
+    - when: employer_type in ['MVZ/ambulatory surgery center','Private practice']
+      multiply: 0.4
+      add: -2.0
+      weight_overrides: null
+      probability_override: null
+  grounding:
+    level: medium
+    method: estimated
+    source: null
+    note: Typical hospital rota patterns; outpatient-only roles may be near zero.
+  constraints:
+  - type: hard_min
+    value: 0.0
+    expression: null
+    reason: Cannot be negative.
+  - type: hard_max
+    value: 15.0
+    expression: null
+    reason: Very wide cap; beyond this is rare.
+- name: surgeries_per_week
+  type: int
+  category: population_specific
+  description: Number of surgeries personally performed per week.
+  sampling:
+    strategy: conditional
+    distribution:
+      type: normal
+      mean: 7.0
+      std: 3.0
+      min: null
+      max: null
+      mean_formula: null
+      std_formula: null
+    formula: null
+    depends_on:
+    - board_certified_specialty
+    - professional_role
+    - employer_type
+    modifiers:
+    - when: board_certified_specialty == 'Orthopedics & Trauma'
+      multiply: 1.15
+      add: 1.0
+      weight_overrides: null
+      probability_override: null
+    - when: board_certified_specialty == 'General/Visceral Surgery'
+      multiply: 1.05
+      add: 0.0
+      weight_overrides: null
+      probability_override: null
+    - when: board_certified_specialty in ['Cardiothoracic Surgery','Neurosurgery']
+      multiply: 0.85
+      add: -1.0
+      weight_overrides: null
+      probability_override: null
+    - when: professional_role == 'Chief/Head (Chefarzt/-ärztin)'
+      multiply: 0.8
+      add: -2.0
+      weight_overrides: null
+      probability_override: null
+    - when: professional_role in ['Specialist (Facharzt/-ärztin)','Senior Physician
+        (Oberarzt/-ärztin)']
+      multiply: 1.1
+      add: 1.0
+      weight_overrides: null
+      probability_override: null
+    - when: employer_type in ['MVZ/ambulatory surgery center','Private practice']
+      multiply: 1.2
+      add: 2.0
+      weight_overrides: null
+      probability_override: null
+  grounding:
+    level: medium
+    method: extrapolated
+    source: null
+    note: Includes being primary operator; excludes assisting-only counts where possible.
+  constraints:
+  - type: hard_min
+    value: 0.0
+    expression: null
+    reason: Cannot be negative.
+  - type: hard_max
+    value: 30.0
+    expression: null
+    reason: Upper cap allows high-throughput ambulatory settings.
+- name: case_mix_complexity
+  type: categorical
+  category: population_specific
+  description: Typical clinical case complexity handled (low, medium, high).
+  sampling:
+    strategy: conditional
+    distribution:
+      type: categorical
+      options:
+      - low
+      - medium
+      - high
+      weights:
+      - 0.1
+      - 0.55
+      - 0.35
+    formula: null
+    depends_on:
+    - board_certified_specialty
+    - employer_type
+    modifiers:
+    - when: board_certified_specialty in ['Cardiothoracic Surgery','Neurosurgery','Vascular
+        Surgery'] and employer_type in ['University hospital','Public non-university
+        hospital']
+      multiply: null
+      add: null
+      weight_overrides:
+        low: 0.05
+        medium: 0.35
+        high: 0.6
+      probability_override: null
+    - when: board_certified_specialty == 'Orthopedics & Trauma' and employer_type
+        in ['Public non-university hospital','Private for-profit hospital']
+      multiply: null
+      add: null
+      weight_overrides:
+        low: 0.15
+        medium: 0.55
+        high: 0.3
+      probability_override: null
+    - when: employer_type in ['MVZ/ambulatory surgery center','Private practice']
+      multiply: null
+      add: null
+      weight_overrides:
+        low: 0.35
+        medium: 0.55
+        high: 0.1
+      probability_override: null
+    - when: board_certified_specialty == 'General/Visceral Surgery' and employer_type
+        == 'University hospital'
+      multiply: null
+      add: null
+      weight_overrides:
+        low: 0.1
+        medium: 0.45
+        high: 0.45
+      probability_override: null
+  grounding:
+    level: medium
+    method: estimated
+    source: null
+    note: German university/center hospitals handle more complex cases; baseline skews
+      medium/high.
+  constraints:
+  - type: expression
+    value: null
+    expression: 1 == 1
+    reason: Categorical; will be adjusted by specialty and employer type later.
+- name: research_activity_level
+  type: categorical
+  category: population_specific
+  description: Engagement in research (none, occasional, regular, leading PI).
+  sampling:
+    strategy: conditional
+    distribution:
+      type: categorical
+      options:
+      - none
+      - occasional
+      - regular
+      - leading PI
+      weights:
+      - 0.35
+      - 0.35
+      - 0.25
+      - 0.05
+    formula: null
+    depends_on:
+    - employer_type
+    modifiers:
+    - when: employer_type == 'University hospital'
+      multiply: null
+      add: null
+      weight_overrides:
+        none: 0.1
+        occasional: 0.3
+        regular: 0.4
+        leading PI: 0.2
+      probability_override: null
+    - when: employer_type == 'Public non-university hospital'
+      multiply: null
+      add: null
+      weight_overrides:
+        none: 0.25
+        occasional: 0.5
+        regular: 0.22
+        leading PI: 0.03
+      probability_override: null
+    - when: employer_type == 'Private for-profit hospital'
+      multiply: null
+      add: null
+      weight_overrides:
+        none: 0.35
+        occasional: 0.45
+        regular: 0.18
+        leading PI: 0.02
+      probability_override: null
+    - when: employer_type in ['MVZ/ambulatory surgery center','Private practice']
+      multiply: null
+      add: null
+      weight_overrides:
+        none: 0.55
+        occasional: 0.35
+        regular: 0.09
+        leading PI: 0.01
+      probability_override: null
+    - when: employer_type == 'Non-profit (freigemeinnützig) hospital'
+      multiply: null
+      add: null
+      weight_overrides:
+        none: 0.25
+        occasional: 0.45
+        regular: 0.25
+        leading PI: 0.05
+      probability_override: null
+  grounding:
+    level: medium
+    method: extrapolated
+    source: null
+    note: Reflects mix of non-university and university hospitals among surgeons.
+  constraints:
+  - type: expression
+    value: null
+    expression: 1 == 1
+    reason: Categorical baseline prior to employer-type modifiers.
+- name: teaching_responsibility
+  type: boolean
+  category: population_specific
+  description: Has formal responsibility for teaching/mentoring students or trainees.
+  sampling:
+    strategy: conditional
+    distribution:
+      type: boolean
+      probability_true: 0.55
+    formula: null
+    depends_on:
+    - employer_type
+    - professional_role
+    modifiers:
+    - when: employer_type == 'University hospital' and professional_role in ['Specialist
+        (Facharzt/-ärztin)','Senior Physician (Oberarzt/-ärztin)','Chief/Head (Chefarzt/-ärztin)']
+      multiply: null
+      add: null
+      weight_overrides: null
+      probability_override: 0.85
+    - when: employer_type == 'Public non-university hospital' and professional_role
+        in ['Senior Physician (Oberarzt/-ärztin)','Chief/Head (Chefarzt/-ärztin)']
+      multiply: null
+      add: null
+      weight_overrides: null
+      probability_override: 0.65
+    - when: employer_type in ['MVZ/ambulatory surgery center','Private practice']
+      multiply: null
+      add: null
+      weight_overrides: null
+      probability_override: 0.25
+  grounding:
+    level: medium
+    method: estimated
+    source: null
+    note: Many hospital surgeons supervise trainees; proportion higher in teaching
+      hospitals.
+  constraints:
+  - type: expression
+    value: null
+    expression: teaching_responsibility in [true, false]
+    reason: Boolean domain.
+- name: admin_responsibility
+  type: boolean
+  category: population_specific
+  description: Holds administrative/management duties (e.g., rota planning, service
+    lead).
+  sampling:
+    strategy: conditional
+    distribution:
+      type: boolean
+      probability_true: 0.4
+    formula: null
+    depends_on:
+    - professional_role
+    modifiers:
+    - when: professional_role == 'Resident (Assistenzarzt/-ärztin)'
+      multiply: null
+      add: null
+      weight_overrides: null
+      probability_override: 0.1
+    - when: professional_role == 'Specialist (Facharzt/-ärztin)'
+      multiply: null
+      add: null
+      weight_overrides: null
+      probability_override: 0.35
+    - when: professional_role == 'Senior Physician (Oberarzt/-ärztin)'
+      multiply: null
+      add: null
+      weight_overrides: null
+      probability_override: 0.7
+    - when: professional_role == 'Chief/Head (Chefarzt/-ärztin)'
+      multiply: null
+      add: null
+      weight_overrides: null
+      probability_override: 0.95
+    - when: professional_role == 'Self-employed surgeon (Niedergelassen/MVZ partner)'
+      multiply: null
+      add: null
+      weight_overrides: null
+      probability_override: 0.85
+  grounding:
+    level: medium
+    method: estimated
+    source: null
+    note: Covers rota planning, service line leads, etc.; increases with seniority.
+  constraints:
+  - type: expression
+    value: null
+    expression: admin_responsibility in [true, false]
+    reason: Boolean domain.
+- name: annual_personal_income_eur
+  type: float
+  category: population_specific
+  description: Individual annual gross income from medical work in EUR (before taxes).
+  sampling:
+    strategy: conditional
+    distribution:
+      type: normal
+      mean: 145000.0
+      std: 35000.0
+      min: null
+      max: null
+      mean_formula: null
+      std_formula: null
+    formula: null
+    depends_on:
+    - professional_role
+    - employer_type
+    - weekly_hours
+    modifiers:
+    - when: professional_role == 'Resident (Assistenzarzt/-ärztin)'
+      multiply: 0.65
+      add: -25000.0
+      weight_overrides: null
+      probability_override: null
+    - when: professional_role == 'Specialist (Facharzt/-ärztin)'
+      multiply: 1.05
+      add: 5000.0
+      weight_overrides: null
+      probability_override: null
+    - when: professional_role == 'Senior Physician (Oberarzt/-ärztin)'
+      multiply: 1.35
+      add: 25000.0
+      weight_overrides: null
+      probability_override: null
+    - when: professional_role == 'Chief/Head (Chefarzt/-ärztin)'
+      multiply: 1.9
+      add: 60000.0
+      weight_overrides: null
+      probability_override: null
+    - when: employer_type == 'Private for-profit hospital'
+      multiply: 1.1
+      add: 7000.0
+      weight_overrides: null
+      probability_override: null
+    - when: employer_type in ['MVZ/ambulatory surgery center','Private practice']
+      multiply: 1.25
+      add: 35000.0
+      weight_overrides: null
+      probability_override: null
+    - when: weekly_hours > 60
+      multiply: 1.1
+      add: 8000.0
+      weight_overrides: null
+      probability_override: null
+    - when: weekly_hours < 45
+      multiply: 0.92
+      add: -6000.0
+      weight_overrides: null
+      probability_override: null
+  grounding:
+    level: medium
+    method: extrapolated
+    source: null
+    note: Before role/employer/hours adjustments; gross income from medical work only.
+  constraints:
+  - type: hard_min
+    value: 60000.0
+    expression: null
+    reason: Lower bound for fully licensed surgeons in Germany.
+  - type: hard_max
+    value: 400000.0
+    expression: null
+    reason: Wide cap allowing private practice and high-earning roles.
+- name: workplace_bed_size
+  type: categorical
+  category: population_specific
+  description: Hospital bed size category for main workplace (e.g., <300, 300–799,
+    ≥800, not applicable for outpatient-only).
+  sampling:
+    strategy: conditional
+    distribution:
+      type: categorical
+      options:
+      - <300
+      - 300–799
+      - ≥800
+      - not applicable (outpatient-only)
+      weights:
+      - 0.35
+      - 0.4
+      - 0.2
+      - 0.05
+    formula: null
+    depends_on:
+    - employer_type
+    modifiers:
+    - when: employer_type == 'University hospital'
+      multiply: null
+      add: null
+      weight_overrides:
+        <300: 0.05
+        300–799: 0.25
+        ≥800: 0.7
+        not applicable (outpatient-only): 0.0
+      probability_override: null
+    - when: employer_type == 'Public non-university hospital'
+      multiply: null
+      add: null
+      weight_overrides:
+        <300: 0.35
+        300–799: 0.45
+        ≥800: 0.15
+        not applicable (outpatient-only): 0.05
+      probability_override: null
+    - when: employer_type == 'Private for-profit hospital'
+      multiply: null
+      add: null
+      weight_overrides:
+        <300: 0.3
+        300–799: 0.5
+        ≥800: 0.15
+        not applicable (outpatient-only): 0.05
+      probability_override: null
+    - when: employer_type == 'Non-profit (freigemeinnützig) hospital'
+      multiply: null
+      add: null
+      weight_overrides:
+        <300: 0.4
+        300–799: 0.45
+        ≥800: 0.1
+        not applicable (outpatient-only): 0.05
+      probability_override: null
+    - when: employer_type in ['MVZ/ambulatory surgery center','Private practice']
+      multiply: null
+      add: null
+      weight_overrides:
+        <300: 0.0
+        300–799: 0.0
+        ≥800: 0.0
+        not applicable (outpatient-only): 1.0
+      probability_override: null
+  grounding:
+    level: medium
+    method: estimated
+    source: null
+    note: Reflects German hospital size distribution with a tail for outpatient-only
+      surgeons.
+  constraints:
+  - type: expression
+    value: null
+    expression: 1 == 1
+    reason: Categorical baseline.
+- name: practice_setting
+  type: categorical
+  category: population_specific
+  description: Primary care setting (inpatient, outpatient, mixed).
+  sampling:
+    strategy: conditional
+    distribution:
+      type: categorical
+      options:
+      - inpatient
+      - outpatient
+      - mixed
+      weights:
+      - 0.7
+      - 0.15
+      - 0.15
+    formula: null
+    depends_on:
+    - employer_type
+    modifiers:
+    - when: employer_type in ['University hospital','Public non-university hospital','Private
+        for-profit hospital','Non-profit (freigemeinnützig) hospital']
+      multiply: null
+      add: null
+      weight_overrides:
+        inpatient: 0.75
+        outpatient: 0.05
+        mixed: 0.2
+      probability_override: null
+    - when: employer_type == 'MVZ/ambulatory surgery center'
+      multiply: null
+      add: null
+      weight_overrides:
+        inpatient: 0.0
+        outpatient: 0.8
+        mixed: 0.2
+      probability_override: null
+    - when: employer_type == 'Private practice'
+      multiply: null
+      add: null
+      weight_overrides:
+        inpatient: 0.0
+        outpatient: 0.7
+        mixed: 0.3
+      probability_override: null
+  grounding:
+    level: medium
+    method: estimated
+    source: null
+    note: Most board-certified surgeons are hospital-based; notable minority in ambulatory
+      or mixed settings.
+  constraints:
+  - type: expression
+    value: null
+    expression: 1 == 1
+    reason: Categorical; driven later by employer type.
+- name: malpractice_claims_5y
+  type: int
+  category: population_specific
+  description: Number of malpractice claims faced in the last 5 years.
+  sampling:
+    strategy: conditional
+    distribution:
+      type: categorical
+      options:
+      - '0'
+      - '1'
+      - '2'
+      - '3'
+      - 4+
+      weights:
+      - 0.85
+      - 0.1
+      - 0.035
+      - 0.01
+      - 0.005
+    formula: null
+    depends_on:
+    - board_certified_specialty
+    - surgeries_per_week
+    modifiers:
+    - when: board_certified_specialty in ['Orthopedics & Trauma','General/Visceral
+        Surgery'] and surgeries_per_week >= 8
+      multiply: null
+      add: null
+      weight_overrides:
+        '0': 0.72
+        '1': 0.18
+        '2': 0.06
+        '3': 0.03
+        4+: 0.01
+      probability_override: null
+    - when: board_certified_specialty in ['Cardiothoracic Surgery','Neurosurgery','Vascular
+        Surgery'] and surgeries_per_week < 6
+      multiply: null
+      add: null
+      weight_overrides:
+        '0': 0.78
+        '1': 0.14
+        '2': 0.05
+        '3': 0.02
+        4+: 0.01
+      probability_override: null
+    - when: board_certified_specialty in ['Plastic/Hand Surgery','Pediatric Surgery','Other
+        surgical (e.g., Oral/Maxillofacial in surgical roles)']
+      multiply: null
+      add: null
+      weight_overrides:
+        '0': 0.82
+        '1': 0.12
+        '2': 0.04
+        '3': 0.01
+        4+: 0.01
+      probability_override: null
+    - when: surgeries_per_week <= 4
+      multiply: null
+      add: null
+      weight_overrides:
+        '0': 0.88
+        '1': 0.08
+        '2': 0.03
+        '3': 0.01
+        4+: 0.0
+      probability_override: null
+  grounding:
+    level: medium
+    method: researched
+    source: null
+    note: Germany has lower malpractice claim rates than some countries; most surgeons
+      have zero in a five-year window.
+  constraints:
+  - type: hard_min
+    value: 0.0
+    expression: null
+    reason: Cannot be negative.
+  - type: hard_max
+    value: 10.0
+    expression: null
+    reason: Very wide cap; groups 4+ together in baseline.
+sampling_order:
+- adherence_to_guidelines
+- age
+- agreeableness
+- board_certified_specialty
+- citizenship
+- conscientiousness
+- education_level
+- employer_type
+- case_mix_complexity
+- extraversion
+- gender
+- marital_status
+- household_size
+- neuroticism
+- openness
+- practice_setting
+- professional_role
+- admin_responsibility
+- on_call_nights_per_month
+- research_activity_level
+- risk_tolerance
+- state
+- district_type
+- household_gross_income_eur
+- sub_specialization
+- surgeries_per_week
+- malpractice_claims_5y
+- teaching_responsibility
+- weekly_hours
+- annual_personal_income_eur
+- workplace_bed_size
+- years_experience
+- years_in_germany
+- language_proficiency_german
