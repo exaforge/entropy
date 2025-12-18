@@ -246,7 +246,11 @@ def agentic_research(
             if hasattr(item, "action") and item.action:
                 if hasattr(item.action, "sources") and item.action.sources:
                     for source in item.action.sources:
-                        if hasattr(source, "url"):
+                        # Handle both dict and object access
+                        if isinstance(source, dict):
+                            if "url" in source:
+                                sources.append(source["url"])
+                        elif hasattr(source, "url"):
                             sources.append(source.url)
 
         # Check message content

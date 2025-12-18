@@ -105,11 +105,26 @@ def _sample_lognormal(
     rng: random.Random,
     agent: dict[str, Any] | None,
 ) -> float:
-    """Sample from lognormal distribution."""
+    """Sample from lognormal distribution.
+    
+    Note: The spec provides mean and std as the actual lognormal distribution
+    parameters, but Python's lognormvariate expects log-space (mu, sigma).
+    We convert using the standard formulas.
+    """
+    import math
+    
     mean = _resolve_param(dist.mean, dist.mean_formula, agent, "mean")
-    std = _resolve_param(dist.std, dist.std_formula, agent, "std") if (dist.std is not None or dist.std_formula is not None) else 1.0
-
-    value = rng.lognormvariate(mean, std)
+    std = _resolve_param(dist.std, dist.std_formula, agent, "std") if (dist.std is not None or dist.std_formula is not None) else mean * 0.5
+    
+    # Convert from actual mean/std to log-space mu/sigma
+    # mu = log(mean^2 / sqrt(mean^2 + std^2))
+    # sigma = sqrt(log(1 + std^2/mean^2))
+    variance = std ** 2
+    mean_sq = mean ** 2
+    mu = math.log(mean_sq / math.sqrt(mean_sq + variance))
+    sigma = math.sqrt(math.log(1 + variance / mean_sq))
+    
+    value = rng.lognormvariate(mu, sigma)
 
     # Apply min/max clamping
     if dist.min is not None:
