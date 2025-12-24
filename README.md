@@ -17,7 +17,8 @@ cp .env.example .env
 
 ```bash
 # Phase 1: Generate a population and sample agents
-entropy spec "500 German surgeons" -o surgeons.yaml
+entropy spec "500 German surgeons" -o surgeons_base.yaml
+entropy overlay surgeons_base.yaml -s "AI diagnostic tool adoption" -o surgeons.yaml
 entropy sample surgeons.yaml -o agents.json
 entropy network agents.json -o network.json
 
@@ -44,23 +45,42 @@ entropy results results/
 
 This walkthrough demonstrates the complete Entropy pipeline from creating a population to running a simulation.
 
-### Step 1: Create Population Spec
+### Step 1: Create Base Population Spec
 
-Generate a population specification from a natural language description. The architect layer discovers relevant attributes and researches real-world distributions.
+Generate a base population specification from a natural language description. The architect layer discovers relevant demographic and population-specific attributes.
 
 ```bash
-entropy spec "500 German surgeons" -o surgeons.yaml
+entropy spec "500 German surgeons" -o surgeons_base.yaml
 ```
 
 **What happens:**
 - Validates description has enough context
-- Discovers 25-40 attributes (age, specialty, income, etc.)
+- Discovers 25-40 base attributes (age, specialty, income, etc.)
 - Researches distributions from authoritative sources
 - Creates a YAML spec with sampling instructions
 
-**Output:** `surgeons.yaml` - Population blueprint
+**Output:** `surgeons_base.yaml` - Base population blueprint
 
-### Step 2: Validate Population Spec (Optional)
+### Step 2: Add Scenario-Specific Attributes (Overlay)
+
+Layer scenario-specific attributes on the base population. This adds attributes relevant to how agents will respond to the scenario.
+
+```bash
+entropy overlay surgeons_base.yaml \
+  -s "AI diagnostic tool adoption for surgery planning" \
+  -o surgeons.yaml
+```
+
+**What happens:**
+- Loads base population spec
+- Discovers NEW scenario-specific attributes (e.g., `tech_adoption_tendency`, `ai_trust_level`, `workflow_flexibility`)
+- New attributes can depend on base attributes
+- Researches distributions for new attributes
+- Merges into final spec with recomputed sampling order
+
+**Output:** `surgeons.yaml` - Complete population spec with scenario attributes
+
+### Step 3: Validate Population Spec (Optional)
 
 Check the spec for structural correctness before sampling.
 
@@ -74,7 +94,7 @@ entropy validate surgeons.yaml
 - Confirms no circular references
 - Validates modifier conditions
 
-### Step 3: Sample Agents
+### Step 4: Sample Agents
 
 Generate synthetic agents from the population spec.
 
@@ -90,7 +110,7 @@ entropy sample surgeons.yaml -o agents.json --seed 42
 
 **Output:** `agents.json` - List of 500 agent dictionaries
 
-### Step 4: Generate Social Network
+### Step 5: Generate Social Network
 
 Create a realistic social network connecting the agents.
 
@@ -106,7 +126,7 @@ entropy network agents.json -o network.json --avg-degree 20
 
 **Output:** `network.json` - Nodes and weighted edges
 
-### Step 5: Create Scenario Spec
+### Step 6: Create Scenario Spec
 
 Transform a natural language scenario into a machine-readable spec.
 
@@ -123,7 +143,7 @@ entropy scenario "Hospital announces new AI diagnostic tool for surgery planning
 
 **Output:** `ai_tool.yaml` - Complete scenario specification
 
-### Step 6: Validate Scenario (Optional)
+### Step 7: Validate Scenario (Optional)
 
 Verify the scenario spec is consistent with population and network.
 
@@ -137,7 +157,7 @@ entropy validate-scenario ai_tool.yaml
 - Validates probabilities are in [0, 1]
 - Confirms referenced files exist
 
-### Step 7: Run Simulation
+### Step 8: Run Simulation
 
 Execute the scenario against the population.
 
@@ -161,7 +181,7 @@ entropy simulate ai_tool.yaml -o results/ --seed 42
 - `agent_states.json` - Final states
 - `meta.json` - Run configuration
 
-### Step 8: View Results
+### Step 9: View Results
 
 Analyze the simulation outcomes.
 
@@ -188,10 +208,15 @@ entropy results results/ --agent agent_042
 # PHASE 1: POPULATION CREATION
 # ═══════════════════════════════════════════════════════════════
 
-# Create population spec (interactive, ~2-3 minutes)
-entropy spec "500 German surgeons" -o surgeons.yaml
+# Create base population spec (interactive, ~2-3 minutes)
+entropy spec "500 German surgeons" -o surgeons_base.yaml
 
-# Validate the spec
+# Add scenario-specific attributes via overlay (~1-2 minutes)
+entropy overlay surgeons_base.yaml \
+  -s "AI diagnostic tool adoption for surgery planning" \
+  -o surgeons.yaml
+
+# Validate the merged spec
 entropy validate surgeons.yaml
 
 # Sample agents
@@ -231,7 +256,8 @@ entropy results results/ --timeline
 For scripts and CI/CD, use `--yes` to skip confirmation prompts:
 
 ```bash
-entropy spec "500 German surgeons" -o surgeons.yaml --yes
+entropy spec "500 German surgeons" -o surgeons_base.yaml --yes
+entropy overlay surgeons_base.yaml -s "AI tool adoption" -o surgeons.yaml --yes
 entropy sample surgeons.yaml -o agents.json --seed 42
 entropy network agents.json -o network.json --seed 42
 entropy scenario "AI tool announcement" \
