@@ -17,13 +17,18 @@ cp .env.example .env
 
 ```bash
 # Phase 1: Generate a population and sample agents
-entropy spec "500 German surgeons" -o surgeons.yaml
+entropy spec "500 German surgeons" -o surgeons_base.yaml
+entropy overlay surgeons_base.yaml -s "AI diagnostic tool adoption" -o surgeons.yaml
 entropy sample surgeons.yaml -o agents.json
 entropy network agents.json -o network.json
 
 # Phase 2: Create a scenario
 entropy scenario "AI diagnostic tool announcement" \
   -p surgeons.yaml -a agents.json -n network.json -o scenario.yaml
+
+# Phase 3: Run simulation
+entropy simulate scenario.yaml -o results/
+entropy results results/
 ```
 
 ## Three Phases
@@ -33,6 +38,232 @@ entropy scenario "AI diagnostic tool announcement" \
 | **Phase 1: Population Creation** | Generate population specs, sample agents, create networks | OpenAI API (GPT-5) | ✅ Implemented |
 | **Phase 2: Scenario Injection** | Define events, exposure rules, interaction models, outcomes | OpenAI API (GPT-5) | ✅ Implemented |
 | **Phase 3: Simulation** | Agents respond; opinions evolve with social influence | OpenAI API (GPT-5) | ✅ Implemented |
+
+---
+
+## End-to-End Sample Run
+
+This walkthrough demonstrates the complete Entropy pipeline from creating a population to running a simulation.
+
+### Step 1: Create Base Population Spec
+
+Generate a base population specification from a natural language description. The architect layer discovers relevant demographic and population-specific attributes.
+
+```bash
+entropy spec "500 German surgeons" -o surgeons_base.yaml
+```
+
+**What happens:**
+- Validates description has enough context
+- Discovers 25-40 base attributes (age, specialty, income, etc.)
+- Researches distributions from authoritative sources
+- Creates a YAML spec with sampling instructions
+
+**Output:** `surgeons_base.yaml` - Base population blueprint
+
+### Step 2: Add Scenario-Specific Attributes (Overlay)
+
+Layer scenario-specific attributes on the base population. This adds attributes relevant to how agents will respond to the scenario.
+
+```bash
+entropy overlay surgeons_base.yaml \
+  -s "AI diagnostic tool adoption for surgery planning" \
+  -o surgeons.yaml
+```
+
+**What happens:**
+- Loads base population spec
+- Discovers NEW scenario-specific attributes (e.g., `tech_adoption_tendency`, `ai_trust_level`, `workflow_flexibility`)
+- New attributes can depend on base attributes
+- Researches distributions for new attributes
+- Merges into final spec with recomputed sampling order
+
+**Output:** `surgeons.yaml` - Complete population spec with scenario attributes
+
+### Step 3: Validate Population Spec (Optional)
+
+Check the spec for structural correctness before sampling.
+
+```bash
+entropy validate surgeons.yaml
+```
+
+**What happens:**
+- Checks distribution parameters are valid
+- Verifies dependencies are resolvable
+- Confirms no circular references
+- Validates modifier conditions
+
+### Step 4: Sample Agents
+
+Generate synthetic agents from the population spec.
+
+```bash
+entropy sample surgeons.yaml -o agents.json --seed 42
+```
+
+**What happens:**
+- Samples each attribute in topological order
+- Applies conditional modifiers based on other attributes
+- Computes derived attributes from formulas
+- Generates unique agent IDs
+
+**Output:** `agents.json` - List of 500 agent dictionaries
+
+### Step 5: Generate Social Network
+
+Create a realistic social network connecting the agents.
+
+```bash
+entropy network agents.json -o network.json --avg-degree 20
+```
+
+**What happens:**
+- Groups agents by profession/location for clustering
+- Uses Watts-Strogatz model for small-world properties
+- Weights edges by relationship type
+- Computes network metrics (centrality, clustering)
+
+**Output:** `network.json` - Nodes and weighted edges
+
+### Step 6: Create Scenario Spec
+
+Transform a natural language scenario into a machine-readable spec.
+
+```bash
+entropy scenario "Hospital announces new AI diagnostic tool for surgery planning" \
+  -p surgeons.yaml -a agents.json -n network.json -o ai_tool.yaml
+```
+
+**What happens:**
+- Parses event (type, content, credibility, emotional valence)
+- Generates exposure rules (who learns when, via what channel)
+- Defines interaction model (how agents discuss)
+- Specifies outcomes to measure (adoption_intent, sentiment, etc.)
+
+**Output:** `ai_tool.yaml` - Complete scenario specification
+
+### Step 7: Validate Scenario (Optional)
+
+Verify the scenario spec is consistent with population and network.
+
+```bash
+entropy validate-scenario ai_tool.yaml
+```
+
+**What happens:**
+- Checks attribute references in `when` clauses exist
+- Verifies edge types match network
+- Validates probabilities are in [0, 1]
+- Confirms referenced files exist
+
+### Step 8: Run Simulation
+
+Execute the scenario against the population.
+
+```bash
+entropy simulate ai_tool.yaml -o results/ --seed 42
+```
+
+**What happens:**
+- Initializes agent states in SQLite database
+- For each timestep:
+  - Applies seed exposures from Phase 2 rules
+  - Propagates through network from sharing agents
+  - Agents reason via LLM about the event
+  - Updates positions, sentiments, sharing intent
+- Checks stopping conditions (exposure rate, convergence)
+- Exports all results
+
+**Output:** `results/` directory with:
+- `simulation.db` - SQLite database
+- `timeline.jsonl` - Event stream
+- `agent_states.json` - Final states
+- `meta.json` - Run configuration
+
+### Step 9: View Results
+
+Analyze the simulation outcomes.
+
+```bash
+# Summary view
+entropy results results/
+
+# Segment by specialty
+entropy results results/ --segment specialty
+
+# View timeline
+entropy results results/ --timeline
+
+# Single agent details
+entropy results results/ --agent agent_042
+```
+
+---
+
+### Complete Copy-Paste Example
+
+```bash
+# ═══════════════════════════════════════════════════════════════
+# PHASE 1: POPULATION CREATION
+# ═══════════════════════════════════════════════════════════════
+
+# Create base population spec (interactive, ~2-3 minutes)
+entropy spec "500 German surgeons" -o surgeons_base.yaml
+
+# Add scenario-specific attributes via overlay (~1-2 minutes)
+entropy overlay surgeons_base.yaml \
+  -s "AI diagnostic tool adoption for surgery planning" \
+  -o surgeons.yaml
+
+# Validate the merged spec
+entropy validate surgeons.yaml
+
+# Sample agents
+entropy sample surgeons.yaml -o agents.json --seed 42 --report
+
+# Generate network
+entropy network agents.json -o network.json --avg-degree 20 --validate
+
+# ═══════════════════════════════════════════════════════════════
+# PHASE 2: SCENARIO COMPILATION
+# ═══════════════════════════════════════════════════════════════
+
+# Create scenario spec
+entropy scenario "Hospital announces mandatory AI diagnostic tool for all surgeries" \
+  -p surgeons.yaml -a agents.json -n network.json -o ai_mandate.yaml
+
+# Validate scenario
+entropy validate-scenario ai_mandate.yaml
+
+# ═══════════════════════════════════════════════════════════════
+# PHASE 3: SIMULATION
+# ═══════════════════════════════════════════════════════════════
+
+# Run simulation
+entropy simulate ai_mandate.yaml -o results/ --seed 42
+
+# View results
+entropy results results/
+entropy results results/ --segment specialty
+entropy results results/ --timeline
+```
+
+---
+
+### Non-Interactive Mode (Automation)
+
+For scripts and CI/CD, use `--yes` to skip confirmation prompts:
+
+```bash
+entropy spec "500 German surgeons" -o surgeons_base.yaml --yes
+entropy overlay surgeons_base.yaml -s "AI tool adoption" -o surgeons.yaml --yes
+entropy sample surgeons.yaml -o agents.json --seed 42
+entropy network agents.json -o network.json --seed 42
+entropy scenario "AI tool announcement" \
+  -p surgeons.yaml -a agents.json -n network.json -o scenario.yaml --yes
+entropy simulate scenario.yaml -o results/ --seed 42 --quiet
+```
 
 ---
 
@@ -562,29 +793,6 @@ results/
 ├── by_timestep.json           # Metrics over time
 ├── outcome_distributions.json # Final outcome distributions
 └── meta.json                  # Run configuration
-```
-
----
-
-## Complete Workflow Example
-
-```bash
-# Phase 1: Create population
-entropy spec "5000 Netflix subscribers in the US" -o netflix_users.yaml
-entropy sample netflix_users.yaml -o agents.json --seed 42
-entropy network agents.json -o network.json --avg-degree 20
-
-# Phase 2: Create scenario
-entropy scenario "Netflix announces $3/month price increase for all tiers" \
-  -p netflix_users.yaml -a agents.json -n network.json -o price_increase.yaml
-
-# Validate everything
-entropy validate netflix_users.yaml
-entropy validate-scenario price_increase.yaml
-
-# Phase 3: Run simulation
-entropy simulate price_increase.yaml -o results/
-entropy results results/
 ```
 
 ---
