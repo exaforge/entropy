@@ -54,7 +54,7 @@ OUTCOME_DEFINITION_SCHEMA = {
                         "description": "Whether this outcome must be extracted",
                     },
                 },
-                "required": ["name", "type", "description", "required"],
+                "required": ["name", "type", "description", "options", "range_min", "range_max", "required"],
                 "additionalProperties": False,
             },
             "minItems": 3,

@@ -95,6 +95,7 @@ INTERACTION_MODEL_SCHEMA = {
         "share_probability",
         "share_modifiers",
         "decay_per_hop",
+        "max_hops",
         "reasoning",
     ],
     "additionalProperties": False,
