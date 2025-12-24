@@ -722,7 +722,7 @@ def parse_modifiers(modifiers_data: list[dict] | None) -> list[Modifier]:
     for mod in modifiers_data:
         modifiers.append(
             Modifier(
-                when=mod["when"],
+                when=sanitize_formula(mod["when"]) or mod["when"],
                 multiply=mod.get("multiply"),
                 add=mod.get("add"),
                 weight_overrides=mod.get("weight_overrides"),
