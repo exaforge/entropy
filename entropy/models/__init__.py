@@ -2,8 +2,8 @@
 
 This package contains all Pydantic models used across the system:
 - spec.py: Population specs, attributes, distributions, sampling configs
-- scenario.py: (Future) Scenario and event models
-- simulation.py: (Future) Agent and network models
+- scenario.py: Scenario specs, events, exposure rules, interaction models
+- simulation.py: (Future) Agent runtime and network simulation models
 """
 
 from .spec import (
