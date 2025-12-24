@@ -355,6 +355,57 @@ entropy validate surgeons.yaml
 entropy validate surgeons.yaml --strict
 ```
 
+### `entropy fix`
+
+Auto-fix modifier condition option references.
+
+```bash
+entropy fix <spec.yaml> [-o <output.yaml>] [--dry-run] [-c <confidence>]
+```
+
+**Arguments:**
+- `spec`: Population spec YAML file to fix
+- `-o, --output`: Output file (defaults to overwriting input)
+- `-n, --dry-run`: Preview fixes without applying them
+- `-c, --confidence`: Minimum fuzzy match confidence 0-1 (default: 0.6)
+
+**What it fixes:**
+The LLM sometimes generates modifier `when` conditions that reference categorical options with inconsistent naming (e.g., `'University hospital'` instead of `'University_hospital'`). This command uses fuzzy matching to automatically correct these mismatches.
+
+**Example:**
+```bash
+# Preview fixes without applying
+entropy fix surgeons.yaml --dry-run
+
+# Fix in place
+entropy fix surgeons.yaml
+
+# Save to new file
+entropy fix surgeons.yaml -o fixed.yaml
+
+# Stricter matching (80% confidence required)
+entropy fix surgeons.yaml -c 0.8
+```
+
+**Output:**
+```
+✓ Loaded: 500 German surgeons (35 attributes)
+
+Found 4 fix(es):
+
+  ai_tool_awareness[0]:
+    - 'University hospital'
+    + 'University_hospital' (confidence: 95%)
+
+  income[2]:
+    - 'Senior/Oberarzt'
+    + 'Senior_Oberarzt' (confidence: 95%)
+
+═══════════════════════════════════════════════════════════════
+✓ Fixed spec saved to surgeons.yaml
+═══════════════════════════════════════════════════════════════
+```
+
 ### `entropy sample`
 
 Generate agents from a population spec.
