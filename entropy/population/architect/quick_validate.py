@@ -1,0 +1,537 @@
+"""Quick validation for LLM outputs.
+
+This module provides immediate syntax validation after each LLM call,
+catching errors early so we can retry in-place instead of failing
+after 10+ minutes of pipeline execution.
+
+The philosophy is FAIL FAST:
+- Validate immediately after each LLM response
+- Feed errors back to LLM for self-correction
+- Never proceed with invalid data
+"""
+
+import ast
+import re
+from typing import Any
+
+# Allowed builtins in formulas and expressions
+ALLOWED_BUILTINS = {
+    'True', 'False', 'None',
+    'abs', 'min', 'max', 'round', 'int', 'float', 'str', 'len',
+    'and', 'or', 'not', 'in', 'is', 'if', 'else',
+}
+
+
+class ValidationError:
+    """A single validation error with context for LLM retry."""
+    
+    def __init__(
+        self,
+        field: str,
+        value: str,
+        error: str,
+        suggestion: str | None = None,
+    ):
+        self.field = field
+        self.value = value
+        self.error = error
+        self.suggestion = suggestion
+    
+    def __str__(self) -> str:
+        msg = f"{self.field}: {self.error}"
+        if self.suggestion:
+            msg += f" → {self.suggestion}"
+        return msg
+    
+    def for_llm_retry(self) -> str:
+        """Format error for LLM retry prompt."""
+        lines = [
+            f"ERROR in {self.field}:",
+            f"  Value: {repr(self.value)}",
+            f"  Problem: {self.error}",
+        ]
+        if self.suggestion:
+            lines.append(f"  Fix: {self.suggestion}")
+        return "\n".join(lines)
+
+
+class QuickValidationResult:
+    """Result of quick validation with errors for retry."""
+    
+    def __init__(self, errors: list[ValidationError] | None = None):
+        self.errors = errors or []
+    
+    @property
+    def valid(self) -> bool:
+        return len(self.errors) == 0
+    
+    def format_for_retry(self) -> str:
+        """Format all errors as a retry prompt section."""
+        if not self.errors:
+            return ""
+        
+        lines = [
+            "## PREVIOUS ATTEMPT FAILED - PLEASE FIX THESE ERRORS:",
+            "",
+        ]
+        for err in self.errors:
+            lines.append(err.for_llm_retry())
+            lines.append("")
+        
+        lines.append("Please regenerate the output with these issues fixed.")
+        lines.append("")
+        
+        return "\n".join(lines)
+
+
+# =============================================================================
+# Formula Validation
+# =============================================================================
+
+
+def validate_formula_syntax(formula: str | None, field_name: str = "formula") -> ValidationError | None:
+    """Validate a Python expression/formula for syntax errors.
+    
+    Returns None if valid, ValidationError if invalid.
+    """
+    if not formula:
+        return None
+    
+    # Check for unterminated strings
+    if formula.count('"') % 2 != 0:
+        return ValidationError(
+            field=field_name,
+            value=formula,
+            error="unterminated string literal (unmatched double quote)",
+            suggestion="Ensure all string literals have matching quotes",
+        )
+    
+    if formula.count("'") % 2 != 0:
+        return ValidationError(
+            field=field_name,
+            value=formula,
+            error="unterminated string literal (unmatched single quote)",
+            suggestion="Ensure all string literals have matching quotes",
+        )
+    
+    # Check for unbalanced parentheses
+    if formula.count("(") != formula.count(")"):
+        return ValidationError(
+            field=field_name,
+            value=formula,
+            error=f"unbalanced parentheses ({formula.count('(')} open, {formula.count(')')} close)",
+            suggestion="Check for missing or extra parentheses",
+        )
+    
+    # Check for unbalanced brackets
+    if formula.count("[") != formula.count("]"):
+        return ValidationError(
+            field=field_name,
+            value=formula,
+            error=f"unbalanced brackets ({formula.count('[')} open, {formula.count(']')} close)",
+            suggestion="Check for missing or extra brackets",
+        )
+    
+    # Try to parse as Python expression
+    try:
+        ast.parse(formula, mode='eval')
+    except SyntaxError as e:
+        # Extract useful error message
+        error_msg = str(e.msg) if hasattr(e, 'msg') else str(e)
+        
+        return ValidationError(
+            field=field_name,
+            value=formula,
+            error=f"invalid Python syntax: {error_msg}",
+            suggestion="Ensure the formula is a valid Python expression",
+        )
+    
+    return None
+
+
+def validate_condition_syntax(condition: str | None, field_name: str = "when") -> ValidationError | None:
+    """Validate a 'when' condition for syntax errors.
+    
+    Conditions are Python boolean expressions like:
+    - age > 50
+    - specialty == 'cardiology'
+    - role in ['senior', 'chief']
+    
+    Returns None if valid, ValidationError if invalid.
+    """
+    return validate_formula_syntax(condition, field_name)
+
+
+# =============================================================================
+# Distribution Validation
+# =============================================================================
+
+
+def validate_distribution_data(
+    dist_data: dict[str, Any],
+    attr_name: str,
+    attr_type: str,
+) -> list[ValidationError]:
+    """Validate distribution data from LLM response.
+    
+    Checks for:
+    - Valid distribution type
+    - Required parameters present
+    - Parameter values in valid ranges
+    - Formula syntax (for mean_formula, std_formula)
+    """
+    errors = []
+    
+    if not dist_data:
+        errors.append(ValidationError(
+            field=f"{attr_name}.distribution",
+            value="null",
+            error="distribution is missing",
+            suggestion=f"Provide a distribution object for {attr_name}",
+        ))
+        return errors
+    
+    dist_type = dist_data.get("type")
+    
+    if dist_type is None:
+        errors.append(ValidationError(
+            field=f"{attr_name}.distribution.type",
+            value="null",
+            error="distribution type is missing",
+            suggestion="Specify type: normal, lognormal, uniform, beta, categorical, or boolean",
+        ))
+        return errors
+    
+    valid_types = {"normal", "lognormal", "uniform", "beta", "categorical", "boolean"}
+    if dist_type not in valid_types:
+        errors.append(ValidationError(
+            field=f"{attr_name}.distribution.type",
+            value=dist_type,
+            error=f"unknown distribution type",
+            suggestion=f"Use one of: {', '.join(sorted(valid_types))}",
+        ))
+        return errors
+    
+    # Type-specific validation
+    if dist_type in ("normal", "lognormal"):
+        # Check mean_formula syntax
+        mean_formula = dist_data.get("mean_formula")
+        if mean_formula:
+            err = validate_formula_syntax(mean_formula, f"{attr_name}.distribution.mean_formula")
+            if err:
+                errors.append(err)
+        
+        # Check std_formula syntax
+        std_formula = dist_data.get("std_formula")
+        if std_formula:
+            err = validate_formula_syntax(std_formula, f"{attr_name}.distribution.std_formula")
+            if err:
+                errors.append(err)
+        
+        # Check std is positive if present
+        std = dist_data.get("std")
+        if std is not None and std < 0:
+            errors.append(ValidationError(
+                field=f"{attr_name}.distribution.std",
+                value=str(std),
+                error="standard deviation cannot be negative",
+                suggestion="Use a positive value for std",
+            ))
+        
+        # Check min < max if both present
+        min_val = dist_data.get("min")
+        max_val = dist_data.get("max")
+        if min_val is not None and max_val is not None and min_val >= max_val:
+            errors.append(ValidationError(
+                field=f"{attr_name}.distribution.min/max",
+                value=f"min={min_val}, max={max_val}",
+                error="min must be less than max",
+                suggestion="Swap min and max values",
+            ))
+    
+    elif dist_type == "beta":
+        alpha = dist_data.get("alpha")
+        beta = dist_data.get("beta")
+        
+        if alpha is None or alpha <= 0:
+            errors.append(ValidationError(
+                field=f"{attr_name}.distribution.alpha",
+                value=str(alpha),
+                error="alpha must be positive",
+                suggestion="Use a positive value like 2.0",
+            ))
+        
+        if beta is None or beta <= 0:
+            errors.append(ValidationError(
+                field=f"{attr_name}.distribution.beta",
+                value=str(beta),
+                error="beta must be positive",
+                suggestion="Use a positive value like 5.0",
+            ))
+    
+    elif dist_type == "uniform":
+        min_val = dist_data.get("min")
+        max_val = dist_data.get("max")
+        
+        if min_val is not None and max_val is not None and min_val >= max_val:
+            errors.append(ValidationError(
+                field=f"{attr_name}.distribution.min/max",
+                value=f"min={min_val}, max={max_val}",
+                error="min must be less than max",
+                suggestion="Swap min and max values",
+            ))
+    
+    elif dist_type == "categorical":
+        options = dist_data.get("options")
+        weights = dist_data.get("weights")
+        
+        if not options:
+            errors.append(ValidationError(
+                field=f"{attr_name}.distribution.options",
+                value="null or empty",
+                error="categorical distribution requires options",
+                suggestion="Provide an array of string options",
+            ))
+        elif weights and len(weights) != len(options):
+            errors.append(ValidationError(
+                field=f"{attr_name}.distribution.weights",
+                value=f"{len(weights)} weights, {len(options)} options",
+                error="weights and options arrays must have same length",
+                suggestion="Ensure one weight per option",
+            ))
+        elif weights:
+            weight_sum = sum(weights)
+            if abs(weight_sum - 1.0) > 0.02:
+                errors.append(ValidationError(
+                    field=f"{attr_name}.distribution.weights",
+                    value=f"sum={weight_sum:.3f}",
+                    error="weights must sum to 1.0",
+                    suggestion="Normalize weights to sum to 1.0",
+                ))
+    
+    elif dist_type == "boolean":
+        prob = dist_data.get("probability_true")
+        if prob is not None and (prob < 0 or prob > 1):
+            errors.append(ValidationError(
+                field=f"{attr_name}.distribution.probability_true",
+                value=str(prob),
+                error="probability must be between 0 and 1",
+                suggestion="Use a value like 0.5 or 0.75",
+            ))
+    
+    return errors
+
+
+# =============================================================================
+# Modifier Validation
+# =============================================================================
+
+
+def validate_modifier_data(
+    modifier_data: dict[str, Any],
+    attr_name: str,
+    modifier_index: int,
+    dist_type: str | None = None,
+) -> list[ValidationError]:
+    """Validate a single modifier from LLM response.
+    
+    Checks for:
+    - Valid 'when' condition syntax
+    - Appropriate modifier fields for distribution type
+    - Valid value ranges
+    """
+    errors = []
+    
+    # Validate 'when' condition
+    when = modifier_data.get("when")
+    if when:
+        err = validate_condition_syntax(when, f"{attr_name}.modifiers[{modifier_index}].when")
+        if err:
+            errors.append(err)
+    else:
+        errors.append(ValidationError(
+            field=f"{attr_name}.modifiers[{modifier_index}].when",
+            value="null",
+            error="modifier missing 'when' condition",
+            suggestion="Provide a condition like \"age > 50\" or \"role == 'senior'\"",
+        ))
+    
+    # Check for type/field compatibility if we know the distribution type
+    if dist_type:
+        numeric_types = {"normal", "lognormal", "uniform", "beta"}
+        
+        if dist_type in numeric_types:
+            # Numeric: should use multiply/add, not weight_overrides
+            if modifier_data.get("weight_overrides"):
+                errors.append(ValidationError(
+                    field=f"{attr_name}.modifiers[{modifier_index}].weight_overrides",
+                    value="present",
+                    error=f"cannot use weight_overrides with {dist_type} distribution",
+                    suggestion="Use multiply and/or add instead",
+                ))
+            if modifier_data.get("probability_override") is not None:
+                errors.append(ValidationError(
+                    field=f"{attr_name}.modifiers[{modifier_index}].probability_override",
+                    value="present",
+                    error=f"cannot use probability_override with {dist_type} distribution",
+                    suggestion="Use multiply and/or add instead",
+                ))
+        
+        elif dist_type == "categorical":
+            # Categorical: should use weight_overrides, not multiply/add
+            multiply = modifier_data.get("multiply")
+            add = modifier_data.get("add")
+            if (multiply is not None and multiply != 1.0) or (add is not None and add != 0):
+                errors.append(ValidationError(
+                    field=f"{attr_name}.modifiers[{modifier_index}]",
+                    value=f"multiply={multiply}, add={add}",
+                    error="cannot use multiply/add with categorical distribution",
+                    suggestion="Use weight_overrides instead",
+                ))
+        
+        elif dist_type == "boolean":
+            # Boolean: should use probability_override
+            multiply = modifier_data.get("multiply")
+            add = modifier_data.get("add")
+            if (multiply is not None and multiply != 1.0) or (add is not None and add != 0):
+                errors.append(ValidationError(
+                    field=f"{attr_name}.modifiers[{modifier_index}]",
+                    value=f"multiply={multiply}, add={add}",
+                    error="cannot use multiply/add with boolean distribution",
+                    suggestion="Use probability_override instead",
+                ))
+    
+    # Validate probability_override range
+    prob_override = modifier_data.get("probability_override")
+    if prob_override is not None and (prob_override < 0 or prob_override > 1):
+        errors.append(ValidationError(
+            field=f"{attr_name}.modifiers[{modifier_index}].probability_override",
+            value=str(prob_override),
+            error="probability_override must be between 0 and 1",
+            suggestion="Use a value like 0.75",
+        ))
+    
+    # Validate weight_overrides sum to 1.0
+    weight_overrides = modifier_data.get("weight_overrides")
+    if weight_overrides and isinstance(weight_overrides, dict):
+        weight_sum = sum(weight_overrides.values())
+        if abs(weight_sum - 1.0) > 0.02:
+            errors.append(ValidationError(
+                field=f"{attr_name}.modifiers[{modifier_index}].weight_overrides",
+                value=f"sum={weight_sum:.3f}",
+                error="weight_overrides must sum to 1.0",
+                suggestion="Normalize weights to sum to 1.0",
+            ))
+    
+    return errors
+
+
+# =============================================================================
+# Full Response Validation
+# =============================================================================
+
+
+def validate_independent_response(
+    data: dict[str, Any],
+    expected_attrs: list[str],
+) -> QuickValidationResult:
+    """Validate LLM response for independent attribute hydration."""
+    errors = []
+    
+    attributes = data.get("attributes", [])
+    
+    for attr_data in attributes:
+        name = attr_data.get("name", "unknown")
+        dist_data = attr_data.get("distribution", {})
+        
+        # Skip if name not in expected (will be filtered out anyway)
+        if name not in expected_attrs:
+            continue
+        
+        # Validate distribution
+        dist_errors = validate_distribution_data(dist_data, name, "numeric")
+        errors.extend(dist_errors)
+    
+    return QuickValidationResult(errors)
+
+
+def validate_derived_response(
+    data: dict[str, Any],
+    expected_attrs: list[str],
+) -> QuickValidationResult:
+    """Validate LLM response for derived attribute hydration."""
+    errors = []
+    
+    attributes = data.get("attributes", [])
+    
+    for attr_data in attributes:
+        name = attr_data.get("name", "unknown")
+        
+        if name not in expected_attrs:
+            continue
+        
+        formula = attr_data.get("formula")
+        
+        if not formula:
+            errors.append(ValidationError(
+                field=f"{name}.formula",
+                value="null",
+                error="derived attribute requires formula",
+                suggestion="Provide a Python expression like \"age - 28\" or \"income * 0.3\"",
+            ))
+        else:
+            err = validate_formula_syntax(formula, f"{name}.formula")
+            if err:
+                errors.append(err)
+    
+    return QuickValidationResult(errors)
+
+
+def validate_conditional_base_response(
+    data: dict[str, Any],
+    expected_attrs: list[str],
+) -> QuickValidationResult:
+    """Validate LLM response for conditional base distribution hydration."""
+    errors = []
+    
+    attributes = data.get("attributes", [])
+    
+    for attr_data in attributes:
+        name = attr_data.get("name", "unknown")
+        
+        if name not in expected_attrs:
+            continue
+        
+        dist_data = attr_data.get("distribution", {})
+        dist_errors = validate_distribution_data(dist_data, name, "numeric")
+        errors.extend(dist_errors)
+    
+    return QuickValidationResult(errors)
+
+
+def validate_modifiers_response(
+    data: dict[str, Any],
+    attr_dist_types: dict[str, str],
+) -> QuickValidationResult:
+    """Validate LLM response for conditional modifiers hydration.
+    
+    Args:
+        data: LLM response data
+        attr_dist_types: Mapping of attribute name to distribution type
+    """
+    errors = []
+    
+    attributes = data.get("attributes", [])
+    
+    for attr_data in attributes:
+        name = attr_data.get("name", "unknown")
+        modifiers = attr_data.get("modifiers", [])
+        
+        dist_type = attr_dist_types.get(name)
+        
+        for i, mod_data in enumerate(modifiers):
+            mod_errors = validate_modifier_data(mod_data, name, i, dist_type)
+            errors.extend(mod_errors)
+    
+    return QuickValidationResult(errors)
+

@@ -7,6 +7,11 @@ This module implements the split hydration approach:
 - Step 2d: hydrate_conditional_modifiers() - Specify modifiers for conditional
 
 Each step is processed separately with specialized prompts and validation.
+
+FAIL-FAST VALIDATION:
+Each hydration step validates LLM output immediately and retries with
+error feedback if syntax errors are detected. This catches issues like
+unterminated strings, invalid formulas, etc. before proceeding.
 """
 
 from typing import Callable
@@ -38,6 +43,39 @@ from .hydrator_utils import (
     # Sanitization
     sanitize_formula,
 )
+from .quick_validate import (
+    validate_independent_response,
+    validate_derived_response,
+    validate_conditional_base_response,
+    validate_modifiers_response,
+)
+
+
+# =============================================================================
+# Formula Syntax Guidelines (added to relevant prompts)
+# =============================================================================
+
+FORMULA_SYNTAX_GUIDELINES = """
+## CRITICAL: Formula Syntax Rules
+
+All formulas and expressions must be valid Python. Common errors to AVOID:
+
+✓ CORRECT:
+- "max(0, 0.10 * age - 1.8)"
+- "'18-24' if age < 25 else '25-34' if age < 35 else '35+'"
+- "age > 50 and role == 'senior'"
+
+✗ WRONG (will cause pipeline failure):
+- "max(0, 0.10 * age - 1.8   (missing closing quote)
+- "age - 28 years"            (invalid Python - 'years' is not a variable)
+- "'senior' if age > 50       (missing else clause)
+- "specialty == cardiology"   (missing quotes around string)
+
+Before outputting, mentally verify:
+1. All quotes are paired (matching " or ')
+2. All parentheses are balanced
+3. The expression is valid Python syntax
+"""
 
 
 # =============================================================================
@@ -154,12 +192,22 @@ For EACH attribute, honestly assess:
 
 Return JSON with distribution, constraints, and grounding for each attribute."""
 
+    # Build validator for fail-fast validation
+    expected_names = [a.name for a in independent_attrs]
+    
+    def validate_response(data: dict) -> tuple[bool, str]:
+        result = validate_independent_response(data, expected_names)
+        if result.valid:
+            return True, ""
+        return False, result.format_for_retry()
+
     data, sources = agentic_research(
         prompt=prompt,
         response_schema=build_independent_schema(),
         schema_name="independent_hydration",
         model=model,
         reasoning_effort=reasoning_effort,
+        validator=validate_response,
     )
 
     attr_lookup = {a.name: a for a in independent_attrs}
@@ -277,6 +325,7 @@ def hydrate_derived(
     prompt = f"""{independent_summary}Specify deterministic formulas for these DERIVED attributes of {population}:
 
 {attr_list}
+{FORMULA_SYNTAX_GUIDELINES}
 
 ## Your Task
 
@@ -309,12 +358,22 @@ For EACH derived attribute, provide a Python expression that computes its value.
 
 Return JSON array with formula for each attribute."""
 
+    # Build validator for fail-fast validation
+    expected_names = [a.name for a in derived_attrs]
+    
+    def validate_response(data: dict) -> tuple[bool, str]:
+        result = validate_derived_response(data, expected_names)
+        if result.valid:
+            return True, ""
+        return False, result.format_for_retry()
+
     data = reasoning_call(
         prompt=prompt,
         response_schema=build_derived_schema(),
         schema_name="derived_hydration",
         model=model,
         reasoning_effort=reasoning_effort,
+        validator=validate_response,
     )
 
     attr_lookup = {a.name: a for a in derived_attrs}
@@ -441,6 +500,7 @@ def hydrate_conditional_base(
     prompt = f"""{context_summary}Research BASE distributions for these CONDITIONAL attributes of {population}{geo_context}:
 
 {attr_list}
+{FORMULA_SYNTAX_GUIDELINES}
 
 ## Your Task
 
@@ -491,12 +551,22 @@ Be honest about data quality.
 
 Return JSON with distribution, constraints, and grounding for each attribute."""
 
+    # Build validator for fail-fast validation
+    expected_names = [a.name for a in conditional_attrs]
+    
+    def validate_response(data: dict) -> tuple[bool, str]:
+        result = validate_conditional_base_response(data, expected_names)
+        if result.valid:
+            return True, ""
+        return False, result.format_for_retry()
+
     data, sources = agentic_research(
         prompt=prompt,
         response_schema=build_conditional_base_schema(),
         schema_name="conditional_base_hydration",
         model=model,
         reasoning_effort=reasoning_effort,
+        validator=validate_response,
     )
 
     attr_lookup = {a.name: a for a in conditional_attrs}
@@ -637,6 +707,7 @@ def hydrate_conditional_modifiers(
     context_summary += "\n---\n\n"
 
     prompt = f"""{context_summary}Specify MODIFIERS for conditional attributes of {population}{geo_context}.
+{FORMULA_SYNTAX_GUIDELINES}
 
 ## Your Task
 
@@ -735,12 +806,39 @@ The valid option values are listed in the "Full Context" section above for each 
 
 Return JSON array with modifiers for each conditional attribute."""
 
+    # Build distribution type lookup for fail-fast validation
+    attr_dist_types: dict[str, str] = {}
+    for attr in conditional_attrs:
+        if attr.sampling.distribution:
+            dist = attr.sampling.distribution
+            # Determine distribution type from the actual object
+            dist_class_name = type(dist).__name__.lower()
+            if "normal" in dist_class_name:
+                attr_dist_types[attr.name] = "normal"
+            elif "lognormal" in dist_class_name:
+                attr_dist_types[attr.name] = "lognormal"
+            elif "beta" in dist_class_name:
+                attr_dist_types[attr.name] = "beta"
+            elif "uniform" in dist_class_name:
+                attr_dist_types[attr.name] = "uniform"
+            elif "categorical" in dist_class_name:
+                attr_dist_types[attr.name] = "categorical"
+            elif "boolean" in dist_class_name:
+                attr_dist_types[attr.name] = "boolean"
+    
+    def validate_response(data: dict) -> tuple[bool, str]:
+        result = validate_modifiers_response(data, attr_dist_types)
+        if result.valid:
+            return True, ""
+        return False, result.format_for_retry()
+
     data, sources = agentic_research(
         prompt=prompt,
         response_schema=build_modifiers_schema(),
         schema_name="conditional_modifiers_hydration",
         model=model,
         reasoning_effort=reasoning_effort,
+        validator=validate_response,
     )
 
     attr_lookup = {a.name: a for a in conditional_attrs}

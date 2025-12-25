@@ -18,6 +18,10 @@ Pipeline (Overlay Mode):
     Steps 1-3 accept a `context` parameter with existing attributes.
     New attributes can depend on context attributes in formulas/modifiers.
     Final specs are merged via PopulationSpec.merge().
+
+FAIL-FAST VALIDATION:
+    Each hydration step validates LLM output immediately and retries with
+    error feedback if syntax errors are detected. See quick_validate.py.
 """
 
 from .sufficiency import check_sufficiency
@@ -30,8 +34,17 @@ from .hydrator import (
     hydrate_conditional_modifiers,
 )
 from .binder import bind_constraints, build_spec
+from .quick_validate import (
+    QuickValidationResult,
+    ValidationError as QuickValidationError,
+    validate_formula_syntax,
+    validate_condition_syntax,
+    validate_distribution_data,
+    validate_modifier_data,
+)
 
 __all__ = [
+    # Pipeline steps
     "check_sufficiency",
     "select_attributes",
     "hydrate_attributes",
@@ -41,4 +54,11 @@ __all__ = [
     "hydrate_conditional_modifiers",
     "bind_constraints",
     "build_spec",
+    # Quick validation
+    "QuickValidationResult",
+    "QuickValidationError",
+    "validate_formula_syntax",
+    "validate_condition_syntax",
+    "validate_distribution_data",
+    "validate_modifier_data",
 ]

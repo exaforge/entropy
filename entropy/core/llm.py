@@ -4,16 +4,23 @@ Three main functions:
 - simple_call: Fast, no reasoning, no web search (gpt-5-mini)
 - reasoning_call: With reasoning, no web search (gpt-5)
 - agentic_research: With reasoning AND web search (gpt-5)
+
+Each function supports retry with error feedback via the `previous_errors` parameter.
+When validation fails, pass the error message back to let the LLM self-correct.
 """
 
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from openai import OpenAI
 
 from ..config import get_settings
+
+
+# Type for validation callbacks: takes response data, returns (is_valid, error_message)
+ValidatorCallback = Callable[[dict], tuple[bool, str]]
 
 
 def _get_logs_dir() -> Path:
@@ -131,6 +138,9 @@ def reasoning_call(
     model: str = "gpt-5",
     reasoning_effort: str = "low",
     log: bool = True,
+    previous_errors: str | None = None,
+    validator: ValidatorCallback | None = None,
+    max_retries: int = 2,
 ) -> dict:
     """
     GPT-5 with reasoning and structured output, but NO web search.
@@ -147,45 +157,80 @@ def reasoning_call(
         model: Model to use (gpt-5, gpt-5.1, etc.)
         reasoning_effort: "low", "medium", or "high"
         log: Whether to log request/response to file
+        previous_errors: Error feedback from failed validation to prepend to prompt
+        validator: Optional callback to validate response; if invalid, will retry
+        max_retries: Maximum number of retry attempts if validation fails
 
     Returns:
         Structured data matching the schema
     """
     client = get_openai_client()
+    
+    # Prepend previous errors if provided
+    effective_prompt = prompt
+    if previous_errors:
+        effective_prompt = f"{previous_errors}\n\n---\n\n{prompt}"
 
-    request_params = {
-        "model": model,
-        "reasoning": {"effort": reasoning_effort},
-        "input": [{"role": "user", "content": prompt}],
-        "text": {
-            "format": {
-                "type": "json_schema",
-                "name": schema_name,
-                "strict": True,
-                "schema": response_schema,
-            }
-        },
-    }
+    attempts = 0
+    last_error = None
+    
+    while attempts <= max_retries:
+        request_params = {
+            "model": model,
+            "reasoning": {"effort": reasoning_effort},
+            "input": [{"role": "user", "content": effective_prompt}],
+            "text": {
+                "format": {
+                    "type": "json_schema",
+                    "name": schema_name,
+                    "strict": True,
+                    "schema": response_schema,
+                }
+            },
+        }
 
-    response = client.responses.create(**request_params)
+        response = client.responses.create(**request_params)
 
-    # Extract structured data
-    structured_data = None
-    for item in response.output:
-        if hasattr(item, "type") and item.type == "message":
-            for content_item in item.content:
-                if hasattr(content_item, "type") and content_item.type == "output_text":
-                    if hasattr(content_item, "text"):
-                        structured_data = json.loads(content_item.text)
+        # Extract structured data
+        structured_data = None
+        for item in response.output:
+            if hasattr(item, "type") and item.type == "message":
+                for content_item in item.content:
+                    if hasattr(content_item, "type") and content_item.type == "output_text":
+                        if hasattr(content_item, "text"):
+                            structured_data = json.loads(content_item.text)
 
-    if log:
-        _log_request_response(
-            function_name="reasoning_call",
-            request=request_params,
-            response=response,
-        )
+        if log:
+            _log_request_response(
+                function_name="reasoning_call",
+                request=request_params,
+                response=response,
+            )
 
-    return structured_data or {}
+        result = structured_data or {}
+        
+        # If no validator, return immediately
+        if validator is None:
+            return result
+        
+        # Validate the response
+        is_valid, error_msg = validator(result)
+        
+        if is_valid:
+            return result
+        
+        # Validation failed - prepare for retry
+        attempts += 1
+        last_error = error_msg
+        
+        if attempts <= max_retries:
+            print(f"  [Validation failed, retry {attempts}/{max_retries}]")
+            # Prepend error feedback for next attempt
+            effective_prompt = f"{error_msg}\n\n---\n\n{prompt}"
+        
+    # All retries exhausted - return last result anyway (let caller handle)
+    print(f"  [Warning: validation failed after {max_retries} retries: {last_error}]")
+    return result
 
 
 def agentic_research(
@@ -195,6 +240,9 @@ def agentic_research(
     model: str = "gpt-5",
     reasoning_effort: str = "low",
     log: bool = True,
+    previous_errors: str | None = None,
+    validator: ValidatorCallback | None = None,
+    max_retries: int = 2,
 ) -> tuple[dict, list[str]]:
     """
     Perform agentic research with web search and structured output.
@@ -212,71 +260,110 @@ def agentic_research(
         model: Model to use (gpt-5, gpt-5.1, etc.)
         reasoning_effort: "low", "medium", or "high"
         log: Whether to log request/response to file
+        previous_errors: Error feedback from failed validation to prepend to prompt
+        validator: Optional callback to validate response; if invalid, will retry
+        max_retries: Maximum number of retry attempts if validation fails
 
     Returns:
         Tuple of (structured_data, source_urls)
     """
     client = get_openai_client()
+    
+    # Prepend previous errors if provided
+    effective_prompt = prompt
+    if previous_errors:
+        effective_prompt = f"{previous_errors}\n\n---\n\n{prompt}"
 
-    request_params = {
-        "model": model,
-        "input": prompt,
-        "tools": [{"type": "web_search"}],
-        "reasoning": {"effort": reasoning_effort},
-        "text": {
-            "format": {
-                "type": "json_schema",
-                "name": schema_name,
-                "strict": True,
-                "schema": response_schema,
-            }
-        },
-        "include": ["web_search_call.action.sources"],
-    }
+    attempts = 0
+    last_error = None
+    all_sources: list[str] = []
+    
+    while attempts <= max_retries:
+        request_params = {
+            "model": model,
+            "input": effective_prompt,
+            "tools": [{"type": "web_search"}],
+            "reasoning": {"effort": reasoning_effort},
+            "text": {
+                "format": {
+                    "type": "json_schema",
+                    "name": schema_name,
+                    "strict": True,
+                    "schema": response_schema,
+                }
+            },
+            "include": ["web_search_call.action.sources"],
+        }
 
-    response = client.responses.create(**request_params)
+        response = client.responses.create(**request_params)
 
-    # Extract structured data and sources
-    structured_data = None
-    sources = []
+        # Extract structured data and sources
+        structured_data = None
+        sources: list[str] = []
 
-    for item in response.output:
-        # Check for web search results - sources are here
-        if hasattr(item, "type") and item.type == "web_search_call":
-            if hasattr(item, "action") and item.action:
-                if hasattr(item.action, "sources") and item.action.sources:
-                    for source in item.action.sources:
-                        # Handle both dict and object access
-                        if isinstance(source, dict):
-                            if "url" in source:
-                                sources.append(source["url"])
-                        elif hasattr(source, "url"):
-                            sources.append(source.url)
+        for item in response.output:
+            # Check for web search results - sources are here
+            if hasattr(item, "type") and item.type == "web_search_call":
+                if hasattr(item, "action") and item.action:
+                    if hasattr(item.action, "sources") and item.action.sources:
+                        for source in item.action.sources:
+                            # Handle both dict and object access
+                            if isinstance(source, dict):
+                                if "url" in source:
+                                    sources.append(source["url"])
+                            elif hasattr(source, "url"):
+                                sources.append(source.url)
 
-        # Check message content
-        if hasattr(item, "type") and item.type == "message":
-            for content_item in item.content:
-                if hasattr(content_item, "type") and content_item.type == "output_text":
-                    if hasattr(content_item, "text"):
-                        structured_data = json.loads(content_item.text)
-                    if (
-                        hasattr(content_item, "annotations")
-                        and content_item.annotations
-                    ):
-                        for annotation in content_item.annotations:
-                            if (
-                                hasattr(annotation, "type")
-                                and annotation.type == "url_citation"
-                            ):
-                                if hasattr(annotation, "url"):
-                                    sources.append(annotation.url)
+            # Check message content
+            if hasattr(item, "type") and item.type == "message":
+                for content_item in item.content:
+                    if hasattr(content_item, "type") and content_item.type == "output_text":
+                        if hasattr(content_item, "text"):
+                            structured_data = json.loads(content_item.text)
+                        if (
+                            hasattr(content_item, "annotations")
+                            and content_item.annotations
+                        ):
+                            for annotation in content_item.annotations:
+                                if (
+                                    hasattr(annotation, "type")
+                                    and annotation.type == "url_citation"
+                                ):
+                                    if hasattr(annotation, "url"):
+                                        sources.append(annotation.url)
 
-    if log:
-        _log_request_response(
-            function_name="agentic_research",
-            request=request_params,
-            response=response,
-            sources=list(set(sources)),
-        )
+        # Accumulate sources across retries
+        all_sources.extend(sources)
 
-    return structured_data or {}, list(set(sources))
+        if log:
+            _log_request_response(
+                function_name="agentic_research",
+                request=request_params,
+                response=response,
+                sources=list(set(sources)),
+            )
+
+        result = structured_data or {}
+        
+        # If no validator, return immediately
+        if validator is None:
+            return result, list(set(all_sources))
+        
+        # Validate the response
+        is_valid, error_msg = validator(result)
+        
+        if is_valid:
+            return result, list(set(all_sources))
+        
+        # Validation failed - prepare for retry
+        attempts += 1
+        last_error = error_msg
+        
+        if attempts <= max_retries:
+            print(f"  [Validation failed, retry {attempts}/{max_retries}]")
+            # Prepend error feedback for next attempt
+            effective_prompt = f"{error_msg}\n\n---\n\n{prompt}"
+    
+    # All retries exhausted - return last result anyway (let caller handle)
+    print(f"  [Warning: validation failed after {max_retries} retries: {last_error}]")
+    return result, list(set(all_sources))
