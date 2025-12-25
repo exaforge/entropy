@@ -22,6 +22,9 @@ from ..config import get_settings
 # Type for validation callbacks: takes response data, returns (is_valid, error_message)
 ValidatorCallback = Callable[[dict], tuple[bool, str]]
 
+# Type for retry notification callbacks: (attempt, max_retries, short_error_summary)
+RetryCallback = Callable[[int, int, str], None]
+
 
 def _get_logs_dir() -> Path:
     """Get logs directory, create if needed."""
@@ -141,6 +144,7 @@ def reasoning_call(
     previous_errors: str | None = None,
     validator: ValidatorCallback | None = None,
     max_retries: int = 2,
+    on_retry: RetryCallback | None = None,
 ) -> dict:
     """
     GPT-5 with reasoning and structured output, but NO web search.
@@ -160,6 +164,7 @@ def reasoning_call(
         previous_errors: Error feedback from failed validation to prepend to prompt
         validator: Optional callback to validate response; if invalid, will retry
         max_retries: Maximum number of retry attempts if validation fails
+        on_retry: Optional callback called when validation fails and retry begins
 
     Returns:
         Structured data matching the schema
@@ -173,6 +178,7 @@ def reasoning_call(
 
     attempts = 0
     last_error = None
+    last_error_summary = ""
     
     while attempts <= max_retries:
         request_params = {
@@ -222,15 +228,43 @@ def reasoning_call(
         # Validation failed - prepare for retry
         attempts += 1
         last_error = error_msg
+        # Extract meaningful error summary (skip header lines)
+        last_error_summary = _extract_error_summary(error_msg)
         
         if attempts <= max_retries:
-            print(f"  [Validation failed, retry {attempts}/{max_retries}]")
+            # Notify via callback if provided
+            if on_retry:
+                on_retry(attempts, max_retries, last_error_summary)
             # Prepend error feedback for next attempt
             effective_prompt = f"{error_msg}\n\n---\n\n{prompt}"
         
-    # All retries exhausted - return last result anyway (let caller handle)
-    print(f"  [Warning: validation failed after {max_retries} retries: {last_error}]")
+    # All retries exhausted - notify one final time
+    if on_retry:
+        on_retry(max_retries + 1, max_retries, f"EXHAUSTED: {last_error_summary}")
     return result
+
+
+def _extract_error_summary(error_msg: str) -> str:
+    """Extract a concise error summary from validation error message."""
+    if not error_msg:
+        return "validation error"
+    
+    lines = error_msg.strip().split('\n')
+    
+    # Skip header lines that start with "##" or are empty
+    for line in lines:
+        line = line.strip()
+        if line and not line.startswith('#') and not line.startswith('---'):
+            # Found a meaningful line - extract key info
+            # Look for "ERROR in X:" or "Problem:" patterns
+            if 'ERROR in' in line:
+                return line[:60]
+            elif 'Problem:' in line:
+                return line.replace('Problem:', '').strip()[:60]
+            elif line:
+                return line[:60]
+    
+    return "validation error"
 
 
 def agentic_research(
@@ -243,6 +277,7 @@ def agentic_research(
     previous_errors: str | None = None,
     validator: ValidatorCallback | None = None,
     max_retries: int = 2,
+    on_retry: RetryCallback | None = None,
 ) -> tuple[dict, list[str]]:
     """
     Perform agentic research with web search and structured output.
@@ -263,6 +298,7 @@ def agentic_research(
         previous_errors: Error feedback from failed validation to prepend to prompt
         validator: Optional callback to validate response; if invalid, will retry
         max_retries: Maximum number of retry attempts if validation fails
+        on_retry: Optional callback called when validation fails and retry begins
 
     Returns:
         Tuple of (structured_data, source_urls)
@@ -276,6 +312,7 @@ def agentic_research(
 
     attempts = 0
     last_error = None
+    last_error_summary = ""
     all_sources: list[str] = []
     
     while attempts <= max_retries:
@@ -358,12 +395,17 @@ def agentic_research(
         # Validation failed - prepare for retry
         attempts += 1
         last_error = error_msg
+        # Extract meaningful error summary (skip header lines)
+        last_error_summary = _extract_error_summary(error_msg)
         
         if attempts <= max_retries:
-            print(f"  [Validation failed, retry {attempts}/{max_retries}]")
+            # Notify via callback if provided
+            if on_retry:
+                on_retry(attempts, max_retries, last_error_summary)
             # Prepend error feedback for next attempt
             effective_prompt = f"{error_msg}\n\n---\n\n{prompt}"
     
-    # All retries exhausted - return last result anyway (let caller handle)
-    print(f"  [Warning: validation failed after {max_retries} retries: {last_error}]")
+    # All retries exhausted - notify one final time
+    if on_retry:
+        on_retry(max_retries + 1, max_retries, f"EXHAUSTED: {last_error_summary}")
     return result, list(set(all_sources))

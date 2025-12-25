@@ -16,7 +16,7 @@ unterminated strings, invalid formulas, etc. before proceeding.
 
 from typing import Callable
 
-from ...core.llm import agentic_research, reasoning_call
+from ...core.llm import agentic_research, reasoning_call, RetryCallback
 from ...core.models import (
     AttributeSpec,
     DiscoveredAttribute,
@@ -90,6 +90,7 @@ def hydrate_independent(
     context: list[AttributeSpec] | None = None,
     model: str = "gpt-5",
     reasoning_effort: str = "low",
+    on_retry: RetryCallback | None = None,
 ) -> tuple[list[HydratedAttribute], list[str], list[str]]:
     """
     Research distributions for independent attributes (Step 2a).
@@ -208,6 +209,7 @@ Return JSON with distribution, constraints, and grounding for each attribute."""
         model=model,
         reasoning_effort=reasoning_effort,
         validator=validate_response,
+        on_retry=on_retry,
     )
 
     attr_lookup = {a.name: a for a in independent_attrs}
@@ -269,6 +271,7 @@ def hydrate_derived(
     context: list[AttributeSpec] | None = None,
     model: str = "gpt-5",
     reasoning_effort: str = "low",
+    on_retry: RetryCallback | None = None,
 ) -> tuple[list[HydratedAttribute], list[str]]:
     """
     Specify formulas for derived attributes (Step 2b).
@@ -374,6 +377,7 @@ Return JSON array with formula for each attribute."""
         model=model,
         reasoning_effort=reasoning_effort,
         validator=validate_response,
+        on_retry=on_retry,
     )
 
     attr_lookup = {a.name: a for a in derived_attrs}
@@ -438,6 +442,7 @@ def hydrate_conditional_base(
     context: list[AttributeSpec] | None = None,
     model: str = "gpt-5",
     reasoning_effort: str = "low",
+    on_retry: RetryCallback | None = None,
 ) -> tuple[list[HydratedAttribute], list[str], list[str]]:
     """
     Research BASE distributions for conditional attributes (Step 2c).
@@ -567,6 +572,7 @@ Return JSON with distribution, constraints, and grounding for each attribute."""
         model=model,
         reasoning_effort=reasoning_effort,
         validator=validate_response,
+        on_retry=on_retry,
     )
 
     attr_lookup = {a.name: a for a in conditional_attrs}
@@ -629,6 +635,7 @@ def hydrate_conditional_modifiers(
     context: list[AttributeSpec] | None = None,
     model: str = "gpt-5",
     reasoning_effort: str = "low",
+    on_retry: RetryCallback | None = None,
 ) -> tuple[list[HydratedAttribute], list[str], list[str]]:
     """
     Specify MODIFIERS for conditional attributes (Step 2d).
@@ -839,6 +846,7 @@ Return JSON array with modifiers for each conditional attribute."""
         model=model,
         reasoning_effort=reasoning_effort,
         validator=validate_response,
+        on_retry=on_retry,
     )
 
     attr_lookup = {a.name: a for a in conditional_attrs}
@@ -944,6 +952,17 @@ def hydrate_attributes(
             else:
                 print(f"  {step}: {status}")
 
+    def make_retry_callback(step: str) -> RetryCallback:
+        """Create a retry callback for a specific step."""
+        def on_retry(attempt: int, max_retries: int, error_summary: str):
+            if attempt > max_retries:
+                # Retries exhausted
+                report(step, f"⚠️ Validation failed after {max_retries} retries", None)
+            else:
+                # Retrying
+                report(step, f"Retrying ({attempt}/{max_retries}): {error_summary[:40]}...", None)
+        return on_retry
+
     # Step 2a: Independent attributes
     report("2a", "Researching independent distributions...")
     independent_attrs, independent_sources, independent_errors = hydrate_independent(
@@ -953,6 +972,7 @@ def hydrate_attributes(
         context=context,
         model=model,
         reasoning_effort=reasoning_effort,
+        on_retry=make_retry_callback("2a"),
     )
     all_sources.extend(independent_sources)
     all_warnings.extend([f"[2a] {e}" for e in independent_errors])
@@ -968,6 +988,7 @@ def hydrate_attributes(
         context=context,
         model=model,
         reasoning_effort=reasoning_effort,
+        on_retry=make_retry_callback("2b"),
     )
     all_warnings.extend([f"[2b] {e}" for e in derived_errors])
     report("2b", f"Hydrated {len(derived_attrs)} derived", 0)
@@ -983,6 +1004,7 @@ def hydrate_attributes(
         context=context,
         model=model,
         reasoning_effort=reasoning_effort,
+        on_retry=make_retry_callback("2c"),
     )
     all_sources.extend(conditional_sources)
     all_warnings.extend([f"[2c] {e}" for e in conditional_errors])
@@ -999,6 +1021,7 @@ def hydrate_attributes(
         context=context,
         model=model,
         reasoning_effort=reasoning_effort,
+        on_retry=make_retry_callback("2d"),
     )
     all_sources.extend(modifier_sources)
     all_warnings.extend([f"[2d] {e}" for e in modifier_errors])
