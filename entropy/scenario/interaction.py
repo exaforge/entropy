@@ -4,9 +4,9 @@ Selects the appropriate interaction model for how agents will discuss/respond
 to the event and configures how information spreads through the network.
 """
 
-from ..llm import reasoning_call
-from ..models import PopulationSpec
-from .models import (
+from ..core.llm import reasoning_call
+from ..core.models import (
+    PopulationSpec,
     Event,
     InteractionConfig,
     InteractionType,
@@ -105,6 +105,7 @@ INTERACTION_MODEL_SCHEMA = {
 def determine_interaction_model(
     event: Event,
     population_spec: PopulationSpec,
+    network_summary: dict | None = None,
     model: str = "gpt-5",
     reasoning_effort: str = "low",
 ) -> tuple[InteractionConfig, SpreadConfig]:
@@ -119,6 +120,7 @@ def determine_interaction_model(
     Args:
         event: The parsed event definition
         population_spec: The population spec for context
+        network_summary: Optional dict with network statistics (edge_types, node_count)
         model: LLM model to use
         reasoning_effort: "low", "medium", or "high"
 
@@ -137,6 +139,19 @@ def determine_interaction_model(
         f"- {attr.name} ({attr.type})"
         for attr in population_spec.attributes
     )
+
+    # Build edge type info if available
+    edge_type_info = ""
+    if network_summary and network_summary.get("edge_types"):
+        edge_types = network_summary["edge_types"]
+        edge_type_info = f"""
+### Network Edge Types (use in share_modifiers)
+
+The following edge types exist in this network: {', '.join(edge_types)}
+
+Use these exact edge type names in share_modifier conditions, e.g.:
+- {{"when": "edge_type == '{edge_types[0]}'", "multiply": 1.5, "add": 0}}
+"""
 
     prompt = f"""## Task
 
@@ -159,8 +174,7 @@ Geography: {population_spec.meta.geography or 'Not specified'}
 ### Attributes (use in share_modifiers 'when' clauses)
 
 {attribute_info}
-
-Note: You can also use 'edge_type' in when clauses to reference network edge types.
+{edge_type_info}
 
 ## Interaction Models
 
@@ -222,7 +236,7 @@ Format: {{"when": "expression", "multiply": 1.5, "add": 0.0}}
 Examples:
 - {{"when": "extraversion > 0.7", "multiply": 1.3, "add": 0}}
 - {{"when": "age < 30", "multiply": 1.5, "add": 0}}
-- {{"when": "edge_type == 'household'", "multiply": 2.0, "add": 0}}
+- {{"when": "edge_type == 'colleague'", "multiply": 1.5, "add": 0}} (use actual edge types from network)
 
 ### decay_per_hop (0-1)
 How much information fidelity is lost each time it's passed on.

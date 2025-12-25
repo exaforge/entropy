@@ -13,7 +13,7 @@ import random
 import re
 from typing import Any
 
-from ..models import (
+from ...core.models import (
     NormalDistribution,
     LognormalDistribution,
     UniformDistribution,
@@ -67,9 +67,13 @@ def _resolve_param(
     agent: dict[str, Any] | None,
     param_name: str,
 ) -> float:
-    """Resolve a parameter that may be static or formula-based."""
-    if static_value is not None:
-        return static_value
+    """Resolve a parameter that may be static or formula-based.
+    
+    Formula takes precedence over static value when both are provided.
+    This allows specs to define a fallback static value while using
+    a formula for dynamic computation.
+    """
+    # Formula takes precedence over static value
     if formula is not None:
         if agent is None:
             raise FormulaError(
@@ -77,6 +81,8 @@ def _resolve_param(
             )
         result = eval_safe(formula, agent)
         return float(result)
+    if static_value is not None:
+        return static_value
     raise FormulaError(f"Neither {param_name} nor {param_name}_formula provided")
 
 

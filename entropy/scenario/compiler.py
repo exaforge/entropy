@@ -14,8 +14,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
-from ..models import PopulationSpec
-from .models import (
+from ..core.models import (
+    PopulationSpec,
     ScenarioMeta,
     ScenarioSpec,
     SimulationConfig,
@@ -188,6 +188,7 @@ def create_scenario(
     interaction_config, spread_config = determine_interaction_model(
         event,
         population_spec,
+        network_summary,
     )
 
     # =========================================================================
@@ -239,17 +240,12 @@ def create_scenario(
     # Validate
     # =========================================================================
 
-    # Load agents for validation
-    agents = None
-    if agents_path.exists():
-        try:
-            with open(agents_path) as f:
-                data = json.load(f)
-                agents = data.get('agents', data)
-        except Exception:
-            pass
+    # Note: We skip loading agents.json content here - it was only used for a
+    # count validation warning. The file path is stored in metadata and Phase 3
+    # (simulation) will load it when needed. This saves memory/time for large
+    # agent files.
 
-    # Load network for validation
+    # Load network for validation (needed for edge type reference validation)
     network = None
     if network_path.exists():
         try:
@@ -258,7 +254,7 @@ def create_scenario(
         except Exception:
             pass
 
-    validation_result = validate_scenario(spec, population_spec, agents, network)
+    validation_result = validate_scenario(spec, population_spec, None, network)
 
     # =========================================================================
     # Save if requested
