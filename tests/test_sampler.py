@@ -581,3 +581,719 @@ class TestEdgeCases:
         # Check ID padding
         assert result.agents[0]["_id"] == "agent_000"
         assert result.agents[999]["_id"] == "agent_999"
+
+
+class TestSpecExpressionConstraints:
+    """Tests for spec_expression constraint type (spec-level validation, not agent-level)."""
+
+    def test_spec_expression_not_evaluated_against_agents(self):
+        """Constraints with type='spec_expression' should not appear in violation reports."""
+        spec = PopulationSpec(
+            meta=SpecMeta(description="Test", size=100),
+            grounding=GroundingSummary(
+                overall="low", sources_count=0, strong_count=0, medium_count=0, low_count=1, sources=[]
+            ),
+            attributes=[
+                AttributeSpec(
+                    name="category",
+                    type="categorical",
+                    category="universal",
+                    description="A category",
+                    sampling=SamplingConfig(
+                        strategy="independent",
+                        distribution=CategoricalDistribution(
+                            options=["a", "b", "c"],
+                            weights=[0.5, 0.3, 0.2],
+                        ),
+                    ),
+                    grounding=GroundingInfo(level="low", method="estimated"),
+                    constraints=[
+                        # This is a spec-level constraint - validates YAML definition, not agents
+                        Constraint(
+                            type="spec_expression",
+                            expression="sum(weights)==1",
+                            reason="Weights must sum to 1",
+                        ),
+                    ],
+                ),
+            ],
+            sampling_order=["category"],
+        )
+
+        result = sample_population(spec, count=100, seed=42)
+
+        # spec_expression constraints should NOT appear in violation reports
+        # (they validate the spec definition, not individual agents)
+        assert "sum(weights)" not in str(result.stats.constraint_violations)
+        assert len(result.stats.constraint_violations) == 0
+
+    def test_agent_expression_still_checked(self):
+        """Constraints with type='expression' should still be validated against agents."""
+        spec = PopulationSpec(
+            meta=SpecMeta(description="Test", size=100),
+            grounding=GroundingSummary(
+                overall="low", sources_count=0, strong_count=0, medium_count=0, low_count=2, sources=[]
+            ),
+            attributes=[
+                AttributeSpec(
+                    name="value_a",
+                    type="int",
+                    category="universal",
+                    description="Value A",
+                    sampling=SamplingConfig(
+                        strategy="independent",
+                        distribution=NormalDistribution(mean=10.0, std=3.0),
+                    ),
+                    grounding=GroundingInfo(level="low", method="estimated"),
+                    constraints=[],
+                ),
+                AttributeSpec(
+                    name="value_b",
+                    type="int",
+                    category="universal",
+                    description="Value B (should be <= value_a)",
+                    sampling=SamplingConfig(
+                        strategy="independent",
+                        distribution=NormalDistribution(mean=15.0, std=3.0),  # Often exceeds value_a
+                    ),
+                    grounding=GroundingInfo(level="low", method="estimated"),
+                    constraints=[
+                        # This is an agent-level constraint - should be checked against each agent
+                        Constraint(
+                            type="expression",
+                            expression="value_b <= value_a",
+                            reason="B should not exceed A",
+                        ),
+                    ],
+                ),
+            ],
+            sampling_order=["value_a", "value_b"],
+        )
+
+        result = sample_population(spec, count=100, seed=42)
+
+        # expression constraints SHOULD appear in violation reports if violated
+        # Since value_b (mean=15) often exceeds value_a (mean=10), we expect violations
+        assert len(result.stats.constraint_violations) > 0
+        assert any("value_b <= value_a" in k for k in result.stats.constraint_violations)
+
+
+class TestDynamicBounds:
+    """Tests for formula-based min/max bounds (min_formula, max_formula)."""
+
+    def test_max_formula_enforced(self, rng):
+        """max_formula should clamp values to dynamic upper bound."""
+        dist = NormalDistribution(
+            mean_formula="household_size - 2",
+            std=0.9,
+            min=0,
+            max_formula="household_size - 1",
+        )
+        agent = {"household_size": 3}
+
+        # Sample many times - all should be clamped to max = 3-1 = 2
+        values = [sample_distribution(dist, rng, agent) for _ in range(100)]
+        assert all(v <= 2 for v in values), f"Found value > 2: {max(values)}"
+        assert all(v >= 0 for v in values), f"Found value < 0: {min(values)}"
+
+    def test_min_formula_enforced(self, rng):
+        """min_formula should clamp values to dynamic lower bound."""
+        dist = NormalDistribution(
+            mean=5.0,
+            std=3.0,
+            min_formula="baseline",  # Dynamic min
+            max=20,
+        )
+        agent = {"baseline": 3}
+
+        # Sample many times - all should be >= baseline (3)
+        values = [sample_distribution(dist, rng, agent) for _ in range(100)]
+        assert all(v >= 3 for v in values), f"Found value < 3: {min(values)}"
+
+    def test_both_formula_bounds(self, rng):
+        """Both min_formula and max_formula should work together."""
+        dist = NormalDistribution(
+            mean=50.0,
+            std=20.0,
+            min_formula="lower",
+            max_formula="upper",
+        )
+        agent = {"lower": 30, "upper": 70}
+
+        values = [sample_distribution(dist, rng, agent) for _ in range(100)]
+        assert all(30 <= v <= 70 for v in values), f"Values out of range: min={min(values)}, max={max(values)}"
+
+    def test_formula_takes_precedence_over_static(self, rng):
+        """Formula bounds should take precedence over static bounds."""
+        dist = NormalDistribution(
+            mean=50.0,
+            std=10.0,
+            min=0,  # Static min
+            max=100,  # Static max
+            min_formula="dynamic_min",  # Formula min - should take precedence
+            max_formula="dynamic_max",  # Formula max - should take precedence
+        )
+        agent = {"dynamic_min": 40, "dynamic_max": 60}
+
+        values = [sample_distribution(dist, rng, agent) for _ in range(100)]
+        # Formula bounds (40, 60) should be used, not static (0, 100)
+        assert all(40 <= v <= 60 for v in values), f"Values out of range: min={min(values)}, max={max(values)}"
+
+    def test_lognormal_with_max_formula(self, rng):
+        """max_formula should work with lognormal distribution."""
+        from entropy.core.models.population import LognormalDistribution
+
+        dist = LognormalDistribution(
+            mean=100.0,
+            std=30.0,
+            min=50,
+            max_formula="limit",
+        )
+        agent = {"limit": 150}
+
+        values = [sample_distribution(dist, rng, agent) for _ in range(100)]
+        assert all(v <= 150 for v in values), f"Found value > 150: {max(values)}"
+        assert all(v >= 50 for v in values), f"Found value < 50: {min(values)}"
+
+    def test_beta_with_formula_bounds(self, rng):
+        """Formula bounds should work with beta distribution scaling."""
+        from entropy.core.models.population import BetaDistribution
+
+        dist = BetaDistribution(
+            alpha=2.0,
+            beta=5.0,
+            min_formula="scale_min",
+            max_formula="scale_max",
+        )
+        agent = {"scale_min": 10, "scale_max": 20}
+
+        values = [sample_distribution(dist, rng, agent) for _ in range(100)]
+        # Beta should be scaled to [10, 20]
+        assert all(10 <= v <= 20 for v in values), f"Values out of range: min={min(values)}, max={max(values)}"
+
+    def test_integration_children_count_pattern(self):
+        """Integration test: children_count should never exceed household_size - 1."""
+        spec = PopulationSpec(
+            meta=SpecMeta(description="Test household", size=500),
+            grounding=GroundingSummary(
+                overall="low", sources_count=0, strong_count=0, medium_count=0, low_count=2, sources=[]
+            ),
+            attributes=[
+                AttributeSpec(
+                    name="household_size",
+                    type="int",
+                    category="universal",
+                    description="Household size",
+                    sampling=SamplingConfig(
+                        strategy="independent",
+                        distribution=NormalDistribution(mean=3.0, std=1.0, min=1, max=8),
+                    ),
+                    grounding=GroundingInfo(level="low", method="estimated"),
+                    constraints=[],
+                ),
+                AttributeSpec(
+                    name="children_count",
+                    type="int",
+                    category="universal",
+                    description="Number of children",
+                    sampling=SamplingConfig(
+                        strategy="conditional",
+                        distribution=NormalDistribution(
+                            mean_formula="max(0, household_size - 2)",
+                            std=0.9,
+                            min=0,
+                            max_formula="max(0, household_size - 1)",
+                        ),
+                        depends_on=["household_size"],
+                    ),
+                    grounding=GroundingInfo(level="low", method="estimated"),
+                    constraints=[
+                        Constraint(
+                            type="expression",
+                            expression="children_count <= max(0, household_size - 1)",
+                            reason="Children cannot exceed household size minus one adult",
+                        ),
+                    ],
+                ),
+            ],
+            sampling_order=["household_size", "children_count"],
+        )
+
+        result = sample_population(spec, count=500, seed=42)
+
+        # With max_formula, there should be ZERO violations
+        violations = result.stats.constraint_violations
+        children_violations = {k: v for k, v in violations.items() if "children_count" in k}
+        assert len(children_violations) == 0, f"Found violations: {children_violations}"
+
+        # Also verify by checking actual values
+        for agent in result.agents:
+            assert agent["children_count"] <= max(0, agent["household_size"] - 1), \
+                f"Agent {agent['_id']}: children={agent['children_count']}, household={agent['household_size']}"
+
+    def test_modifier_respects_formula_bounds(self):
+        """Modifiers should respect max_formula bounds after applying multiply/add."""
+        from entropy.core.models.population import Modifier
+        
+        spec = PopulationSpec(
+            meta=SpecMeta(description="Test modifier bounds", size=500),
+            grounding=GroundingSummary(
+                overall="low", sources_count=0, strong_count=0, medium_count=0, low_count=2, sources=[]
+            ),
+            attributes=[
+                AttributeSpec(
+                    name="household_size",
+                    type="int",
+                    category="universal",
+                    description="Household size",
+                    sampling=SamplingConfig(
+                        strategy="independent",
+                        distribution=NormalDistribution(mean=4.0, std=1.0, min=2, max=6),
+                    ),
+                    grounding=GroundingInfo(level="low", method="estimated"),
+                    constraints=[],
+                ),
+                AttributeSpec(
+                    name="children_count",
+                    type="int",
+                    category="universal",
+                    description="Number of children",
+                    sampling=SamplingConfig(
+                        strategy="conditional",
+                        distribution=NormalDistribution(
+                            mean_formula="max(0, household_size - 2)",
+                            std=0.9,
+                            min=0,
+                            max_formula="max(0, household_size - 1)",  # Dynamic max bound
+                        ),
+                        depends_on=["household_size"],
+                        modifiers=[
+                            # This modifier adds values - but result should still be clamped
+                            Modifier(when="household_size >= 4", multiply=1.2, add=0.5),
+                        ],
+                    ),
+                    grounding=GroundingInfo(level="low", method="estimated"),
+                    constraints=[],
+                ),
+            ],
+            sampling_order=["household_size", "children_count"],
+        )
+
+        result = sample_population(spec, count=500, seed=42)
+
+        # Even with modifier multiply/add, values should still respect max_formula
+        for agent in result.agents:
+            max_allowed = max(0, agent["household_size"] - 1)
+            assert agent["children_count"] <= max_allowed, \
+                f"Agent {agent['_id']}: children={agent['children_count']}, household={agent['household_size']}, max_allowed={max_allowed}"
+
+
+class TestConstraintValidation:
+    """Tests for constraint validation logic in hydrator_utils and quick_validate."""
+
+    def test_is_spec_level_constraint_sum_weights(self):
+        """Test detection of sum(weights) as spec-level constraint."""
+        from entropy.population.architect.hydrator_utils import _is_spec_level_constraint
+
+        assert _is_spec_level_constraint("sum(weights)==1") is True
+        assert _is_spec_level_constraint("sum(weights) == 1.0") is True
+
+    def test_is_spec_level_constraint_weights_index(self):
+        """Test detection of weights[i] as spec-level constraint."""
+        from entropy.population.architect.hydrator_utils import _is_spec_level_constraint
+
+        assert _is_spec_level_constraint("weights[0]+weights[1]==1") is True
+        assert _is_spec_level_constraint("weights[0] >= 0") is True
+
+    def test_is_spec_level_constraint_options(self):
+        """Test detection of options as spec-level constraint."""
+        from entropy.population.architect.hydrator_utils import _is_spec_level_constraint
+
+        assert _is_spec_level_constraint("len(options) > 0") is True
+        assert _is_spec_level_constraint("options[0] != ''") is True
+
+    def test_is_spec_level_constraint_agent_expression(self):
+        """Test that agent-level expressions are not flagged as spec-level."""
+        from entropy.population.architect.hydrator_utils import _is_spec_level_constraint
+
+        assert _is_spec_level_constraint("children_count <= household_size - 1") is False
+        assert _is_spec_level_constraint("years_experience <= age - 23") is False
+        assert _is_spec_level_constraint("x > 0") is False
+
+    def test_extract_bound_upper_bound(self):
+        """Test extraction of upper bound from constraint."""
+        from entropy.population.architect.hydrator_utils import _extract_bound_from_constraint
+
+        bound_type, bound_expr, is_strict = _extract_bound_from_constraint(
+            "children_count <= household_size - 1", "children_count"
+        )
+        assert bound_type == "max"
+        assert bound_expr == "household_size - 1"
+        assert is_strict is False
+
+    def test_extract_bound_strict_upper_bound(self):
+        """Test extraction of strict upper bound."""
+        from entropy.population.architect.hydrator_utils import _extract_bound_from_constraint
+
+        bound_type, bound_expr, is_strict = _extract_bound_from_constraint(
+            "x < y", "x"
+        )
+        assert bound_type == "max"
+        assert bound_expr == "y"
+        assert is_strict is True
+
+    def test_extract_bound_lower_bound(self):
+        """Test extraction of lower bound from constraint."""
+        from entropy.population.architect.hydrator_utils import _extract_bound_from_constraint
+
+        bound_type, bound_expr, is_strict = _extract_bound_from_constraint(
+            "x >= min_value + 5", "x"
+        )
+        assert bound_type == "min"
+        assert bound_expr == "min_value + 5"
+        assert is_strict is False
+
+    def test_extract_bound_reversed_form(self):
+        """Test extraction when attr is on the right side."""
+        from entropy.population.architect.hydrator_utils import _extract_bound_from_constraint
+
+        bound_type, bound_expr, is_strict = _extract_bound_from_constraint(
+            "household_size - 1 >= children_count", "children_count"
+        )
+        assert bound_type == "max"
+        assert bound_expr == "household_size - 1"
+
+    def test_extract_bound_complex_expression(self):
+        """Test extraction with complex bound expression."""
+        from entropy.population.architect.hydrator_utils import _extract_bound_from_constraint
+
+        bound_type, bound_expr, is_strict = _extract_bound_from_constraint(
+            "children_count <= max(0, household_size - 1)", "children_count"
+        )
+        assert bound_type == "max"
+        assert bound_expr == "max(0, household_size - 1)"
+
+    def test_extract_bound_no_match(self):
+        """Test extraction returns None for non-bound constraints."""
+        from entropy.population.architect.hydrator_utils import _extract_bound_from_constraint
+
+        bound_type, bound_expr, is_strict = _extract_bound_from_constraint(
+            "a + b == c", "a"
+        )
+        assert bound_type is None
+        assert bound_expr is None
+
+    def test_validate_independent_catches_spec_level_wrong_type(self):
+        """validate_independent_hydration should catch spec-level constraints with wrong type."""
+        from entropy.population.architect.hydrator_utils import validate_independent_hydration
+        from entropy.core.models.population import (
+            HydratedAttribute, SamplingConfig, CategoricalDistribution, Constraint, GroundingInfo
+        )
+
+        attrs = [
+            HydratedAttribute(
+                name="gender",
+                type="categorical",
+                category="universal",
+                description="Gender",
+                sampling=SamplingConfig(
+                    strategy="independent",
+                    distribution=CategoricalDistribution(
+                        options=["male", "female"],
+                        weights=[0.5, 0.5],
+                    ),
+                ),
+                grounding=GroundingInfo(level="low", method="estimated"),
+                constraints=[
+                    Constraint(
+                        type="expression",  # WRONG - should be spec_expression
+                        expression="sum(weights)==1",
+                    ),
+                ],
+            ),
+        ]
+
+        errors = validate_independent_hydration(attrs)
+        assert len(errors) > 0
+        assert any("spec_expression" in e for e in errors)
+        assert any("sum(weights)" in e for e in errors)
+
+    def test_validate_conditional_base_catches_missing_max_formula(self):
+        """validate_conditional_base should catch missing max_formula when constraint needs it."""
+        from entropy.population.architect.hydrator_utils import validate_conditional_base
+        from entropy.core.models.population import (
+            HydratedAttribute, SamplingConfig, NormalDistribution, Constraint, GroundingInfo
+        )
+
+        attrs = [
+            HydratedAttribute(
+                name="children_count",
+                type="int",
+                category="universal",
+                description="Number of children",
+                sampling=SamplingConfig(
+                    strategy="conditional",
+                    distribution=NormalDistribution(
+                        mean_formula="household_size - 2",
+                        std=0.9,
+                        min=0,
+                        # NO max_formula - this is the error
+                    ),
+                    depends_on=["household_size"],
+                ),
+                grounding=GroundingInfo(level="low", method="estimated"),
+                constraints=[
+                    Constraint(
+                        type="expression",
+                        expression="children_count <= household_size - 1",
+                    ),
+                ],
+            ),
+        ]
+
+        errors = validate_conditional_base(attrs)
+        assert len(errors) > 0
+        assert any("max_formula" in e for e in errors)
+
+    def test_validate_conditional_base_no_error_with_max_formula(self):
+        """validate_conditional_base should pass when max_formula is present."""
+        from entropy.population.architect.hydrator_utils import validate_conditional_base
+        from entropy.core.models.population import (
+            HydratedAttribute, SamplingConfig, NormalDistribution, Constraint, GroundingInfo
+        )
+
+        attrs = [
+            HydratedAttribute(
+                name="children_count",
+                type="int",
+                category="universal",
+                description="Number of children",
+                sampling=SamplingConfig(
+                    strategy="conditional",
+                    distribution=NormalDistribution(
+                        mean_formula="household_size - 2",
+                        std=0.9,
+                        min=0,
+                        max_formula="household_size - 1",  # Has max_formula
+                    ),
+                    depends_on=["household_size"],
+                ),
+                grounding=GroundingInfo(level="low", method="estimated"),
+                constraints=[
+                    Constraint(
+                        type="expression",
+                        expression="children_count <= household_size - 1",
+                    ),
+                ],
+            ),
+        ]
+
+        errors = validate_conditional_base(attrs)
+        # Should have no errors about max_formula
+        assert not any("max_formula" in str(e) for e in errors)
+
+
+class TestQuickValidation:
+    """Tests for quick_validate.py validation functions."""
+
+    def test_quick_validate_catches_spec_level_constraint(self):
+        """validate_independent_response should catch spec-level constraints with wrong type."""
+        from entropy.population.architect.quick_validate import validate_independent_response
+
+        data = {
+            "attributes": [
+                {
+                    "name": "gender",
+                    "distribution": {
+                        "type": "categorical",
+                        "options": ["male", "female"],
+                        "weights": [0.5, 0.5],
+                    },
+                    "constraints": [
+                        {
+                            "type": "expression",  # WRONG
+                            "expression": "sum(weights)==1",
+                        },
+                    ],
+                },
+            ],
+        }
+
+        result = validate_independent_response(data, ["gender"])
+        assert not result.valid
+        assert len(result.errors) > 0
+        assert any("spec_expression" in e.suggestion for e in result.errors)
+
+    def test_quick_validate_conditional_catches_missing_max_formula(self):
+        """validate_conditional_base_response should catch missing max_formula."""
+        from entropy.population.architect.quick_validate import validate_conditional_base_response
+
+        data = {
+            "attributes": [
+                {
+                    "name": "children_count",
+                    "distribution": {
+                        "type": "normal",
+                        "mean": 0,
+                        "std": 0.9,
+                        "mean_formula": "household_size - 2",
+                        "std_formula": None,
+                        "min": 0,
+                        "max": None,
+                        "min_formula": None,
+                        "max_formula": None,  # Missing!
+                    },
+                    "constraints": [
+                        {
+                            "type": "expression",
+                            "expression": "children_count <= household_size - 1",
+                        },
+                    ],
+                },
+            ],
+        }
+
+        result = validate_conditional_base_response(data, ["children_count"])
+        assert not result.valid
+        assert len(result.errors) > 0
+        assert any("max_formula" in e.suggestion for e in result.errors)
+
+    def test_quick_validate_conditional_passes_with_max_formula(self):
+        """validate_conditional_base_response should pass when max_formula is present."""
+        from entropy.population.architect.quick_validate import validate_conditional_base_response
+
+        data = {
+            "attributes": [
+                {
+                    "name": "children_count",
+                    "distribution": {
+                        "type": "normal",
+                        "mean": 0,
+                        "std": 0.9,
+                        "mean_formula": "household_size - 2",
+                        "std_formula": None,
+                        "min": 0,
+                        "max": None,
+                        "min_formula": None,
+                        "max_formula": "household_size - 1",  # Present!
+                    },
+                    "constraints": [
+                        {
+                            "type": "expression",
+                            "expression": "children_count <= household_size - 1",
+                        },
+                    ],
+                },
+            ],
+        }
+
+        result = validate_conditional_base_response(data, ["children_count"])
+        # Should not have errors about max_formula
+        assert not any("max_formula" in str(e.suggestion) for e in result.errors)
+
+    def test_quick_validate_error_message_is_prescriptive(self):
+        """Error messages should tell LLM exactly what to fix."""
+        from entropy.population.architect.quick_validate import validate_conditional_base_response
+
+        data = {
+            "attributes": [
+                {
+                    "name": "children_count",
+                    "distribution": {
+                        "type": "normal",
+                        "mean": 0,
+                        "std": 0.9,
+                        "mean_formula": "household_size - 2",
+                        "std_formula": None,
+                        "min": 0,
+                        "max": None,
+                        "min_formula": None,
+                        "max_formula": None,
+                    },
+                    "constraints": [
+                        {
+                            "type": "expression",
+                            "expression": "children_count <= max(0, household_size - 1)",
+                        },
+                    ],
+                },
+            ],
+        }
+
+        result = validate_conditional_base_response(data, ["children_count"])
+
+        # The suggestion should include the exact formula to add
+        formatted = result.format_for_retry()
+        assert "max_formula" in formatted
+        assert "max(0, household_size - 1)" in formatted
+
+    def test_quick_validate_accepts_static_max_for_constraint(self):
+        """Static max should satisfy max bound requirement (not just max_formula)."""
+        from entropy.population.architect.quick_validate import validate_conditional_base_response
+
+        data = {
+            "attributes": [
+                {
+                    "name": "score",
+                    "distribution": {
+                        "type": "normal",
+                        "mean": 50,
+                        "std": 20,
+                        "mean_formula": None,
+                        "std_formula": None,
+                        "min": 0,
+                        "max": 100,  # Static max enforces the constraint
+                        "min_formula": None,
+                        "max_formula": None,
+                    },
+                    "constraints": [
+                        {
+                            "type": "expression",
+                            "expression": "score <= 100",
+                        },
+                    ],
+                },
+            ],
+        }
+
+        result = validate_conditional_base_response(data, ["score"])
+        # Should NOT error - static max=100 satisfies the constraint
+        assert not any("max_formula" in str(e.suggestion) for e in result.errors)
+
+    def test_validate_conditional_base_accepts_static_max(self):
+        """validate_conditional_base should accept static max for max bound constraints."""
+        from entropy.population.architect.hydrator_utils import validate_conditional_base
+        from entropy.core.models.population import (
+            HydratedAttribute, SamplingConfig, NormalDistribution, Constraint, GroundingInfo
+        )
+
+        attrs = [
+            HydratedAttribute(
+                name="score",
+                type="int",
+                category="universal",
+                description="Score",
+                sampling=SamplingConfig(
+                    strategy="conditional",
+                    distribution=NormalDistribution(
+                        mean=50,
+                        std=20,
+                        min=0,
+                        max=100,  # Static max
+                        # No max_formula needed
+                    ),
+                    depends_on=[],
+                ),
+                grounding=GroundingInfo(level="low", method="estimated"),
+                constraints=[
+                    Constraint(
+                        type="expression",
+                        expression="score <= 100",
+                    ),
+                ],
+            ),
+        ]
+
+        errors = validate_conditional_base(attrs)
+        # Should NOT error about max_formula
+        assert not any("max_formula" in str(e) for e in errors)

@@ -12,6 +12,7 @@ A comprehensive guide to how Entropy works: from population spec creation throug
    - [Step 1: Attribute Selection](#step-1-attribute-selection)
    - [Step 2: Distribution Hydration](#step-2-distribution-hydration-4-sub-steps)
    - [Step 3: Constraint Binding](#step-3-constraint-binding)
+   - [Step 4: Persona Template Generation](#step-4-persona-template-generation)
    - [Final Validation System](#final-validation-system)
    - [Sampling](#sampling)
    - [Network Generation](#network-generation)
@@ -406,6 +407,161 @@ After all sub-steps complete, this validates that each attribute has the correct
 
 ---
 
+### Constraint Types
+
+Constraints define rules for attribute values. There are two categories:
+
+#### Spec-Level Constraints (`spec_expression`)
+
+These validate the **YAML specification itself**, not individual agents. They are checked during spec validation, NOT during sampling.
+
+**Use for:**
+- `sum(weights)==1` - validates categorical weights sum to 1
+- `weights[0]+weights[1]==1` - validates weight arrays
+- `len(options) > 0` - validates options exist
+
+**Example:**
+```yaml
+constraints:
+  - type: spec_expression
+    expression: sum(weights)==1
+    reason: Category weights must sum to 1.
+```
+
+#### Agent-Level Constraints (`expression`)
+
+These are validated against **each sampled agent**. Violations are reported but don't block sampling.
+
+**Use for:**
+- `children_count <= household_size - 1` - validates logical relationships between agent attributes
+- `years_experience <= age - 23` - validates derived relationships
+
+**Example:**
+```yaml
+constraints:
+  - type: expression
+    expression: children_count <= max(0, household_size - 1)
+    reason: Children cannot exceed household size minus one adult.
+```
+
+#### Hard Constraints (`hard_min`, `hard_max`)
+
+These are enforced during sampling via clamping. Values outside bounds are automatically clipped.
+
+```yaml
+constraints:
+  - type: hard_min
+    value: 0
+    reason: Cannot be negative.
+  - type: hard_max
+    value: 100
+    reason: Maximum allowed value.
+```
+
+---
+
+### Dynamic Bounds with Formula
+
+For attributes where valid bounds depend on other attributes, use `min_formula` and `max_formula`:
+
+```yaml
+children_count:
+  sampling:
+    strategy: conditional
+    distribution:
+      type: normal
+      mean_formula: "max(0, household_size - 2)"
+      std: 0.9
+      min: 0
+      max_formula: "max(0, household_size - 1)"  # Dynamic upper bound
+    depends_on: [household_size]
+```
+
+**Supported distributions:** `normal`, `lognormal`, `beta`
+
+**Formula precedence:** When both static and formula bounds are provided, **formula takes precedence**.
+
+**Available in formulas:**
+- Any attribute in `depends_on`
+- Built-in functions: `max()`, `min()`, `abs()`, `round()`, `int()`, `float()`
+
+**Benefits:**
+- Guarantees zero constraint violations for the bounded attribute
+- More efficient than sampling + validation + rejection
+- Self-documenting specification
+
+---
+
+### Constraint and Formula Bound Requirements
+
+**IMPORTANT:** When creating an `expression` constraint with an inequality, you MUST also add the corresponding formula bound to enforce it during sampling.
+
+| Constraint Pattern | Required Distribution Field |
+|-------------------|----------------------------|
+| `attr <= expr` | `max_formula: "expr"` |
+| `attr < expr` | `max_formula: "expr"` |
+| `attr >= expr` | `min_formula: "expr"` |
+| `attr > expr` | `min_formula: "expr"` |
+
+**Example - Correct:**
+```yaml
+children_count:
+  sampling:
+    distribution:
+      type: normal
+      mean_formula: "max(0, household_size - 2)"
+      std: 0.9
+      min: 0
+      max_formula: "max(0, household_size - 1)"  # Enforces the constraint
+    depends_on: [household_size]
+  constraints:
+    - type: expression
+      expression: "children_count <= max(0, household_size - 1)"
+      reason: Children cannot exceed household size minus one adult.
+```
+
+**Example - Incorrect (will trigger validation error):**
+```yaml
+children_count:
+  sampling:
+    distribution:
+      type: normal
+      mean_formula: "max(0, household_size - 2)"
+      std: 0.9
+      min: 0
+      # Missing max_formula!
+    depends_on: [household_size]
+  constraints:
+    - type: expression
+      expression: "children_count <= max(0, household_size - 1)"
+```
+
+### Validation and LLM Retry
+
+The hydration pipeline validates LLM outputs and triggers retry with prescriptive error messages:
+
+**Validation Rule 1: Spec-Level Constraint Type**
+```
+ERROR in gender.constraints:
+  Value: 'sum(weights)==1'
+  Problem: constraint references spec-level variables (weights/options) but uses type='expression'
+  Fix: Change to type='spec_expression' — this validates the YAML spec itself, not individual agents
+```
+
+**Validation Rule 2: Missing Formula Bounds**
+```
+ERROR in children_count.distribution:
+  Value: constraint 'children_count <= household_size - 1'
+  Problem: constraint exists but distribution has no max_formula to enforce it during sampling
+  Fix: Add to distribution: max_formula: 'household_size - 1'
+```
+
+These validations are implemented in:
+- `entropy/population/architect/hydrator_utils.py` - post-hydration validation
+- `entropy/population/architect/quick_validate.py` - immediate LLM response validation
+
+---
+
 ### Step 3: Constraint Binding
 
 **File:** `entropy/population/architect/binder.py`
@@ -430,6 +586,61 @@ After all sub-steps complete, this validates that each attribute has the correct
 - `CircularDependencyError` - A depends on B, B depends on A
 - Unknown dependency references (removed with warning)
 - Strategy/dependency inconsistencies
+
+---
+
+### Step 4: Persona Template Generation
+
+**File:** `entropy/population/architect/persona_template.py`
+
+**Purpose:** Generate an LLM-authored template that converts agent attributes into natural language persona descriptions for simulation.
+
+**LLM Call:** `simple_call()` with `gpt-5-mini`
+
+**What it does:**
+
+- Analyzes the population spec's attributes
+- Generates a template with `{attribute}` placeholders
+- Template uses Python's `.format()` syntax (NOT Jinja2)
+- Produces natural, fluent persona descriptions
+
+**CLI Interactive Flow:**
+
+1. Generate initial template via LLM
+2. Display template and sample persona preview
+3. User can: (a)ccept, (r)evise with feedback, or (s)kip
+4. If revised, LLM regenerates with user feedback
+5. Final template stored in `spec.meta.persona_template`
+
+**Example Template:**
+
+```
+I am a {age}-year-old {gender} surgeon specializing in {surgical_specialty}.
+I have been practicing for {years_experience} years at a {employer_type}.
+My approach to new technology is generally {tech_adoption_tendency}, and I
+consider myself {risk_tolerance} when it comes to clinical decisions.
+```
+
+**Example Rendered Persona:**
+
+```
+I am a 47-year-old male surgeon specializing in Cardiac_surgery.
+I have been practicing for 19 years at a University_hospital.
+My approach to new technology is generally cautious, and I
+consider myself moderate when it comes to clinical decisions.
+```
+
+**Functions:**
+
+| Function                   | Purpose                                |
+| -------------------------- | -------------------------------------- |
+| `generate_persona_template()` | Initial template generation via LLM |
+| `validate_persona_template()` | Test template with sample agent data |
+| `refine_persona_template()` | Regenerate with user feedback        |
+
+**Fallback Behavior:**
+
+If template generation fails or user skips, simulation uses a basic hardcoded persona format that lists key attributes.
 
 ---
 
@@ -612,7 +823,12 @@ Found 4 fix(es):
 2. **Attribute Selection** - Pass base as context, discover NEW attributes
 3. **Hydration** - Research distributions, can reference base attrs (with intermediate validation per sub-step)
 4. **Binding** - Topological sort with cross-layer dependencies
-5. **Merge** - `base_spec.merge(overlay_spec)`
+5. **Merge** - `base_spec.merge(overlay_spec)` (sets `persona_template=None`)
+6. **Persona Template Regeneration** - Generate new template including ALL attributes (base + overlay)
+
+**Why Regenerate Template:**
+
+The base spec's persona template only references base attributes. After merge, the overlay adds new scenario-specific attributes (e.g., `ai_trust_level`, `tech_adoption_tendency`) that should be included in agent personas. The CLI always regenerates the template after merge to ensure all attributes are available.
 
 **New Attributes Example:**
 
@@ -817,8 +1033,10 @@ simulation: ...
    - Tracks reasoning history
 
 3. **Generate Personas** (`entropy/simulation/persona.py`)
-   - Create natural language persona for each agent
-   - Used in reasoning prompts
+   - Render natural language persona for each agent using the spec's `persona_template`
+   - Uses Python's `.format()` to substitute `{attribute}` placeholders with agent values
+   - Falls back to basic hardcoded format if template is missing or fails
+   - Personas are used in reasoning prompts to give agents identity
 
 ### Simulation Loop
 
@@ -976,7 +1194,11 @@ entropy/
 │   │   │                           #   - validate_conditional_base()
 │   │   │                           #   - validate_modifiers()
 │   │   │                           #   - validate_strategy_consistency()
-│   │   └── binder.py               # Step 3: Dependency graph
+│   │   ├── binder.py               # Step 3: Dependency graph
+│   │   └── persona_template.py     # Step 4: Persona template generation
+│   │                               #   - generate_persona_template()
+│   │                               #   - validate_persona_template()
+│   │                               #   - refine_persona_template()
 │   │
 │   ├── sampler/
 │   │   ├── core.py                 # Main sampling loop
@@ -1009,7 +1231,9 @@ entropy/
 │   ├── engine.py                   # Main simulation loop
 │   │                               # NOTE: Loads agents.json here
 │   ├── state.py                    # SQLite state manager
-│   ├── persona.py                  # Persona generation
+│   ├── persona.py                  # Persona rendering
+│   │                               #   - render_persona(): template.format(**agent)
+│   │                               #   - generate_persona(): uses template or fallback
 │   ├── reasoning.py                # LLM reasoning calls
 │   ├── propagation.py              # Exposure propagation
 │   ├── stopping.py                 # Stopping conditions
@@ -1093,6 +1317,14 @@ entropy/
                                      │ (errors → FIX or FAIL)
          ┌───────────────────────────┘
          ▼
+  ┌──────────────────┐      ┌──────────────────┐
+  │ generate_persona │──────│ persona_template │  ◀── Step 4: Template generation
+  │ _template()      │      │ with {attr}      │
+  │ (gpt-5-mini)     │      │ placeholders     │
+  └──────────────────┘      └────────┬─────────┘
+                                     │
+         ┌───────────────────────────┘
+         ▼
   ┌──────────────────┐
   │ build_spec       │──────▶ surgeons_base.yaml
   └──────────────────┘
@@ -1115,8 +1347,18 @@ entropy/
                                      │
                                      ▼
                    ┌──────────────────┐
-                   │ base.merge(overlay)│──────▶ surgeons.yaml (43 attrs)
-                   └──────────────────┘
+                   │ base.merge(overlay)│  (persona_template set to None)
+                   └────────┬─────────┘
+                            │
+                            ▼
+                   ┌──────────────────┐
+                   │ generate_persona │  ◀── Regenerate with ALL attributes
+                   │ _template()      │      (base + overlay attrs)
+                   │ (gpt-5-mini)     │
+                   └────────┬─────────┘
+                            │
+                            ▼
+                   surgeons.yaml (43 attrs + new persona_template)
 
 
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -1196,7 +1438,8 @@ entropy/
            │  │  4. FOR EACH agent to reason:                      │
            │  │     │                                               │
            │  │     ├──▶ build_reasoning_context()                 │
-           │  │     │    └──▶ persona + exposures + peer opinions  │
+           │  │     │    └──▶ render_persona(agent, template)      │
+           │  │     │         + exposures + peer opinions          │
            │  │     │                                               │
            │  │     ├──▶ reason_agent() [LLM CALL]                 │
            │  │     │    └──▶ gpt-5-mini structured output         │

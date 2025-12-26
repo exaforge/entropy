@@ -17,7 +17,12 @@ from ...population.architect import (
 from ...population.architect.binder import CircularDependencyError
 from ...population.validator import validate_spec
 from ..app import app, console
-from ..display import display_discovered_attributes, display_spec_summary, display_validation_result
+from ..display import (
+    display_discovered_attributes,
+    display_spec_summary,
+    display_validation_result,
+    generate_and_review_persona_template,
+)
 from ..utils import format_elapsed
 
 
@@ -193,6 +198,12 @@ def spec_command(
         console.print()
         console.print("[red]Spec validation failed. Please fix the errors above.[/red]")
         raise typer.Exit(1)
+
+    # Step 5: Persona Template Generation
+    persona_template = generate_and_review_persona_template(population_spec, yes)
+    if persona_template:
+        population_spec.meta.persona_template = persona_template
+        console.print(f"[green]✓[/green] Persona template added to spec")
 
     # Human Checkpoint #2
     display_spec_summary(population_spec)
