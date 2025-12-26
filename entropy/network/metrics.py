@@ -11,6 +11,7 @@ from typing import Any
 
 try:
     import networkx as nx
+
     HAS_NETWORKX = True
 except ImportError:
     HAS_NETWORKX = False
@@ -28,6 +29,7 @@ class NetworkMetrics:
         - largest_component_ratio: >0.95
         - degree_assortativity: 0.1-0.3
     """
+
     node_count: int
     edge_count: int
     avg_degree: float
@@ -47,28 +49,46 @@ class NetworkMetrics:
         warnings = []
 
         if self.avg_degree < 15:
-            warnings.append(f"avg_degree {self.avg_degree:.1f} below expected range (15-25)")
+            warnings.append(
+                f"avg_degree {self.avg_degree:.1f} below expected range (15-25)"
+            )
         elif self.avg_degree > 25:
-            warnings.append(f"avg_degree {self.avg_degree:.1f} above expected range (15-25)")
+            warnings.append(
+                f"avg_degree {self.avg_degree:.1f} above expected range (15-25)"
+            )
 
         if self.clustering_coefficient < 0.3:
-            warnings.append(f"clustering_coefficient {self.clustering_coefficient:.2f} below expected range (0.3-0.5)")
+            warnings.append(
+                f"clustering_coefficient {self.clustering_coefficient:.2f} below expected range (0.3-0.5)"
+            )
         elif self.clustering_coefficient > 0.5:
-            warnings.append(f"clustering_coefficient {self.clustering_coefficient:.2f} above expected range (0.3-0.5)")
+            warnings.append(
+                f"clustering_coefficient {self.clustering_coefficient:.2f} above expected range (0.3-0.5)"
+            )
 
         if self.avg_path_length is not None:
             if self.avg_path_length < 3:
-                warnings.append(f"avg_path_length {self.avg_path_length:.2f} below expected range (3-5)")
+                warnings.append(
+                    f"avg_path_length {self.avg_path_length:.2f} below expected range (3-5)"
+                )
             elif self.avg_path_length > 5:
-                warnings.append(f"avg_path_length {self.avg_path_length:.2f} above expected range (3-5)")
+                warnings.append(
+                    f"avg_path_length {self.avg_path_length:.2f} above expected range (3-5)"
+                )
 
         if self.modularity < 0.4:
-            warnings.append(f"modularity {self.modularity:.2f} below expected range (0.4-0.7)")
+            warnings.append(
+                f"modularity {self.modularity:.2f} below expected range (0.4-0.7)"
+            )
         elif self.modularity > 0.7:
-            warnings.append(f"modularity {self.modularity:.2f} above expected range (0.4-0.7)")
+            warnings.append(
+                f"modularity {self.modularity:.2f} above expected range (0.4-0.7)"
+            )
 
         if self.largest_component_ratio < 0.95:
-            warnings.append(f"largest_component_ratio {self.largest_component_ratio:.2f} below expected (>0.95)")
+            warnings.append(
+                f"largest_component_ratio {self.largest_component_ratio:.2f} below expected (>0.95)"
+            )
 
         return len(warnings) == 0, warnings
 
@@ -85,6 +105,7 @@ class NodeMetrics:
         echo_chamber_score: % of edges within same cluster
         local_clustering: Node clustering coefficient
     """
+
     degree: int
     influence_score: float
     betweenness: float
@@ -107,7 +128,9 @@ def _build_networkx_graph(
         NetworkX Graph object
     """
     if not HAS_NETWORKX:
-        raise ImportError("networkx is required for network metrics. Install with: pip install networkx")
+        raise ImportError(
+            "networkx is required for network metrics. Install with: pip install networkx"
+        )
 
     G = nx.Graph()
     G.add_nodes_from(agent_ids)
@@ -137,7 +160,9 @@ def compute_network_metrics(
         NetworkMetrics with validation metrics
     """
     if not HAS_NETWORKX:
-        raise ImportError("networkx is required for network metrics. Install with: pip install networkx")
+        raise ImportError(
+            "networkx is required for network metrics. Install with: pip install networkx"
+        )
 
     G = _build_networkx_graph(edges, agent_ids)
     n = G.number_of_nodes()
@@ -211,7 +236,9 @@ def compute_node_metrics(
         Dictionary mapping agent_id to NodeMetrics
     """
     if not HAS_NETWORKX:
-        raise ImportError("networkx is required for node metrics. Install with: pip install networkx")
+        raise ImportError(
+            "networkx is required for node metrics. Install with: pip install networkx"
+        )
 
     G = _build_networkx_graph(edges, agent_ids)
 
@@ -286,7 +313,11 @@ def validate_network(
         print(f"  Edges: {metrics.edge_count}")
         print(f"  Avg Degree: {metrics.avg_degree:.2f}")
         print(f"  Clustering: {metrics.clustering_coefficient:.3f}")
-        print(f"  Avg Path Length: {metrics.avg_path_length:.2f}" if metrics.avg_path_length else "  Avg Path Length: N/A (disconnected)")
+        print(
+            f"  Avg Path Length: {metrics.avg_path_length:.2f}"
+            if metrics.avg_path_length
+            else "  Avg Path Length: N/A (disconnected)"
+        )
         print(f"  Modularity: {metrics.modularity:.3f}")
         print(f"  Largest Component: {metrics.largest_component_ratio:.1%}")
         print(f"  Degree Assortativity: {metrics.degree_assortativity:.3f}")

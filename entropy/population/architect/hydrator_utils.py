@@ -27,7 +27,21 @@ from ...core.models import (
 # Constants
 # =============================================================================
 
-BUILTIN_NAMES = {'True', 'False', 'true', 'false', 'None', 'abs', 'min', 'max', 'round', 'int', 'float', 'str', 'len'}
+BUILTIN_NAMES = {
+    "True",
+    "False",
+    "true",
+    "false",
+    "None",
+    "abs",
+    "min",
+    "max",
+    "round",
+    "int",
+    "float",
+    "str",
+    "len",
+}
 
 
 # =============================================================================
@@ -38,7 +52,7 @@ BUILTIN_NAMES = {'True', 'False', 'true', 'false', 'None', 'abs', 'min', 'max', 
 def extract_names_from_formula(formula: str) -> set[str]:
     """Extract variable names from a Python expression."""
     try:
-        tree = ast.parse(formula, mode='eval')
+        tree = ast.parse(formula, mode="eval")
         names = set()
         for node in ast.walk(tree):
             if isinstance(node, ast.Name):
@@ -55,7 +69,7 @@ def extract_names_from_condition(condition: str) -> set[str]:
     while ignoring string literals and other constants.
     """
     try:
-        tree = ast.parse(condition, mode='eval')
+        tree = ast.parse(condition, mode="eval")
         names = set()
         for node in ast.walk(tree):
             if isinstance(node, ast.Name):
@@ -66,10 +80,23 @@ def extract_names_from_condition(condition: str) -> set[str]:
     except SyntaxError:
         # Fallback to regex for malformed expressions
         # First, remove quoted strings to avoid matching their contents
-        cleaned = re.sub(r"'[^']*'", '', condition)
-        cleaned = re.sub(r'"[^"]*"', '', cleaned)
-        tokens = re.findall(r'\b([a-z_][a-z0-9_]*)\b', cleaned, re.IGNORECASE)
-        keywords = {'and', 'or', 'not', 'in', 'is', 'True', 'False', 'true', 'false', 'None', 'if', 'else'}
+        cleaned = re.sub(r"'[^']*'", "", condition)
+        cleaned = re.sub(r'"[^"]*"', "", cleaned)
+        tokens = re.findall(r"\b([a-z_][a-z0-9_]*)\b", cleaned, re.IGNORECASE)
+        keywords = {
+            "and",
+            "or",
+            "not",
+            "in",
+            "is",
+            "True",
+            "False",
+            "true",
+            "false",
+            "None",
+            "if",
+            "else",
+        }
         return {t for t in tokens if t not in keywords and t not in BUILTIN_NAMES}
 
 
@@ -78,7 +105,7 @@ def extract_names_from_condition(condition: str) -> set[str]:
 # =============================================================================
 
 # Spec-level variable patterns that should use spec_expression, not expression
-SPEC_LEVEL_PATTERNS = {'weights', 'options'}
+SPEC_LEVEL_PATTERNS = {"weights", "options"}
 
 
 def _extract_bound_from_constraint(
@@ -88,17 +115,17 @@ def _extract_bound_from_constraint(
     """Extract bound expression from a constraint.
 
     Parses simple inequality constraints to extract the bound expression.
-    
+
     Args:
         expression: The constraint expression (e.g., "children_count <= household_size - 1")
         attr_name: The attribute name to look for on one side of the inequality
-        
+
     Returns:
         Tuple of (bound_type, bound_expr, is_strict) where:
         - bound_type is "max" or "min" or None if not a simple bound
         - bound_expr is the expression for the bound (e.g., "household_size - 1")
         - is_strict is True for < or > (strict inequality)
-        
+
     Examples:
         >>> _extract_bound_from_constraint("x <= y - 1", "x")
         ("max", "y - 1", False)
@@ -110,63 +137,63 @@ def _extract_bound_from_constraint(
         ("max", "y - 1", False)
     """
     expr = expression.strip()
-    
+
     # Escape attr_name for regex
     escaped_name = re.escape(attr_name)
-    
+
     # Upper bound patterns: attr <= expr, attr < expr, expr >= attr, expr > attr
     upper_patterns = [
-        (rf'^{escaped_name}\s*<=\s*(.+)$', False),   # attr <= expr
-        (rf'^{escaped_name}\s*<\s*(.+)$', True),     # attr < expr (strict)
-        (rf'^(.+)\s*>=\s*{escaped_name}$', False),   # expr >= attr
-        (rf'^(.+)\s*>\s*{escaped_name}$', True),     # expr > attr (strict)
+        (rf"^{escaped_name}\s*<=\s*(.+)$", False),  # attr <= expr
+        (rf"^{escaped_name}\s*<\s*(.+)$", True),  # attr < expr (strict)
+        (rf"^(.+)\s*>=\s*{escaped_name}$", False),  # expr >= attr
+        (rf"^(.+)\s*>\s*{escaped_name}$", True),  # expr > attr (strict)
     ]
-    
+
     # Lower bound patterns: attr >= expr, attr > expr, expr <= attr, expr < attr
     lower_patterns = [
-        (rf'^{escaped_name}\s*>=\s*(.+)$', False),   # attr >= expr
-        (rf'^{escaped_name}\s*>\s*(.+)$', True),     # attr > expr (strict)
-        (rf'^(.+)\s*<=\s*{escaped_name}$', False),   # expr <= attr
-        (rf'^(.+)\s*<\s*{escaped_name}$', True),     # expr < attr (strict)
+        (rf"^{escaped_name}\s*>=\s*(.+)$", False),  # attr >= expr
+        (rf"^{escaped_name}\s*>\s*(.+)$", True),  # attr > expr (strict)
+        (rf"^(.+)\s*<=\s*{escaped_name}$", False),  # expr <= attr
+        (rf"^(.+)\s*<\s*{escaped_name}$", True),  # expr < attr (strict)
     ]
-    
+
     for pattern, is_strict in upper_patterns:
         match = re.match(pattern, expr)
         if match:
             bound_expr = match.group(1).strip()
             return ("max", bound_expr, is_strict)
-    
+
     for pattern, is_strict in lower_patterns:
         match = re.match(pattern, expr)
         if match:
             bound_expr = match.group(1).strip()
             return ("min", bound_expr, is_strict)
-    
+
     return (None, None, False)
 
 
 def _is_spec_level_constraint(expression: str) -> bool:
     """Check if a constraint expression references spec-level variables.
-    
+
     Spec-level constraints validate the YAML spec itself (e.g., weights sum to 1),
     not individual sampled agents. These should use type='spec_expression'.
-    
+
     Args:
         expression: The constraint expression
-        
+
     Returns:
         True if the expression references spec-level variables like 'weights' or 'options'
     """
     # Check for common spec-level patterns
-    if 'sum(weights)' in expression:
+    if "sum(weights)" in expression:
         return True
-    if 'len(options)' in expression:
+    if "len(options)" in expression:
         return True
-    if 'weights[' in expression:
+    if "weights[" in expression:
         return True
-    if 'options[' in expression:
+    if "options[" in expression:
         return True
-    
+
     # Check if expression references spec-level variable names
     try:
         refs = extract_names_from_formula(expression)
@@ -174,7 +201,7 @@ def _is_spec_level_constraint(expression: str) -> bool:
             return True
     except Exception:
         pass
-    
+
     return False
 
 
@@ -203,15 +230,15 @@ def sanitize_formula(formula: str | None) -> str | None:
     result = formula.strip()
 
     # Remove stray braces at start/end (common LLM mistake from JSON examples)
-    while result.endswith('}') and result.count('{') < result.count('}'):
+    while result.endswith("}") and result.count("{") < result.count("}"):
         result = result[:-1].rstrip()
-    while result.startswith('{') and result.count('{') > result.count('}'):
+    while result.startswith("{") and result.count("{") > result.count("}"):
         result = result[1:].lstrip()
 
     # Fix lowercase boolean literals to Python style
     # Only replace standalone words, not parts of identifiers
-    result = re.sub(r'\btrue\b', 'True', result)
-    result = re.sub(r'\bfalse\b', 'False', result)
+    result = re.sub(r"\btrue\b", "True", result)
+    result = re.sub(r"\bfalse\b", "False", result)
 
     return result if result else None
 
@@ -247,7 +274,9 @@ def validate_independent_hydration(attributes: list[HydratedAttribute]) -> list[
                 )
             # Check weights sum to ~1.0
             elif dist.weights and abs(sum(dist.weights) - 1.0) > 0.02:
-                errors.append(f"{attr.name}: weights sum to {sum(dist.weights):.2f}, should be ~1.0")
+                errors.append(
+                    f"{attr.name}: weights sum to {sum(dist.weights):.2f}, should be ~1.0"
+                )
 
         # Boolean distribution validation
         elif isinstance(dist, BooleanDistribution):
@@ -301,8 +330,7 @@ def validate_independent_hydration(attributes: list[HydratedAttribute]) -> list[
 
 
 def validate_derived_hydration(
-    attributes: list[HydratedAttribute],
-    all_attribute_names: set[str]
+    attributes: list[HydratedAttribute], all_attribute_names: set[str]
 ) -> list[str]:
     """Validate hydrated derived attributes."""
     errors = []
@@ -313,7 +341,7 @@ def validate_derived_hydration(
             continue
 
         try:
-            ast.parse(attr.sampling.formula, mode='eval')
+            ast.parse(attr.sampling.formula, mode="eval")
         except SyntaxError as e:
             errors.append(f"{attr.name}: invalid formula syntax: {e}")
             continue
@@ -323,9 +351,13 @@ def validate_derived_hydration(
             if name in BUILTIN_NAMES:
                 continue
             if name not in attr.depends_on:
-                errors.append(f"{attr.name}: formula references '{name}' not in depends_on")
+                errors.append(
+                    f"{attr.name}: formula references '{name}' not in depends_on"
+                )
             elif name not in all_attribute_names:
-                errors.append(f"{attr.name}: formula references unknown attribute '{name}'")
+                errors.append(
+                    f"{attr.name}: formula references unknown attribute '{name}'"
+                )
 
     return errors
 
@@ -341,19 +373,28 @@ def validate_conditional_base(attributes: list[HydratedAttribute]) -> list[str]:
             errors.append(f"{attr.name}: conditional attribute missing distribution")
             continue
 
-        if isinstance(dist, (NormalDistribution, LognormalDistribution)) and dist.mean_formula:
+        if (
+            isinstance(dist, (NormalDistribution, LognormalDistribution))
+            and dist.mean_formula
+        ):
             used_names = extract_names_from_formula(dist.mean_formula)
             for name in used_names:
                 if name not in attr.depends_on and name not in BUILTIN_NAMES:
-                    errors.append(f"{attr.name}: mean_formula references '{name}' not in depends_on")
+                    errors.append(
+                        f"{attr.name}: mean_formula references '{name}' not in depends_on"
+                    )
 
         if isinstance(dist, (NormalDistribution, LognormalDistribution)):
             if dist.mean_formula and dist.std is None:
-                errors.append(f"{attr.name}: has mean_formula but no std — this makes it derived, not conditional")
+                errors.append(
+                    f"{attr.name}: has mean_formula but no std — this makes it derived, not conditional"
+                )
 
         # Check for expression constraints that need corresponding formula bounds
         # Only for numeric distributions that support min/max formulas
-        if isinstance(dist, (NormalDistribution, LognormalDistribution, BetaDistribution)):
+        if isinstance(
+            dist, (NormalDistribution, LognormalDistribution, BetaDistribution)
+        ):
             for constraint in attr.constraints:
                 if constraint.type == "expression" and constraint.expression:
                     # Skip spec-level constraints
@@ -372,8 +413,8 @@ def validate_conditional_base(attributes: list[HydratedAttribute]) -> list[str]:
 
                     if bound_type == "max" and bound_expr:
                         # Check if distribution has max_formula or static max
-                        has_max_formula = getattr(dist, 'max_formula', None) is not None
-                        has_static_max = getattr(dist, 'max', None) is not None
+                        has_max_formula = getattr(dist, "max_formula", None) is not None
+                        has_static_max = getattr(dist, "max", None) is not None
                         if not has_max_formula and not has_static_max:
                             errors.append(
                                 f"{attr.name}: constraint '{constraint.expression}' exists but distribution has no max_formula. "
@@ -381,10 +422,10 @@ def validate_conditional_base(attributes: list[HydratedAttribute]) -> list[str]:
                             )
                     elif bound_type == "min" and bound_expr:
                         # Check if distribution has min_formula
-                        has_min_formula = getattr(dist, 'min_formula', None) is not None
+                        has_min_formula = getattr(dist, "min_formula", None) is not None
                         if not has_min_formula:
                             # Only error if there's no static min either
-                            has_static_min = getattr(dist, 'min', None) is not None
+                            has_static_min = getattr(dist, "min", None) is not None
                             if not has_static_min:
                                 errors.append(
                                     f"{attr.name}: constraint '{constraint.expression}' exists but distribution has no min_formula. "
@@ -395,8 +436,7 @@ def validate_conditional_base(attributes: list[HydratedAttribute]) -> list[str]:
 
 
 def validate_modifiers(
-    attributes: list[HydratedAttribute],
-    all_attributes: dict[str, HydratedAttribute]
+    attributes: list[HydratedAttribute], all_attributes: dict[str, HydratedAttribute]
 ) -> tuple[list[str], list[str]]:
     """Validate modifiers for conditional attributes.
 
@@ -420,7 +460,15 @@ def validate_modifiers(
 
             # Distribution type/modifier compatibility validation
             # Check the actual distribution type, not just the attribute type
-            is_numeric_dist = isinstance(dist, (NormalDistribution, LognormalDistribution, UniformDistribution, BetaDistribution))
+            is_numeric_dist = isinstance(
+                dist,
+                (
+                    NormalDistribution,
+                    LognormalDistribution,
+                    UniformDistribution,
+                    BetaDistribution,
+                ),
+            )
             is_categorical_dist = isinstance(dist, CategoricalDistribution)
             is_boolean_dist = isinstance(dist, BooleanDistribution)
 
@@ -516,16 +564,22 @@ def validate_strategy_consistency(attributes: list[HydratedAttribute]) -> list[s
         if strategy == "independent":
             # Must have distribution
             if not has_dist:
-                errors.append(f"{attr.name}: independent strategy requires distribution")
+                errors.append(
+                    f"{attr.name}: independent strategy requires distribution"
+                )
             # Must not have formula
             if has_formula:
                 errors.append(f"{attr.name}: independent strategy cannot have formula")
             # Must not have modifiers
             if has_modifiers:
-                errors.append(f"{attr.name}: independent strategy cannot have modifiers")
+                errors.append(
+                    f"{attr.name}: independent strategy cannot have modifiers"
+                )
             # Must not have depends_on
             if has_depends:
-                errors.append(f"{attr.name}: independent strategy cannot have depends_on")
+                errors.append(
+                    f"{attr.name}: independent strategy cannot have depends_on"
+                )
 
         elif strategy == "derived":
             # Must have formula
@@ -544,7 +598,9 @@ def validate_strategy_consistency(attributes: list[HydratedAttribute]) -> list[s
         elif strategy == "conditional":
             # Must have distribution
             if not has_dist:
-                errors.append(f"{attr.name}: conditional strategy requires distribution")
+                errors.append(
+                    f"{attr.name}: conditional strategy requires distribution"
+                )
             # Must have depends_on
             if not has_depends:
                 errors.append(f"{attr.name}: conditional strategy requires depends_on")
@@ -577,7 +633,14 @@ def build_independent_schema() -> dict:
                             "properties": {
                                 "type": {
                                     "type": "string",
-                                    "enum": ["normal", "lognormal", "uniform", "beta", "categorical", "boolean"],
+                                    "enum": [
+                                        "normal",
+                                        "lognormal",
+                                        "uniform",
+                                        "beta",
+                                        "categorical",
+                                        "boolean",
+                                    ],
                                 },
                                 "mean": {"type": ["number", "null"]},
                                 "std": {"type": ["number", "null"]},
@@ -585,11 +648,28 @@ def build_independent_schema() -> dict:
                                 "max": {"type": ["number", "null"]},
                                 "alpha": {"type": ["number", "null"]},
                                 "beta": {"type": ["number", "null"]},
-                                "options": {"type": ["array", "null"], "items": {"type": "string"}},
-                                "weights": {"type": ["array", "null"], "items": {"type": "number"}},
+                                "options": {
+                                    "type": ["array", "null"],
+                                    "items": {"type": "string"},
+                                },
+                                "weights": {
+                                    "type": ["array", "null"],
+                                    "items": {"type": "number"},
+                                },
                                 "probability_true": {"type": ["number", "null"]},
                             },
-                            "required": ["type", "mean", "std", "min", "max", "alpha", "beta", "options", "weights", "probability_true"],
+                            "required": [
+                                "type",
+                                "mean",
+                                "std",
+                                "min",
+                                "max",
+                                "alpha",
+                                "beta",
+                                "options",
+                                "weights",
+                                "probability_true",
+                            ],
                             "additionalProperties": False,
                         },
                         "constraints": {
@@ -597,7 +677,15 @@ def build_independent_schema() -> dict:
                             "items": {
                                 "type": "object",
                                 "properties": {
-                                    "type": {"type": "string", "enum": ["hard_min", "hard_max", "expression", "spec_expression"]},
+                                    "type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "hard_min",
+                                            "hard_max",
+                                            "expression",
+                                            "spec_expression",
+                                        ],
+                                    },
                                     "value": {"type": ["number", "null"]},
                                     "expression": {"type": ["string", "null"]},
                                     "reason": {"type": ["string", "null"]},
@@ -609,8 +697,14 @@ def build_independent_schema() -> dict:
                         "grounding": {
                             "type": "object",
                             "properties": {
-                                "level": {"type": "string", "enum": ["strong", "medium", "low"]},
-                                "method": {"type": "string", "enum": ["researched", "extrapolated", "estimated"]},
+                                "level": {
+                                    "type": "string",
+                                    "enum": ["strong", "medium", "low"],
+                                },
+                                "method": {
+                                    "type": "string",
+                                    "enum": ["researched", "extrapolated", "estimated"],
+                                },
                                 "source": {"type": ["string", "null"]},
                                 "note": {"type": ["string", "null"]},
                             },
@@ -667,7 +761,14 @@ def build_conditional_base_schema() -> dict:
                             "properties": {
                                 "type": {
                                     "type": "string",
-                                    "enum": ["normal", "lognormal", "uniform", "beta", "categorical", "boolean"],
+                                    "enum": [
+                                        "normal",
+                                        "lognormal",
+                                        "uniform",
+                                        "beta",
+                                        "categorical",
+                                        "boolean",
+                                    ],
                                 },
                                 "mean": {"type": ["number", "null"]},
                                 "std": {"type": ["number", "null"]},
@@ -679,11 +780,32 @@ def build_conditional_base_schema() -> dict:
                                 "max_formula": {"type": ["string", "null"]},
                                 "alpha": {"type": ["number", "null"]},
                                 "beta": {"type": ["number", "null"]},
-                                "options": {"type": ["array", "null"], "items": {"type": "string"}},
-                                "weights": {"type": ["array", "null"], "items": {"type": "number"}},
+                                "options": {
+                                    "type": ["array", "null"],
+                                    "items": {"type": "string"},
+                                },
+                                "weights": {
+                                    "type": ["array", "null"],
+                                    "items": {"type": "number"},
+                                },
                                 "probability_true": {"type": ["number", "null"]},
                             },
-                            "required": ["type", "mean", "std", "mean_formula", "std_formula", "min", "max", "min_formula", "max_formula", "alpha", "beta", "options", "weights", "probability_true"],
+                            "required": [
+                                "type",
+                                "mean",
+                                "std",
+                                "mean_formula",
+                                "std_formula",
+                                "min",
+                                "max",
+                                "min_formula",
+                                "max_formula",
+                                "alpha",
+                                "beta",
+                                "options",
+                                "weights",
+                                "probability_true",
+                            ],
                             "additionalProperties": False,
                         },
                         "constraints": {
@@ -691,7 +813,15 @@ def build_conditional_base_schema() -> dict:
                             "items": {
                                 "type": "object",
                                 "properties": {
-                                    "type": {"type": "string", "enum": ["hard_min", "hard_max", "expression", "spec_expression"]},
+                                    "type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "hard_min",
+                                            "hard_max",
+                                            "expression",
+                                            "spec_expression",
+                                        ],
+                                    },
                                     "value": {"type": ["number", "null"]},
                                     "expression": {"type": ["string", "null"]},
                                     "reason": {"type": ["string", "null"]},
@@ -703,8 +833,14 @@ def build_conditional_base_schema() -> dict:
                         "grounding": {
                             "type": "object",
                             "properties": {
-                                "level": {"type": "string", "enum": ["strong", "medium", "low"]},
-                                "method": {"type": "string", "enum": ["researched", "extrapolated", "estimated"]},
+                                "level": {
+                                    "type": "string",
+                                    "enum": ["strong", "medium", "low"],
+                                },
+                                "method": {
+                                    "type": "string",
+                                    "enum": ["researched", "extrapolated", "estimated"],
+                                },
                                 "source": {"type": ["string", "null"]},
                                 "note": {"type": ["string", "null"]},
                             },
@@ -745,9 +881,17 @@ def build_modifiers_schema() -> dict:
                                         "type": ["object", "null"],
                                         "additionalProperties": {"type": "number"},
                                     },
-                                    "probability_override": {"type": ["number", "null"]},
+                                    "probability_override": {
+                                        "type": ["number", "null"]
+                                    },
                                 },
-                                "required": ["when", "multiply", "add", "weight_overrides", "probability_override"],
+                                "required": [
+                                    "when",
+                                    "multiply",
+                                    "add",
+                                    "weight_overrides",
+                                    "probability_override",
+                                ],
                                 "additionalProperties": False,
                             },
                         },

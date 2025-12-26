@@ -47,40 +47,35 @@ class NormalDistribution(BaseModel):
 
     For conditional attributes with continuous dependencies, use mean_formula
     instead of mean to express the relationship (e.g., "age - 28" for experience).
-    
+
     For dynamic bounds that depend on other attributes, use min_formula/max_formula
     (e.g., "max(0, household_size - 1)" for children_count).
     """
 
     type: Literal["normal"] = "normal"
-    # Static parameters (use these OR formula versions, not both)
     mean: float | None = None
     std: float | None = None
     min: float | None = None
     max: float | None = None
-    # Formula-based parameters (for conditional with continuous dependency)
     mean_formula: str | None = Field(
-        default=None,
-        description="Formula for mean, e.g., 'age - 28'"
+        default=None, description="Formula for mean, e.g., 'age - 28'"
     )
     std_formula: str | None = Field(
-        default=None,
-        description="Formula for std (rare, but supported)"
+        default=None, description="Formula for std (rare, but supported)"
     )
-    # Formula-based bounds (for dynamic clamping based on other attributes)
     min_formula: str | None = Field(
         default=None,
-        description="Formula for dynamic min bound, e.g., '0'. Evaluated with agent context."
+        description="Formula for dynamic min bound, e.g., '0'. Evaluated with agent context.",
     )
     max_formula: str | None = Field(
         default=None,
-        description="Formula for dynamic max bound, e.g., 'household_size - 1'. Evaluated with agent context."
+        description="Formula for dynamic max bound, e.g., 'household_size - 1'. Evaluated with agent context.",
     )
 
 
 class LognormalDistribution(BaseModel):
     """Lognormal distribution parameters.
-    
+
     For dynamic bounds that depend on other attributes, use min_formula/max_formula.
     """
 
@@ -94,11 +89,11 @@ class LognormalDistribution(BaseModel):
     # Formula-based bounds (for dynamic clamping based on other attributes)
     min_formula: str | None = Field(
         default=None,
-        description="Formula for dynamic min bound. Evaluated with agent context."
+        description="Formula for dynamic min bound. Evaluated with agent context.",
     )
     max_formula: str | None = Field(
         default=None,
-        description="Formula for dynamic max bound. Evaluated with agent context."
+        description="Formula for dynamic max bound. Evaluated with agent context.",
     )
 
 
@@ -112,23 +107,22 @@ class UniformDistribution(BaseModel):
 
 class BetaDistribution(BaseModel):
     """Beta distribution parameters (useful for probabilities and proportions).
-    
+
     For dynamic bounds that depend on other attributes, use min_formula/max_formula.
     """
 
     type: Literal["beta"] = "beta"
     alpha: float
     beta: float
-    min: float | None = None  # For scaling
-    max: float | None = None  # For scaling
-    # Formula-based bounds (for dynamic clamping based on other attributes)
+    min: float | None = None
+    max: float | None = None
     min_formula: str | None = Field(
         default=None,
-        description="Formula for dynamic min bound. Evaluated with agent context."
+        description="Formula for dynamic min bound. Evaluated with agent context.",
     )
     max_formula: str | None = Field(
         default=None,
-        description="Formula for dynamic max bound. Evaluated with agent context."
+        description="Formula for dynamic max bound. Evaluated with agent context.",
     )
 
 
@@ -246,18 +240,19 @@ class Constraint(BaseModel):
     - min/max: Legacy aliases for hard_min/hard_max
     """
 
-    type: Literal["hard_min", "hard_max", "expression", "spec_expression", "min", "max"] = Field(
+    type: Literal[
+        "hard_min", "hard_max", "expression", "spec_expression", "min", "max"
+    ] = Field(
         description="hard_min/hard_max for bounds, expression for agent-level constraints, spec_expression for spec-level validation. 'min'/'max' are legacy aliases."
     )
     value: float | None = Field(
         default=None, description="Value for hard_min/hard_max constraints"
     )
     expression: str | None = Field(
-        default=None, description="Python expression for expression constraints, e.g., 'value <= age - 24'"
+        default=None,
+        description="Python expression for expression constraints, e.g., 'value <= age - 24'",
     )
-    reason: str | None = Field(
-        default=None, description="Why this constraint exists"
-    )
+    reason: str | None = Field(default=None, description="Why this constraint exists")
 
 
 # =============================================================================
@@ -296,7 +291,7 @@ class SpecMeta(BaseModel):
     version: str = Field(default="1.0", description="Spec format version")
     persona_template: str | None = Field(
         default=None,
-        description="Jinja2 template for generating persona text from agent attributes"
+        description="Jinja2 template for generating persona text from agent attributes",
     )
 
 
@@ -442,11 +437,11 @@ class PopulationSpec(BaseModel):
         # attributes (base + overlay).
         merged_meta = SpecMeta(
             description=f"{self.meta.description} + {overlay.meta.description}",
-            size=self.meta.size,  # Keep base size
+            size=self.meta.size,
             geography=self.meta.geography,
             created_at=datetime.now(),
             version=self.meta.version,
-            persona_template=None,  # Regenerated after merge
+            persona_template=None,
         )
 
         return PopulationSpec(
@@ -514,7 +509,7 @@ class DiscoveredAttribute(BaseModel):
     description: str
     strategy: Literal["independent", "derived", "conditional"] = Field(
         default="independent",
-        description="independent: sample directly; derived: zero-variance formula; conditional: probabilistic dependency"
+        description="independent: sample directly; derived: zero-variance formula; conditional: probabilistic dependency",
     )
     depends_on: list[str] = Field(default_factory=list)
 
@@ -533,8 +528,7 @@ class HydratedAttribute(BaseModel):
     ]
     description: str
     strategy: Literal["independent", "derived", "conditional"] = Field(
-        default="independent",
-        description="Sampling strategy determined in Step 1"
+        default="independent", description="Sampling strategy determined in Step 1"
     )
     depends_on: list[str] = Field(default_factory=list)
     sampling: SamplingConfig

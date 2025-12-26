@@ -45,18 +45,23 @@ class Event(BaseModel):
 
     type: EventType = Field(description="Type of event")
     content: str = Field(description="The actual information/announcement text")
-    source: str = Field(description="Who/what originated this (e.g., 'Netflix', 'hospital administration')")
+    source: str = Field(
+        description="Who/what originated this (e.g., 'Netflix', 'hospital administration')"
+    )
     credibility: float = Field(
-        ge=0, le=1,
-        description="How credible is the source (0=not credible, 1=fully credible)"
+        ge=0,
+        le=1,
+        description="How credible is the source (0=not credible, 1=fully credible)",
     )
     ambiguity: float = Field(
-        ge=0, le=1,
-        description="How clear/unclear is the information (0=crystal clear, 1=very ambiguous)"
+        ge=0,
+        le=1,
+        description="How clear/unclear is the information (0=crystal clear, 1=very ambiguous)",
     )
     emotional_valence: float = Field(
-        ge=-1, le=1,
-        description="Emotional framing (-1=very negative, 0=neutral, 1=very positive)"
+        ge=-1,
+        le=1,
+        description="Emotional framing (-1=very negative, 0=neutral, 1=very positive)",
     )
 
 
@@ -68,14 +73,16 @@ class Event(BaseModel):
 class ExposureChannel(BaseModel):
     """A channel through which agents can be exposed to the event."""
 
-    name: str = Field(description="Channel identifier in snake_case (e.g., 'email_notification')")
+    name: str = Field(
+        description="Channel identifier in snake_case (e.g., 'email_notification')"
+    )
     description: str = Field(description="Human-readable description of the channel")
     reach: Literal["broadcast", "targeted", "organic"] = Field(
         description="broadcast=everyone, targeted=specific criteria, organic=through network"
     )
     credibility_modifier: float = Field(
         default=1.0,
-        description="How the channel affects perceived credibility (1.0=no change)"
+        description="How the channel affects perceived credibility (1.0=no change)",
     )
 
 
@@ -87,25 +94,19 @@ class ExposureRule(BaseModel):
         description="Python expression using agent attributes (e.g., 'age < 45'). Use 'true' for all agents."
     )
     probability: float = Field(
-        ge=0, le=1,
-        description="Probability of exposure given the condition is met"
+        ge=0, le=1, description="Probability of exposure given the condition is met"
     )
-    timestep: int = Field(
-        ge=0,
-        description="When this exposure occurs (0=immediately)"
-    )
+    timestep: int = Field(ge=0, description="When this exposure occurs (0=immediately)")
 
 
 class SeedExposure(BaseModel):
     """Configuration for initial event exposure."""
 
     channels: list[ExposureChannel] = Field(
-        default_factory=list,
-        description="Available exposure channels"
+        default_factory=list, description="Available exposure channels"
     )
     rules: list[ExposureRule] = Field(
-        default_factory=list,
-        description="Rules for exposing agents through channels"
+        default_factory=list, description="Rules for exposing agents through channels"
     )
 
 
@@ -119,8 +120,8 @@ class InteractionType(str, Enum):
 
     PASSIVE_OBSERVATION = "passive_observation"  # Social media style
     DIRECT_CONVERSATION = "direct_conversation"  # One-on-one or small group
-    BROADCAST_RESPONSE = "broadcast_response"    # Authority broadcasts, agents react
-    DELIBERATIVE = "deliberative"                # Group deliberation with multiple rounds
+    BROADCAST_RESPONSE = "broadcast_response"  # Authority broadcasts, agents react
+    DELIBERATIVE = "deliberative"  # Group deliberation with multiple rounds
 
 
 class InteractionConfig(BaseModel):
@@ -131,7 +132,7 @@ class InteractionConfig(BaseModel):
     )
     secondary_model: InteractionType | None = Field(
         default=None,
-        description="Optional secondary interaction model (for blended scenarios)"
+        description="Optional secondary interaction model (for blended scenarios)",
     )
     description: str = Field(
         description="Human-readable description of how interactions work"
@@ -152,21 +153,19 @@ class SpreadConfig(BaseModel):
     """Configuration for how information spreads through the network."""
 
     share_probability: float = Field(
-        ge=0, le=1,
-        description="Base probability that an agent shares with a neighbor"
+        ge=0, le=1, description="Base probability that an agent shares with a neighbor"
     )
     share_modifiers: list[SpreadModifier] = Field(
-        default_factory=list,
-        description="Adjustments based on conditions"
+        default_factory=list, description="Adjustments based on conditions"
     )
     decay_per_hop: float = Field(
         default=0.0,
-        ge=0, le=1,
-        description="Information loses fidelity each hop (0=no decay)"
+        ge=0,
+        le=1,
+        description="Information loses fidelity each hop (0=no decay)",
     )
     max_hops: int | None = Field(
-        default=None,
-        description="Limit propagation depth (None=unlimited)"
+        default=None, description="Limit propagation depth (None=unlimited)"
     )
 
 
@@ -191,16 +190,13 @@ class OutcomeDefinition(BaseModel):
     type: OutcomeType = Field(description="Type of the outcome")
     description: str = Field(description="What this outcome measures")
     options: list[str] | None = Field(
-        default=None,
-        description="For categorical outcomes: the possible values"
+        default=None, description="For categorical outcomes: the possible values"
     )
     range: tuple[float, float] | None = Field(
-        default=None,
-        description="For float outcomes: (min, max) range"
+        default=None, description="For float outcomes: (min, max) range"
     )
     required: bool = Field(
-        default=True,
-        description="Whether this outcome must be extracted"
+        default=True, description="Whether this outcome must be extracted"
     )
 
 
@@ -208,16 +204,13 @@ class OutcomeConfig(BaseModel):
     """Configuration for outcome measurement."""
 
     suggested_outcomes: list[OutcomeDefinition] = Field(
-        default_factory=list,
-        description="Outcomes to measure"
+        default_factory=list, description="Outcomes to measure"
     )
     capture_full_reasoning: bool = Field(
-        default=True,
-        description="Whether to capture agent's full reasoning"
+        default=True, description="Whether to capture agent's full reasoning"
     )
     extraction_instructions: str | None = Field(
-        default=None,
-        description="Hints for Phase 3 outcome extraction"
+        default=None, description="Hints for Phase 3 outcome extraction"
     )
 
 
@@ -239,21 +232,16 @@ class TimestepUnit(str, Enum):
 class SimulationConfig(BaseModel):
     """Configuration for simulation execution."""
 
-    max_timesteps: int = Field(
-        ge=1,
-        description="Maximum number of timesteps to run"
-    )
+    max_timesteps: int = Field(ge=1, description="Maximum number of timesteps to run")
     timestep_unit: TimestepUnit = Field(
-        default=TimestepUnit.HOUR,
-        description="What each timestep represents"
+        default=TimestepUnit.HOUR, description="What each timestep represents"
     )
     stop_conditions: list[str] | None = Field(
         default=None,
-        description="Conditions that trigger early stop (e.g., 'exposure_rate > 0.95')"
+        description="Conditions that trigger early stop (e.g., 'exposure_rate > 0.95')",
     )
     seed: int | None = Field(
-        default=None,
-        description="Random seed for reproducibility"
+        default=None, description="Random seed for reproducibility"
     )
 
 

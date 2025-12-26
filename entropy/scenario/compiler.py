@@ -34,10 +34,10 @@ def _generate_scenario_name(description: str) -> str:
     # Take first few words, lowercase, replace spaces with underscores
     words = description.lower().split()[:4]
     # Remove non-alphanumeric characters
-    words = [re.sub(r'[^a-z0-9]', '', word) for word in words]
+    words = [re.sub(r"[^a-z0-9]", "", word) for word in words]
     # Filter empty strings
     words = [w for w in words if w]
-    return '_'.join(words) or 'scenario'
+    return "_".join(words) or "scenario"
 
 
 def _determine_simulation_config(population_size: int) -> SimulationConfig:
@@ -70,20 +70,20 @@ def _load_network_summary(network_path: Path) -> dict | None:
         edge_types = set()
         node_count = 0
 
-        if 'meta' in network:
-            node_count = network['meta'].get('node_count', 0)
+        if "meta" in network:
+            node_count = network["meta"].get("node_count", 0)
 
-        if 'edges' in network:
-            for edge in network['edges']:
+        if "edges" in network:
+            for edge in network["edges"]:
                 # Check both 'edge_type' and 'type' fields (different network formats)
-                if 'edge_type' in edge:
-                    edge_types.add(edge['edge_type'])
-                elif 'type' in edge:
-                    edge_types.add(edge['type'])
+                if "edge_type" in edge:
+                    edge_types.add(edge["edge_type"])
+                elif "type" in edge:
+                    edge_types.add(edge["type"])
 
         return {
-            'node_count': node_count,
-            'edge_types': list(edge_types),
+            "node_count": node_count,
+            "edge_types": list(edge_types),
         }
     except Exception:
         return None

@@ -68,11 +68,13 @@ class Output:
 
     console: Console
     json_mode: bool = False
-    _data: dict = field(default_factory=lambda: {
-        "status": "success",
-        "warnings": [],
-        "errors": [],
-    })
+    _data: dict = field(
+        default_factory=lambda: {
+            "status": "success",
+            "warnings": [],
+            "errors": [],
+        }
+    )
     _exit_code: int = ExitCode.SUCCESS
 
     def __post_init__(self):
@@ -97,8 +99,14 @@ class Output:
         else:
             self.console.print(f"[blue]ℹ[/blue] {message}")
 
-    def warning(self, message: str, *, attribute: str | None = None,
-                category: str | None = None, suggestion: str | None = None) -> None:
+    def warning(
+        self,
+        message: str,
+        *,
+        attribute: str | None = None,
+        category: str | None = None,
+        suggestion: str | None = None,
+    ) -> None:
         """Output a warning message."""
         if self.json_mode:
             warning_obj: dict[str, Any] = {"message": message}
@@ -114,9 +122,15 @@ class Output:
             if suggestion:
                 self.console.print(f"  [dim]→ {suggestion}[/dim]")
 
-    def error(self, message: str, *, attribute: str | None = None,
-              category: str | None = None, suggestion: str | None = None,
-              exit_code: int = ExitCode.VALIDATION_ERROR) -> None:
+    def error(
+        self,
+        message: str,
+        *,
+        attribute: str | None = None,
+        category: str | None = None,
+        suggestion: str | None = None,
+        exit_code: int = ExitCode.VALIDATION_ERROR,
+    ) -> None:
         """Output an error message and set exit code."""
         self._exit_code = exit_code
         self._data["status"] = "error"
@@ -154,14 +168,22 @@ class Output:
             self.console.print("└" + "─" * 58 + "┘")
             self.console.print()
 
-    def panel(self, content: str, *, title: str | None = None,
-              style: str = "blue") -> None:
+    def panel(
+        self, content: str, *, title: str | None = None, style: str = "blue"
+    ) -> None:
         """Output a Rich panel (human mode only)."""
         if not self.json_mode:
             self.console.print(Panel(content, title=title, border_style=style))
 
-    def table(self, title: str, columns: list[str], rows: list[list[str]], *,
-              data_key: str | None = None, styles: list[str] | None = None) -> None:
+    def table(
+        self,
+        title: str,
+        columns: list[str],
+        rows: list[list[str]],
+        *,
+        data_key: str | None = None,
+        styles: list[str] | None = None,
+    ) -> None:
         """Output a formatted table.
 
         Args:
@@ -185,8 +207,13 @@ class Output:
                 table.add_row(*row)
             self.console.print(table)
 
-    def tree(self, title: str, items: list[tuple[str, list[str]]], *,
-             data_key: str | None = None) -> None:
+    def tree(
+        self,
+        title: str,
+        items: list[tuple[str, list[str]]],
+        *,
+        data_key: str | None = None,
+    ) -> None:
         """Output a tree structure showing dependencies.
 
         Args:
@@ -198,8 +225,7 @@ class Output:
 
         if self.json_mode:
             self._data[key] = [
-                {"name": name, "depends_on": deps}
-                for name, deps in items
+                {"name": name, "depends_on": deps} for name, deps in items
             ]
         else:
             tree = Tree(title)
@@ -311,8 +337,7 @@ def format_sampling_stats_for_json(stats, spec) -> dict[str, Any]:
             counts = stats.categorical_counts.get(attr.name, {})
             total = sum(counts.values()) or 1
             result["categorical_attributes"][attr.name] = {
-                k: {"count": v, "percentage": v / total}
-                for k, v in counts.items()
+                k: {"count": v, "percentage": v / total} for k, v in counts.items()
             }
 
     # Boolean attributes
@@ -329,7 +354,9 @@ def format_sampling_stats_for_json(stats, spec) -> dict[str, Any]:
             }
 
     # Modifier triggers
-    triggered_mods = {k: v for k, v in stats.modifier_triggers.items() if any(v.values())}
+    triggered_mods = {
+        k: v for k, v in stats.modifier_triggers.items() if any(v.values())
+    }
     if triggered_mods:
         result["modifier_triggers"] = triggered_mods
 

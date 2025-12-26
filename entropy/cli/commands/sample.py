@@ -19,13 +19,27 @@ from ..utils import (
 
 @app.command("sample")
 def sample_command(
-    spec_file: Path = typer.Argument(..., help="Population spec YAML file to sample from"),
-    output: Path = typer.Option(..., "--output", "-o", help="Output file path (.json or .db)"),
-    count: int | None = typer.Option(None, "--count", "-n", help="Number of agents (default: spec.meta.size)"),
-    seed: int | None = typer.Option(None, "--seed", help="Random seed for reproducibility"),
-    format: str = typer.Option("json", "--format", "-f", help="Output format: json or sqlite"),
-    report: bool = typer.Option(False, "--report", "-r", help="Show distribution summaries and stats"),
-    skip_validation: bool = typer.Option(False, "--skip-validation", help="Skip validator errors"),
+    spec_file: Path = typer.Argument(
+        ..., help="Population spec YAML file to sample from"
+    ),
+    output: Path = typer.Option(
+        ..., "--output", "-o", help="Output file path (.json or .db)"
+    ),
+    count: int | None = typer.Option(
+        None, "--count", "-n", help="Number of agents (default: spec.meta.size)"
+    ),
+    seed: int | None = typer.Option(
+        None, "--seed", help="Random seed for reproducibility"
+    ),
+    format: str = typer.Option(
+        "json", "--format", "-f", help="Output format: json or sqlite"
+    ),
+    report: bool = typer.Option(
+        False, "--report", "-r", help="Show distribution summaries and stats"
+    ),
+    skip_validation: bool = typer.Option(
+        False, "--skip-validation", help="Skip validator errors"
+    ),
 ):
     """
     Generate agents from a population spec.
@@ -46,7 +60,12 @@ def sample_command(
         entropy sample surgeons.yaml -o agents.json --report
         entropy --json sample surgeons.yaml -o agents.json --report
     """
-    from ...population.sampler import sample_population, save_json, save_sqlite, SamplingError
+    from ...population.sampler import (
+        sample_population,
+        save_json,
+        save_sqlite,
+        SamplingError,
+    )
 
     out = Output(console, json_mode=get_json_mode())
     start_time = time.time()
@@ -66,7 +85,9 @@ def sample_command(
             try:
                 spec = PopulationSpec.from_yaml(spec_file)
             except Exception as e:
-                out.error(f"Failed to load spec: {e}", exit_code=ExitCode.VALIDATION_ERROR)
+                out.error(
+                    f"Failed to load spec: {e}", exit_code=ExitCode.VALIDATION_ERROR
+                )
                 raise typer.Exit(out.finish())
     else:
         try:
@@ -104,9 +125,14 @@ def sample_command(
                 for err in validation_result.errors[:5]:
                     out.text(f"  [red]✗[/red] {err.attribute}: {err.message}")
                 if len(validation_result.errors) > 5:
-                    out.text(f"  [dim]... and {len(validation_result.errors) - 5} more[/dim]")
+                    out.text(
+                        f"  [dim]... and {len(validation_result.errors) - 5} more[/dim]"
+                    )
         else:
-            out.error(f"Spec has {len(validation_result.errors)} error(s)", exit_code=ExitCode.VALIDATION_ERROR)
+            out.error(
+                f"Spec has {len(validation_result.errors)} error(s)",
+                exit_code=ExitCode.VALIDATION_ERROR,
+            )
 
             if not get_json_mode():
                 error_rows = []
@@ -121,14 +147,18 @@ def sample_command(
                 )
 
                 if len(validation_result.errors) > 10:
-                    out.text(f"  [dim]... and {len(validation_result.errors) - 10} more[/dim]")
+                    out.text(
+                        f"  [dim]... and {len(validation_result.errors) - 10} more[/dim]"
+                    )
                 out.blank()
                 out.text("[dim]Use --skip-validation to sample anyway[/dim]")
 
             raise typer.Exit(out.finish())
     else:
         if validation_result.warnings:
-            out.success(f"Spec validated with {len(validation_result.warnings)} warning(s)")
+            out.success(
+                f"Spec validated with {len(validation_result.warnings)} warning(s)"
+            )
         else:
             out.success("Spec validated")
 
@@ -141,7 +171,13 @@ def sample_command(
     show_progress = effective_count >= 100 and not get_json_mode()
 
     if show_progress:
-        from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+        from rich.progress import (
+            Progress,
+            SpinnerColumn,
+            TextColumn,
+            BarColumn,
+            TaskProgressColumn,
+        )
 
         with Progress(
             SpinnerColumn(),
@@ -157,7 +193,9 @@ def sample_command(
                 progress.update(task, completed=current)
 
             try:
-                result = sample_population(spec, count=effective_count, seed=seed, on_progress=on_progress)
+                result = sample_population(
+                    spec, count=effective_count, seed=seed, on_progress=on_progress
+                )
             except SamplingError as e:
                 sampling_error = e
     else:
@@ -185,7 +223,7 @@ def sample_command(
     out.success(
         f"Sampled {len(result.agents)} agents ({format_elapsed(sampling_elapsed)}, seed={result.meta['seed']})",
         sampled_count=len(result.agents),
-        seed=result.meta['seed'],
+        seed=result.meta["seed"],
         sampling_time_seconds=sampling_elapsed,
     )
 
@@ -204,7 +242,12 @@ def sample_command(
                 mean = result.stats.attribute_means.get(attr.name, 0)
                 std = result.stats.attribute_stds.get(attr.name, 0)
                 numeric_rows.append([attr.name, f"{mean:.2f}", f"{std:.2f}"])
-            out.table("Numeric Attributes", ["Attribute", "Mean (μ)", "Std (σ)"], numeric_rows, styles=["cyan", None, "dim"])
+            out.table(
+                "Numeric Attributes",
+                ["Attribute", "Mean (μ)", "Std (σ)"],
+                numeric_rows,
+                styles=["cyan", None, "dim"],
+            )
             if len(numeric_attrs) > 20:
                 out.text(f"  [dim]... and {len(numeric_attrs) - 20} more[/dim]")
             out.blank()
@@ -219,7 +262,12 @@ def sample_command(
                 top_3 = sorted(counts.items(), key=lambda x: -x[1])[:3]
                 dist_str = ", ".join(f"{k}: {v/total:.0%}" for k, v in top_3)
                 cat_rows.append([attr.name, dist_str])
-            out.table("Categorical Attributes", ["Attribute", "Top Values (%)"], cat_rows, styles=["cyan", None])
+            out.table(
+                "Categorical Attributes",
+                ["Attribute", "Top Values (%)"],
+                cat_rows,
+                styles=["cyan", None],
+            )
             if len(cat_attrs) > 15:
                 out.text(f"  [dim]... and {len(cat_attrs) - 15} more[/dim]")
             out.blank()
@@ -233,7 +281,12 @@ def sample_command(
                 total = sum(counts.values()) or 1
                 pct_true = counts.get(True, 0) / total
                 bool_rows.append([attr.name, f"{pct_true:.1%}"])
-            out.table("Boolean Attributes", ["Attribute", "True %"], bool_rows, styles=["cyan", None])
+            out.table(
+                "Boolean Attributes",
+                ["Attribute", "True %"],
+                bool_rows,
+                styles=["cyan", None],
+            )
             out.blank()
 
     # Save Output

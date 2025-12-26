@@ -81,9 +81,7 @@ class AgentState(BaseModel):
     outcomes: dict[str, Any] = Field(
         default_factory=dict, description="All extracted outcomes"
     )
-    raw_reasoning: str | None = Field(
-        default=None, description="Full reasoning text"
-    )
+    raw_reasoning: str | None = Field(default=None, description="Full reasoning text")
     updated_at: int = Field(default=0, description="Last state change timestep")
 
 
@@ -131,9 +129,7 @@ class ReasoningContext(BaseModel):
     agent_id: str = Field(description="Agent being reasoned")
     persona: str = Field(description="Generated persona text")
     event_content: str = Field(description="What the event is")
-    exposure_history: list[ExposureRecord] = Field(
-        description="How they learned"
-    )
+    exposure_history: list[ExposureRecord] = Field(description="How they learned")
     peer_opinions: list[PeerOpinion] = Field(
         default_factory=list, description="What neighbors think (if known)"
     )
@@ -150,17 +146,11 @@ class ReasoningContext(BaseModel):
 class ReasoningResponse(BaseModel):
     """Response from agent reasoning LLM call."""
 
-    position: str | None = Field(
-        default=None, description="Maps to outcome"
-    )
+    position: str | None = Field(default=None, description="Maps to outcome")
     sentiment: float | None = Field(default=None, description="Sentiment value")
-    action_intent: str | None = Field(
-        default=None, description="Intended action"
-    )
+    action_intent: str | None = Field(default=None, description="Intended action")
     will_share: bool = Field(default=False, description="Will they share")
-    reasoning: str = Field(
-        default="", description="1-3 sentence explanation"
-    )
+    reasoning: str = Field(default="", description="1-3 sentence explanation")
     outcomes: dict[str, Any] = Field(
         default_factory=dict, description="All structured outcomes"
     )
@@ -179,9 +169,7 @@ class SimulationRunConfig(BaseModel):
     model: str = Field(
         default="gpt-5-mini", description="LLM model for agent reasoning"
     )
-    reasoning_effort: str = Field(
-        default="low", description="Reasoning effort level"
-    )
+    reasoning_effort: str = Field(default="low", description="Reasoning effort level")
     multi_touch_threshold: int = Field(
         default=3, description="Re-reason after N new exposures"
     )
@@ -201,15 +189,9 @@ class TimestepSummary(BaseModel):
 
     timestep: int = Field(description="Timestep number")
     new_exposures: int = Field(default=0, description="New exposures this step")
-    agents_reasoned: int = Field(
-        default=0, description="Agents who reasoned this step"
-    )
-    shares_occurred: int = Field(
-        default=0, description="Share events this step"
-    )
-    state_changes: int = Field(
-        default=0, description="Agents whose state changed"
-    )
+    agents_reasoned: int = Field(default=0, description="Agents who reasoned this step")
+    shares_occurred: int = Field(default=0, description="Share events this step")
+    state_changes: int = Field(default=0, description="Agents whose state changed")
     exposure_rate: float = Field(
         default=0.0, description="Fraction of population aware"
     )

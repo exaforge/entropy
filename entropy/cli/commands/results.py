@@ -10,9 +10,13 @@ from ..app import app, console
 @app.command("results")
 def results_command(
     results_dir: Path = typer.Argument(..., help="Results directory from simulation"),
-    segment: str | None = typer.Option(None, "--segment", "-s", help="Attribute to segment by"),
+    segment: str | None = typer.Option(
+        None, "--segment", "-s", help="Attribute to segment by"
+    ),
     timeline: bool = typer.Option(False, "--timeline", "-t", help="Show timeline view"),
-    agent: str | None = typer.Option(None, "--agent", "-a", help="Show single agent details"),
+    agent: str | None = typer.Option(
+        None, "--agent", "-a", help="Show single agent details"
+    ),
 ):
     """
     Display simulation results.

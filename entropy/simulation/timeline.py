@@ -195,8 +195,7 @@ class TimelineReader:
                 timestep_data[t]["network"] += 1
 
         return [
-            {"timestep": t, **counts}
-            for t, counts in sorted(timestep_data.items())
+            {"timestep": t, **counts} for t, counts in sorted(timestep_data.items())
         ]
 
     def get_reasoning_summary(self) -> dict[str, Any]:
@@ -225,10 +224,19 @@ class TimelineReader:
             "position_counts": dict(positions),
             "sentiment_mean": sum(sentiments) / len(sentiments) if sentiments else None,
             "sentiment_std": (
-                (sum((s - sum(sentiments) / len(sentiments)) ** 2 for s in sentiments) / len(sentiments)) ** 0.5
-                if sentiments else None
+                (
+                    sum(
+                        (s - sum(sentiments) / len(sentiments)) ** 2 for s in sentiments
+                    )
+                    / len(sentiments)
+                )
+                ** 0.5
+                if sentiments
+                else None
             ),
-            "share_rate": share_count / len(reasoning_events) if reasoning_events else 0,
+            "share_rate": (
+                share_count / len(reasoning_events) if reasoning_events else 0
+            ),
         }
 
     def get_unique_agents(self) -> set[str]:

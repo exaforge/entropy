@@ -292,7 +292,7 @@ def _check_expression_constraints(
     stats: SamplingStats,
 ) -> None:
     """Check expression constraints and count violations.
-    
+
     Only checks constraints with type='expression' (agent-level constraints).
     Constraints with type='spec_expression' are spec-level validations
     (e.g., sum(weights)==1) and are NOT evaluated against individual agents.
@@ -350,19 +350,23 @@ def save_sqlite(result: SamplingResult, path: Path | str) -> None:
     cursor = conn.cursor()
 
     # Create tables
-    cursor.execute("""
+    cursor.execute(
+        """
         CREATE TABLE meta (
             key TEXT PRIMARY KEY,
             value TEXT
         )
-    """)
+    """
+    )
 
-    cursor.execute("""
+    cursor.execute(
+        """
         CREATE TABLE agents (
             id TEXT PRIMARY KEY,
             attributes JSON
         )
-    """)
+    """
+    )
 
     # Insert metadata
     for key, value in result.meta.items():

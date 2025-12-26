@@ -240,9 +240,7 @@ def evaluate_stopping_conditions(
     # Evaluate custom conditions
     if config.stop_conditions:
         for condition in config.stop_conditions:
-            if evaluate_condition(
-                condition, timestep, state_manager, recent_summaries
-            ):
+            if evaluate_condition(condition, timestep, state_manager, recent_summaries):
                 return True, condition
 
     return False, None
@@ -283,7 +281,9 @@ def estimate_remaining_timesteps(
                         # Estimate rate of change
                         recent_rates = [s.exposure_rate for s in recent_summaries[-5:]]
                         if len(recent_rates) >= 2:
-                            rate_change = (recent_rates[-1] - recent_rates[0]) / len(recent_rates)
+                            rate_change = (recent_rates[-1] - recent_rates[0]) / len(
+                                recent_rates
+                            )
                             if rate_change > 0:
                                 needed = threshold - current_rate
                                 estimated = int(needed / rate_change)

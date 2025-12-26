@@ -55,15 +55,6 @@ def check_sufficiency(
 
     Returns:
         SufficiencyResult with sufficient flag, size, and any clarifications needed
-
-    Example:
-        >>> result = check_sufficiency("500 German surgeons")
-        >>> result.sufficient
-        True
-        >>> result.size
-        500
-        >>> result.geography
-        "Germany"
     """
     prompt = f"""Evaluate if this population description is sufficient to create a synthetic population:
 

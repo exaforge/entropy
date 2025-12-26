@@ -12,9 +12,15 @@ from ..app import app, console
 @app.command("fix")
 def fix_command(
     spec_file: Path = typer.Argument(..., help="Population spec YAML file to fix"),
-    output: Path = typer.Option(None, "--output", "-o", help="Output file (defaults to overwriting input)"),
-    confidence: float = typer.Option(0.6, "--confidence", "-c", help="Minimum fuzzy match confidence (0-1)"),
-    dry_run: bool = typer.Option(False, "--dry-run", "-n", help="Show fixes without applying them"),
+    output: Path = typer.Option(
+        None, "--output", "-o", help="Output file (defaults to overwriting input)"
+    ),
+    confidence: float = typer.Option(
+        0.6, "--confidence", "-c", help="Minimum fuzzy match confidence (0-1)"
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", "-n", help="Show fixes without applying them"
+    ),
 ):
     """
     Auto-fix modifier condition option references.
@@ -47,14 +53,20 @@ def fix_command(
             console.print(f"[red]✗[/red] Failed to load/fix spec: {e}")
             raise typer.Exit(1)
 
-    console.print(f"[green]✓[/green] Loaded: [bold]{spec.meta.description}[/bold] ({len(spec.attributes)} attributes)")
+    console.print(
+        f"[green]✓[/green] Loaded: [bold]{spec.meta.description}[/bold] ({len(spec.attributes)} attributes)"
+    )
     console.print()
 
     if result.fix_count == 0:
-        console.print("[green]✓[/green] No fixes needed - all option references are correct")
+        console.print(
+            "[green]✓[/green] No fixes needed - all option references are correct"
+        )
         if result.unfixable:
             console.print()
-            console.print(f"[yellow]⚠[/yellow] {len(result.unfixable)} potential issue(s) below confidence threshold:")
+            console.print(
+                f"[yellow]⚠[/yellow] {len(result.unfixable)} potential issue(s) below confidence threshold:"
+            )
             for issue in result.unfixable:
                 console.print(f"  [dim]{issue}[/dim]")
         return
@@ -66,11 +78,15 @@ def fix_command(
     for fix in result.fixes:
         console.print(f"  {fix.attribute}[{fix.modifier_index}]:")
         console.print(f"    [red]- '{fix.original_value}'[/red]")
-        console.print(f"    [green]+ '{fix.fixed_value}'[/green] [dim](confidence: {fix.confidence:.0%})[/dim]")
+        console.print(
+            f"    [green]+ '{fix.fixed_value}'[/green] [dim](confidence: {fix.confidence:.0%})[/dim]"
+        )
 
     if result.unfixable:
         console.print()
-        console.print(f"[yellow]⚠[/yellow] {len(result.unfixable)} issue(s) below confidence threshold:")
+        console.print(
+            f"[yellow]⚠[/yellow] {len(result.unfixable)} issue(s) below confidence threshold:"
+        )
         for issue in result.unfixable:
             console.print(f"  [dim]{issue}[/dim]")
 

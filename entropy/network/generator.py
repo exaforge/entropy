@@ -17,7 +17,12 @@ from .similarity import (
     compute_degree_factor,
     compute_edge_probability,
 )
-from .metrics import NetworkMetrics, NodeMetrics, compute_network_metrics, compute_node_metrics
+from .metrics import (
+    NetworkMetrics,
+    NodeMetrics,
+    compute_network_metrics,
+    compute_node_metrics,
+)
 
 
 @dataclass
@@ -32,6 +37,7 @@ class Edge:
         bidirectional: Whether communication flows both ways (always True)
         influence_weight: Asymmetric influence weights
     """
+
     source: str
     target: str
     weight: float
@@ -48,8 +54,12 @@ class Edge:
             "type": self.edge_type,
             "bidirectional": self.bidirectional,
             "influence_weight": {
-                "source_to_target": round(self.influence_weight.get("source_to_target", self.weight), 4),
-                "target_to_source": round(self.influence_weight.get("target_to_source", self.weight), 4),
+                "source_to_target": round(
+                    self.influence_weight.get("source_to_target", self.weight), 4
+                ),
+                "target_to_source": round(
+                    self.influence_weight.get("target_to_source", self.weight), 4
+                ),
             },
         }
 
@@ -64,6 +74,7 @@ class NetworkResult:
         node_metrics: Per-agent metrics (if computed)
         network_metrics: Network-level metrics (if computed)
     """
+
     meta: dict[str, Any]
     edges: list[Edge]
     node_metrics: dict[str, NodeMetrics] | None = None
@@ -124,7 +135,9 @@ def _infer_edge_type(
         return "weak_tie"
 
     same_employer = agent_a.get("employer_type") == agent_b.get("employer_type")
-    same_specialty = agent_a.get("surgical_specialty") == agent_b.get("surgical_specialty")
+    same_specialty = agent_a.get("surgical_specialty") == agent_b.get(
+        "surgical_specialty"
+    )
     same_state = agent_a.get("federal_state") == agent_b.get("federal_state")
 
     # Get experience difference
@@ -178,13 +191,21 @@ def _compute_influence_weights(
 
     # A -> B influence
     seniority_ratio_a_to_b = level_a / level_b if level_b > 0 else 1.0
-    expertise_ratio_a_to_b = 1.0 + 0.2 * (research_a - research_b) + 0.1 * (teaching_a - teaching_b)
-    influence_a_to_b = edge_weight * seniority_ratio_a_to_b * max(0.1, expertise_ratio_a_to_b)
+    expertise_ratio_a_to_b = (
+        1.0 + 0.2 * (research_a - research_b) + 0.1 * (teaching_a - teaching_b)
+    )
+    influence_a_to_b = (
+        edge_weight * seniority_ratio_a_to_b * max(0.1, expertise_ratio_a_to_b)
+    )
 
     # B -> A influence
     seniority_ratio_b_to_a = level_b / level_a if level_a > 0 else 1.0
-    expertise_ratio_b_to_a = 1.0 + 0.2 * (research_b - research_a) + 0.1 * (teaching_b - teaching_a)
-    influence_b_to_a = edge_weight * seniority_ratio_b_to_a * max(0.1, expertise_ratio_b_to_a)
+    expertise_ratio_b_to_a = (
+        1.0 + 0.2 * (research_b - research_a) + 0.1 * (teaching_b - teaching_a)
+    )
+    influence_b_to_a = (
+        edge_weight * seniority_ratio_b_to_a * max(0.1, expertise_ratio_b_to_a)
+    )
 
     return {
         "source_to_target": influence_a_to_b,
@@ -374,8 +395,12 @@ def generate_network(
                     agent_b = agents[new_target_idx]
 
                     # Compute new similarity for weight
-                    new_sim = compute_similarity(agent_a, agent_b, config.attribute_weights)
-                    influence_weights = _compute_influence_weights(agent_a, agent_b, new_sim)
+                    new_sim = compute_similarity(
+                        agent_a, agent_b, config.attribute_weights
+                    )
+                    influence_weights = _compute_influence_weights(
+                        agent_a, agent_b, new_sim
+                    )
 
                     new_edge = Edge(
                         source=old_edge.source,
@@ -457,8 +482,14 @@ def generate_network_with_metrics(
 
     # Update meta with computed metrics
     if result.network_metrics:
-        result.meta["clustering_coefficient"] = round(result.network_metrics.clustering_coefficient, 4)
-        result.meta["avg_path_length"] = round(result.network_metrics.avg_path_length, 2) if result.network_metrics.avg_path_length else None
+        result.meta["clustering_coefficient"] = round(
+            result.network_metrics.clustering_coefficient, 4
+        )
+        result.meta["avg_path_length"] = (
+            round(result.network_metrics.avg_path_length, 2)
+            if result.network_metrics.avg_path_length
+            else None
+        )
         result.meta["modularity"] = round(result.network_metrics.modularity, 4)
 
     return result

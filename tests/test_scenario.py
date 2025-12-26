@@ -168,7 +168,9 @@ class TestSeedExposure:
         ]
         rules = [
             ExposureRule(channel="email", when="true", probability=0.9, timestep=0),
-            ExposureRule(channel="meeting", when="role == 'manager'", probability=0.8, timestep=1),
+            ExposureRule(
+                channel="meeting", when="role == 'manager'", probability=0.8, timestep=1
+            ),
         ]
         exposure = SeedExposure(channels=channels, rules=rules)
 
@@ -371,10 +373,14 @@ class TestScenarioSpec:
             ),
             seed_exposure=SeedExposure(
                 channels=[
-                    ExposureChannel(name="email", description="Email", reach="broadcast"),
+                    ExposureChannel(
+                        name="email", description="Email", reach="broadcast"
+                    ),
                 ],
                 rules=[
-                    ExposureRule(channel="email", when="true", probability=0.9, timestep=0),
+                    ExposureRule(
+                        channel="email", when="true", probability=0.9, timestep=0
+                    ),
                 ],
             ),
             interaction=InteractionConfig(
@@ -422,7 +428,10 @@ class TestScenarioSpec:
             loaded = ScenarioSpec.from_yaml(path)
             assert loaded.meta.name == sample_scenario_spec.meta.name
             assert loaded.event.type == sample_scenario_spec.event.type
-            assert loaded.spread.share_probability == sample_scenario_spec.spread.share_probability
+            assert (
+                loaded.spread.share_probability
+                == sample_scenario_spec.spread.share_probability
+            )
 
 
 class TestValidation:
@@ -473,14 +482,33 @@ class TestComplexScenarios:
     def test_multi_channel_exposure(self):
         """Test scenario with multiple exposure channels."""
         channels = [
-            ExposureChannel(name="email", description="Email notification", reach="broadcast"),
-            ExposureChannel(name="meeting", description="Staff meeting", reach="targeted", credibility_modifier=0.95),
-            ExposureChannel(name="word_of_mouth", description="Informal discussion", reach="organic", credibility_modifier=0.7),
+            ExposureChannel(
+                name="email", description="Email notification", reach="broadcast"
+            ),
+            ExposureChannel(
+                name="meeting",
+                description="Staff meeting",
+                reach="targeted",
+                credibility_modifier=0.95,
+            ),
+            ExposureChannel(
+                name="word_of_mouth",
+                description="Informal discussion",
+                reach="organic",
+                credibility_modifier=0.7,
+            ),
         ]
         rules = [
             ExposureRule(channel="email", when="true", probability=0.98, timestep=0),
-            ExposureRule(channel="meeting", when="employer_type == 'university_hospital'", probability=0.8, timestep=1),
-            ExposureRule(channel="word_of_mouth", when="age < 40", probability=0.3, timestep=2),
+            ExposureRule(
+                channel="meeting",
+                when="employer_type == 'university_hospital'",
+                probability=0.8,
+                timestep=1,
+            ),
+            ExposureRule(
+                channel="word_of_mouth", when="age < 40", probability=0.3, timestep=2
+            ),
         ]
         exposure = SeedExposure(channels=channels, rules=rules)
 
@@ -492,7 +520,11 @@ class TestComplexScenarios:
         modifiers = [
             SpreadModifier(when="sentiment < -0.5", multiply=1.8, add=0.0),
             SpreadModifier(when="age < 40", multiply=1.3, add=0.0),
-            SpreadModifier(when="role_seniority == 'chief_physician_Chefarzt'", multiply=0.8, add=0.0),
+            SpreadModifier(
+                when="role_seniority == 'chief_physician_Chefarzt'",
+                multiply=0.8,
+                add=0.0,
+            ),
             SpreadModifier(when="edge_type == 'colleague'", multiply=1.5, add=0.05),
         ]
         config = SpreadConfig(
@@ -546,10 +578,14 @@ class TestComplexScenarios:
         assert config.capture_full_reasoning is True
 
         # Check types
-        categorical = next(o for o in config.suggested_outcomes if o.name == "adoption_intent")
+        categorical = next(
+            o for o in config.suggested_outcomes if o.name == "adoption_intent"
+        )
         assert categorical.type == OutcomeType.CATEGORICAL
 
-        float_outcome = next(o for o in config.suggested_outcomes if o.name == "sentiment")
+        float_outcome = next(
+            o for o in config.suggested_outcomes if o.name == "sentiment"
+        )
         assert float_outcome.type == OutcomeType.FLOAT
 
     def test_full_scenario_with_all_features(self):
@@ -572,12 +608,26 @@ class TestComplexScenarios:
             ),
             seed_exposure=SeedExposure(
                 channels=[
-                    ExposureChannel(name="email", description="Official email", reach="broadcast"),
-                    ExposureChannel(name="meeting", description="Department meeting", reach="targeted", credibility_modifier=0.95),
+                    ExposureChannel(
+                        name="email", description="Official email", reach="broadcast"
+                    ),
+                    ExposureChannel(
+                        name="meeting",
+                        description="Department meeting",
+                        reach="targeted",
+                        credibility_modifier=0.95,
+                    ),
                 ],
                 rules=[
-                    ExposureRule(channel="email", when="true", probability=0.98, timestep=0),
-                    ExposureRule(channel="meeting", when="role_seniority in ['chief_physician_Chefarzt', 'senior_physician_Oberarzt']", probability=0.9, timestep=1),
+                    ExposureRule(
+                        channel="email", when="true", probability=0.98, timestep=0
+                    ),
+                    ExposureRule(
+                        channel="meeting",
+                        when="role_seniority in ['chief_physician_Chefarzt', 'senior_physician_Oberarzt']",
+                        probability=0.9,
+                        timestep=1,
+                    ),
                 ],
             ),
             interaction=InteractionConfig(
@@ -594,8 +644,18 @@ class TestComplexScenarios:
             ),
             outcomes=OutcomeConfig(
                 suggested_outcomes=[
-                    OutcomeDefinition(name="adoption_intent", type=OutcomeType.CATEGORICAL, description="Adoption intent", options=["will_adopt", "considering", "resistant"]),
-                    OutcomeDefinition(name="sentiment", type=OutcomeType.FLOAT, description="Sentiment", range=(-1.0, 1.0)),
+                    OutcomeDefinition(
+                        name="adoption_intent",
+                        type=OutcomeType.CATEGORICAL,
+                        description="Adoption intent",
+                        options=["will_adopt", "considering", "resistant"],
+                    ),
+                    OutcomeDefinition(
+                        name="sentiment",
+                        type=OutcomeType.FLOAT,
+                        description="Sentiment",
+                        range=(-1.0, 1.0),
+                    ),
                 ],
             ),
             simulation=SimulationConfig(

@@ -7,7 +7,12 @@ segment breakdowns, and outcome distributions.
 from collections import defaultdict
 from typing import Any
 
-from ..core.models import PopulationSpec, ScenarioSpec, OutcomeDefinition, TimestepSummary
+from ..core.models import (
+    PopulationSpec,
+    ScenarioSpec,
+    OutcomeDefinition,
+    TimestepSummary,
+)
 from .state import StateManager
 
 
@@ -78,7 +83,11 @@ def compute_final_aggregates(
     if sentiments:
         sentiment_stats = {
             "mean": sum(sentiments) / len(sentiments),
-            "std": (sum((s - sum(sentiments) / len(sentiments)) ** 2 for s in sentiments) / len(sentiments)) ** 0.5,
+            "std": (
+                sum((s - sum(sentiments) / len(sentiments)) ** 2 for s in sentiments)
+                / len(sentiments)
+            )
+            ** 0.5,
             "min": min(sentiments),
             "max": max(sentiments),
         }
@@ -150,19 +159,21 @@ def compute_segment_aggregates(
 
         # Normalize position counts
         total = len(states)
-        position_dist = {
-            pos: count / total for pos, count in position_counts.items()
-        }
+        position_dist = {pos: count / total for pos, count in position_counts.items()}
 
-        results.append({
-            "segment_attribute": segment_attribute,
-            "segment_value": segment_value,
-            "agent_count": len(agent_ids),
-            "aware_count": sum(1 for s in states if s["aware"]),
-            "position_distribution": position_dist,
-            "position_counts": dict(position_counts),
-            "average_sentiment": sum(sentiments) / len(sentiments) if sentiments else None,
-        })
+        results.append(
+            {
+                "segment_attribute": segment_attribute,
+                "segment_value": segment_value,
+                "agent_count": len(agent_ids),
+                "aware_count": sum(1 for s in states if s["aware"]),
+                "position_distribution": position_dist,
+                "position_counts": dict(position_counts),
+                "average_sentiment": (
+                    sum(sentiments) / len(sentiments) if sentiments else None
+                ),
+            }
+        )
 
     # Sort by agent count (largest segments first)
     results.sort(key=lambda x: x["agent_count"], reverse=True)
@@ -200,9 +211,7 @@ def compute_outcome_distributions(
                     counts[str(value)] += 1
 
             if counts:
-                distributions[outcome.name] = {
-                    k: v / total for k, v in counts.items()
-                }
+                distributions[outcome.name] = {k: v / total for k, v in counts.items()}
 
         elif outcome.type.value == "boolean":
             true_count = 0
@@ -267,19 +276,20 @@ def compute_timeline_aggregates(
         position_pct = {}
         if total_positions > 0:
             position_pct = {
-                k: v / total_positions
-                for k, v in summary.position_distribution.items()
+                k: v / total_positions for k, v in summary.position_distribution.items()
             }
 
-        timeline.append({
-            "timestep": summary.timestep,
-            "exposure_rate": summary.exposure_rate,
-            "position_distribution": position_pct,
-            "average_sentiment": summary.average_sentiment,
-            "cumulative_shares": cumulative_shares,
-            "new_exposures": summary.new_exposures,
-            "agents_reasoned": summary.agents_reasoned,
-        })
+        timeline.append(
+            {
+                "timestep": summary.timestep,
+                "exposure_rate": summary.exposure_rate,
+                "position_distribution": position_pct,
+                "average_sentiment": summary.average_sentiment,
+                "cumulative_shares": cumulative_shares,
+                "new_exposures": summary.new_exposures,
+                "agents_reasoned": summary.agents_reasoned,
+            }
+        )
 
     return timeline
 
@@ -344,17 +354,20 @@ def identify_influencers(
         agent_degree = degree.get(agent_id, 0)
         agent = agent_map.get(agent_id, {})
 
-        influencers.append({
-            "agent_id": agent_id,
-            "degree": agent_degree,
-            "position": state["position"],
-            "sentiment": state["sentiment"],
-            "exposure_count": state["exposure_count"],
-            "attributes": {
-                k: v for k, v in agent.items()
-                if not k.startswith("_") and k != "id"
-            },
-        })
+        influencers.append(
+            {
+                "agent_id": agent_id,
+                "degree": agent_degree,
+                "position": state["position"],
+                "sentiment": state["sentiment"],
+                "exposure_count": state["exposure_count"],
+                "attributes": {
+                    k: v
+                    for k, v in agent.items()
+                    if not k.startswith("_") and k != "id"
+                },
+            }
+        )
 
     # Sort by degree (influence reach)
     influencers.sort(key=lambda x: x["degree"], reverse=True)

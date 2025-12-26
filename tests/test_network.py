@@ -121,33 +121,43 @@ class TestComputeMatchScore:
 
     def test_numeric_range_same_value(self):
         """Test numeric range with same values."""
-        config = AttributeWeightConfig(weight=1.0, match_type="numeric_range", range_value=10.0)
+        config = AttributeWeightConfig(
+            weight=1.0, match_type="numeric_range", range_value=10.0
+        )
         score = compute_match_score(50, 50, config)
         assert score == 1.0
 
     def test_numeric_range_within_range(self):
         """Test numeric range with values within range."""
-        config = AttributeWeightConfig(weight=1.0, match_type="numeric_range", range_value=10.0)
+        config = AttributeWeightConfig(
+            weight=1.0, match_type="numeric_range", range_value=10.0
+        )
         score = compute_match_score(50, 55, config)
         assert score == 0.5  # 1 - 5/10 = 0.5
 
     def test_numeric_range_beyond_range(self):
         """Test numeric range with values beyond range."""
-        config = AttributeWeightConfig(weight=1.0, match_type="numeric_range", range_value=10.0)
+        config = AttributeWeightConfig(
+            weight=1.0, match_type="numeric_range", range_value=10.0
+        )
         score = compute_match_score(50, 70, config)
         assert score == 0.0  # 1 - 20/10 = -1.0 -> clamped to 0.0
 
     def test_within_n_same_level(self):
         """Test within_n with same seniority level."""
         config = AttributeWeightConfig(weight=1.0, match_type="within_n", range_value=1)
-        score = compute_match_score("chief_physician_Chefarzt", "chief_physician_Chefarzt", config)
+        score = compute_match_score(
+            "chief_physician_Chefarzt", "chief_physician_Chefarzt", config
+        )
         assert score == 1.0
 
     def test_within_n_adjacent_levels(self):
         """Test within_n with adjacent seniority levels."""
         config = AttributeWeightConfig(weight=1.0, match_type="within_n", range_value=1)
         # Chief (4) and Senior (3) are 1 level apart
-        score = compute_match_score("chief_physician_Chefarzt", "senior_physician_Oberarzt", config)
+        score = compute_match_score(
+            "chief_physician_Chefarzt", "senior_physician_Oberarzt", config
+        )
         assert score == 1.0
 
     def test_within_n_distant_levels(self):
@@ -376,6 +386,7 @@ class TestNetworkResult:
             assert path.exists()
 
             import json
+
             with open(path) as f:
                 data = json.load(f)
 
@@ -429,7 +440,14 @@ class TestGenerateNetwork:
         config = NetworkConfig(avg_degree=4.0, seed=42)
         result = generate_network(sample_agents, config)
 
-        valid_types = {"colleague", "mentor_mentee", "society", "conference", "regional", "weak_tie"}
+        valid_types = {
+            "colleague",
+            "mentor_mentee",
+            "society",
+            "conference",
+            "regional",
+            "weak_tie",
+        }
         for edge in result.edges:
             assert edge.edge_type in valid_types
 

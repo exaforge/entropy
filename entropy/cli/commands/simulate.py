@@ -15,9 +15,15 @@ from ..utils import format_elapsed
 def simulate_command(
     scenario_file: Path = typer.Argument(..., help="Scenario spec YAML file"),
     output: Path = typer.Option(..., "--output", "-o", help="Output results directory"),
-    model: str = typer.Option("gpt-5-mini", "--model", "-m", help="LLM model for agent reasoning"),
-    threshold: int = typer.Option(3, "--threshold", "-t", help="Multi-touch threshold for re-reasoning"),
-    seed: int | None = typer.Option(None, "--seed", help="Random seed for reproducibility"),
+    model: str = typer.Option(
+        "gpt-5-mini", "--model", "-m", help="LLM model for agent reasoning"
+    ),
+    threshold: int = typer.Option(
+        3, "--threshold", "-t", help="Multi-touch threshold for re-reasoning"
+    ),
+    seed: int | None = typer.Option(
+        None, "--seed", help="Random seed for reproducibility"
+    ),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress progress output"),
 ):
     """
@@ -108,7 +114,9 @@ def simulate_command(
     console.print("═" * 60)
     console.print()
 
-    console.print(f"Duration: {format_elapsed(elapsed)} ({result.total_timesteps} timesteps)")
+    console.print(
+        f"Duration: {format_elapsed(elapsed)} ({result.total_timesteps} timesteps)"
+    )
     if result.stopped_reason:
         console.print(f"Stopped: {result.stopped_reason}")
     console.print(f"Reasoning calls: {result.total_reasoning_calls:,}")

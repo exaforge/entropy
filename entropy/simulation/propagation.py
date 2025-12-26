@@ -9,7 +9,14 @@ import logging
 import random
 from typing import Any
 
-from ..core.models import ScenarioSpec, ExposureRule, SpreadConfig, ExposureRecord, SimulationEvent, SimulationEventType
+from ..core.models import (
+    ScenarioSpec,
+    ExposureRule,
+    SpreadConfig,
+    ExposureRecord,
+    SimulationEvent,
+    SimulationEventType,
+)
 from ..population.sampler import eval_condition, ConditionError
 from .state import StateManager
 
@@ -113,12 +120,14 @@ def apply_seed_exposures(
             )
 
             state_manager.record_exposure(agent_id, exposure)
-            state_manager.log_event(SimulationEvent(
-                timestep=timestep,
-                event_type=SimulationEventType.SEED_EXPOSURE,
-                agent_id=agent_id,
-                details={"channel": rule.channel},
-            ))
+            state_manager.log_event(
+                SimulationEvent(
+                    timestep=timestep,
+                    event_type=SimulationEventType.SEED_EXPOSURE,
+                    agent_id=agent_id,
+                    details={"channel": rule.channel},
+                )
+            )
             new_exposures += 1
 
     return new_exposures
@@ -252,15 +261,17 @@ def propagate_through_network(
             )
 
             state_manager.record_exposure(neighbor_id, exposure)
-            state_manager.log_event(SimulationEvent(
-                timestep=timestep,
-                event_type=SimulationEventType.NETWORK_EXPOSURE,
-                agent_id=neighbor_id,
-                details={
-                    "source": sharer_id,
-                    "edge_type": edge_data.get("type", "unknown"),
-                },
-            ))
+            state_manager.log_event(
+                SimulationEvent(
+                    timestep=timestep,
+                    event_type=SimulationEventType.NETWORK_EXPOSURE,
+                    agent_id=neighbor_id,
+                    details={
+                        "source": sharer_id,
+                        "edge_type": edge_data.get("type", "unknown"),
+                    },
+                )
+            )
             new_exposures += 1
 
     return new_exposures

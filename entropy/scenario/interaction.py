@@ -136,8 +136,7 @@ def determine_interaction_model(
     """
     # Build attribute list for spread modifiers
     attribute_info = "\n".join(
-        f"- {attr.name} ({attr.type})"
-        for attr in population_spec.attributes
+        f"- {attr.name} ({attr.type})" for attr in population_spec.attributes
     )
 
     # Build edge type info if available

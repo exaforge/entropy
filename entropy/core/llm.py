@@ -170,7 +170,7 @@ def reasoning_call(
         Structured data matching the schema
     """
     client = get_openai_client()
-    
+
     # Prepend previous errors if provided
     effective_prompt = prompt
     if previous_errors:
@@ -179,7 +179,7 @@ def reasoning_call(
     attempts = 0
     last_error = None
     last_error_summary = ""
-    
+
     while attempts <= max_retries:
         request_params = {
             "model": model,
@@ -202,7 +202,10 @@ def reasoning_call(
         for item in response.output:
             if hasattr(item, "type") and item.type == "message":
                 for content_item in item.content:
-                    if hasattr(content_item, "type") and content_item.type == "output_text":
+                    if (
+                        hasattr(content_item, "type")
+                        and content_item.type == "output_text"
+                    ):
                         if hasattr(content_item, "text"):
                             structured_data = json.loads(content_item.text)
 
@@ -214,30 +217,30 @@ def reasoning_call(
             )
 
         result = structured_data or {}
-        
+
         # If no validator, return immediately
         if validator is None:
             return result
-        
+
         # Validate the response
         is_valid, error_msg = validator(result)
-        
+
         if is_valid:
             return result
-        
+
         # Validation failed - prepare for retry
         attempts += 1
         last_error = error_msg
         # Extract meaningful error summary (skip header lines)
         last_error_summary = _extract_error_summary(error_msg)
-        
+
         if attempts <= max_retries:
             # Notify via callback if provided
             if on_retry:
                 on_retry(attempts, max_retries, last_error_summary)
             # Prepend error feedback for next attempt
             effective_prompt = f"{error_msg}\n\n---\n\n{prompt}"
-        
+
     # All retries exhausted - notify one final time
     if on_retry:
         on_retry(max_retries + 1, max_retries, f"EXHAUSTED: {last_error_summary}")
@@ -248,22 +251,22 @@ def _extract_error_summary(error_msg: str) -> str:
     """Extract a concise error summary from validation error message."""
     if not error_msg:
         return "validation error"
-    
-    lines = error_msg.strip().split('\n')
-    
+
+    lines = error_msg.strip().split("\n")
+
     # Skip header lines that start with "##" or are empty
     for line in lines:
         line = line.strip()
-        if line and not line.startswith('#') and not line.startswith('---'):
+        if line and not line.startswith("#") and not line.startswith("---"):
             # Found a meaningful line - extract key info
             # Look for "ERROR in X:" or "Problem:" patterns
-            if 'ERROR in' in line:
+            if "ERROR in" in line:
                 return line[:60]
-            elif 'Problem:' in line:
-                return line.replace('Problem:', '').strip()[:60]
+            elif "Problem:" in line:
+                return line.replace("Problem:", "").strip()[:60]
             elif line:
                 return line[:60]
-    
+
     return "validation error"
 
 
@@ -304,7 +307,7 @@ def agentic_research(
         Tuple of (structured_data, source_urls)
     """
     client = get_openai_client()
-    
+
     # Prepend previous errors if provided
     effective_prompt = prompt
     if previous_errors:
@@ -314,7 +317,7 @@ def agentic_research(
     last_error = None
     last_error_summary = ""
     all_sources: list[str] = []
-    
+
     while attempts <= max_retries:
         request_params = {
             "model": model,
@@ -354,7 +357,10 @@ def agentic_research(
             # Check message content
             if hasattr(item, "type") and item.type == "message":
                 for content_item in item.content:
-                    if hasattr(content_item, "type") and content_item.type == "output_text":
+                    if (
+                        hasattr(content_item, "type")
+                        and content_item.type == "output_text"
+                    ):
                         if hasattr(content_item, "text"):
                             structured_data = json.loads(content_item.text)
                         if (
@@ -381,30 +387,30 @@ def agentic_research(
             )
 
         result = structured_data or {}
-        
+
         # If no validator, return immediately
         if validator is None:
             return result, list(set(all_sources))
-        
+
         # Validate the response
         is_valid, error_msg = validator(result)
-        
+
         if is_valid:
             return result, list(set(all_sources))
-        
+
         # Validation failed - prepare for retry
         attempts += 1
         last_error = error_msg
         # Extract meaningful error summary (skip header lines)
         last_error_summary = _extract_error_summary(error_msg)
-        
+
         if attempts <= max_retries:
             # Notify via callback if provided
             if on_retry:
                 on_retry(attempts, max_retries, last_error_summary)
             # Prepend error feedback for next attempt
             effective_prompt = f"{error_msg}\n\n---\n\n{prompt}"
-    
+
     # All retries exhausted - notify one final time
     if on_retry:
         on_retry(max_retries + 1, max_retries, f"EXHAUSTED: {last_error_summary}")

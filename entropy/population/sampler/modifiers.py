@@ -120,12 +120,12 @@ def _apply_numeric_modifiers(
     # Re-apply min/max clamping after modification
     # Use formula bounds if available (they take precedence over static bounds)
     min_bound = _resolve_optional_param(
-        dist.min, getattr(dist, 'min_formula', None), agent
+        dist.min, getattr(dist, "min_formula", None), agent
     )
     max_bound = _resolve_optional_param(
-        dist.max, getattr(dist, 'max_formula', None), agent
+        dist.max, getattr(dist, "max_formula", None), agent
     )
-    
+
     if min_bound is not None:
         modified_value = max(modified_value, min_bound)
     if max_bound is not None:

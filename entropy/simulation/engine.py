@@ -118,9 +118,7 @@ class SimulationEngine:
         self.config = config
 
         # Build agent map for quick lookup
-        self.agent_map = {
-            a.get("_id", str(i)): a for i, a in enumerate(agents)
-        }
+        self.agent_map = {a.get("_id", str(i)): a for i, a in enumerate(agents)}
 
         # Initialize RNG
         seed = config.random_seed
@@ -140,9 +138,7 @@ class SimulationEngine:
         )
 
         # Initialize timeline manager
-        self.timeline = TimelineManager(
-            self.output_dir / "timeline.jsonl"
-        )
+        self.timeline = TimelineManager(self.output_dir / "timeline.jsonl")
 
         # Pre-generate personas for all agents
         self._personas: dict[str, str] = {}
@@ -158,9 +154,7 @@ class SimulationEngine:
         # Progress callback
         self._on_progress: Callable[[int, int, str], None] | None = None
 
-    def set_progress_callback(
-        self, callback: Callable[[int, int, str], None]
-    ) -> None:
+    def set_progress_callback(self, callback: Callable[[int, int, str], None]) -> None:
         """Set progress callback.
 
         Args:
@@ -193,10 +187,7 @@ class SimulationEngine:
 
                 # Report progress
                 exposure_rate = self.state_manager.get_exposure_rate()
-                self._report_progress(
-                    timestep,
-                    f"Exposure: {exposure_rate:.1%}"
-                )
+                self._report_progress(timestep, f"Exposure: {exposure_rate:.1%}")
 
                 # Run timestep
                 summary = self._run_timestep(timestep)
@@ -314,16 +305,18 @@ class SimulationEngine:
             agents_reasoned += 1
 
             # Log event
-            self.timeline.log_event(SimulationEvent(
-                timestep=timestep,
-                event_type=SimulationEventType.AGENT_REASONED,
-                agent_id=agent_id,
-                details={
-                    "position": new_state.position,
-                    "sentiment": new_state.sentiment,
-                    "will_share": new_state.will_share,
-                },
-            ))
+            self.timeline.log_event(
+                SimulationEvent(
+                    timestep=timestep,
+                    event_type=SimulationEventType.AGENT_REASONED,
+                    agent_id=agent_id,
+                    details={
+                        "position": new_state.position,
+                        "sentiment": new_state.sentiment,
+                        "will_share": new_state.will_share,
+                    },
+                )
+            )
 
         # 5. Compute and save timestep summary
         summary = compute_timestep_summary(
@@ -388,12 +381,14 @@ class SimulationEngine:
             neighbor_state = self.state_manager.get_agent_state(neighbor_id)
 
             if neighbor_state.position:  # Only include if they have an opinion
-                opinions.append(PeerOpinion(
-                    agent_id=neighbor_id,
-                    relationship=edge_data.get("type", "contact"),
-                    position=neighbor_state.position,
-                    sentiment=neighbor_state.sentiment,
-                ))
+                opinions.append(
+                    PeerOpinion(
+                        agent_id=neighbor_id,
+                        relationship=edge_data.get("type", "contact"),
+                        position=neighbor_state.position,
+                        sentiment=neighbor_state.sentiment,
+                    )
+                )
 
         return opinions
 
@@ -481,15 +476,18 @@ class SimulationEngine:
             agent_id = state["agent_id"]
             agent = self.agent_map.get(agent_id, {})
 
-            agent_results.append({
-                "agent_id": agent_id,
-                "attributes": {
-                    k: v for k, v in agent.items()
-                    if not k.startswith("_")
-                },
-                "final_state": state,
-                "reasoning_count": 1 if state["last_reasoning_timestep"] >= 0 else 0,
-            })
+            agent_results.append(
+                {
+                    "agent_id": agent_id,
+                    "attributes": {
+                        k: v for k, v in agent.items() if not k.startswith("_")
+                    },
+                    "final_state": state,
+                    "reasoning_count": (
+                        1 if state["last_reasoning_timestep"] >= 0 else 0
+                    ),
+                }
+            )
 
         with open(self.output_dir / "agent_states.json", "w") as f:
             json.dump(agent_results, f, indent=2)

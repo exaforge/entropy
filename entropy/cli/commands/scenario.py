@@ -13,11 +13,17 @@ from ..utils import format_elapsed
 
 @app.command("scenario")
 def scenario_command(
-    description: str = typer.Argument(..., help="Natural language scenario description"),
-    population: Path = typer.Option(..., "--population", "-p", help="Population spec YAML file"),
+    description: str = typer.Argument(
+        ..., help="Natural language scenario description"
+    ),
+    population: Path = typer.Option(
+        ..., "--population", "-p", help="Population spec YAML file"
+    ),
     agents: Path = typer.Option(..., "--agents", "-a", help="Sampled agents JSON file"),
     network: Path = typer.Option(..., "--network", "-n", help="Network JSON file"),
-    output: Path = typer.Option(..., "--output", "-o", help="Output scenario YAML file"),
+    output: Path = typer.Option(
+        ..., "--output", "-o", help="Output scenario YAML file"
+    ),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompts"),
 ):
     """
@@ -109,9 +115,13 @@ def scenario_command(
 
     # Event info
     event = result_spec.event
-    content_preview = event.content[:50] + "..." if len(event.content) > 50 else event.content
-    console.print(f"[bold]Event:[/bold] {event.type.value} — \"{content_preview}\"")
-    console.print(f"[bold]Source:[/bold] {event.source} (credibility: {event.credibility:.2f})")
+    content_preview = (
+        event.content[:50] + "..." if len(event.content) > 50 else event.content
+    )
+    console.print(f'[bold]Event:[/bold] {event.type.value} — "{content_preview}"')
+    console.print(
+        f"[bold]Source:[/bold] {event.source} (credibility: {event.credibility:.2f})"
+    )
     console.print()
 
     # Exposure info
@@ -120,12 +130,16 @@ def scenario_command(
         console.print(f"  • {ch.name} ({ch.reach})")
     console.print()
 
-    console.print(f"[bold]Seed Exposure Rules:[/bold] {len(result_spec.seed_exposure.rules)}")
+    console.print(
+        f"[bold]Seed Exposure Rules:[/bold] {len(result_spec.seed_exposure.rules)}"
+    )
     for rule in result_spec.seed_exposure.rules[:3]:
         when_preview = rule.when[:30] + "..." if len(rule.when) > 30 else rule.when
         console.print(f"  • {rule.channel}: {when_preview} at t={rule.timestep}")
     if len(result_spec.seed_exposure.rules) > 3:
-        console.print(f"  [dim]... and {len(result_spec.seed_exposure.rules) - 3} more[/dim]")
+        console.print(
+            f"  [dim]... and {len(result_spec.seed_exposure.rules) - 3} more[/dim]"
+        )
     console.print()
 
     # Interaction info
@@ -134,7 +148,9 @@ def scenario_command(
     if interaction.secondary_model:
         model_str += f" + {interaction.secondary_model.value}"
     console.print(f"[bold]Interaction Model:[/bold] {model_str}")
-    console.print(f"[bold]Share Probability:[/bold] {result_spec.spread.share_probability:.2f}")
+    console.print(
+        f"[bold]Share Probability:[/bold] {result_spec.spread.share_probability:.2f}"
+    )
     console.print()
 
     # Outcomes info
@@ -152,20 +168,28 @@ def scenario_command(
 
     # Simulation info
     sim = result_spec.simulation
-    console.print(f"[bold]Simulation:[/bold] {sim.max_timesteps} {sim.timestep_unit.value}s")
+    console.print(
+        f"[bold]Simulation:[/bold] {sim.max_timesteps} {sim.timestep_unit.value}s"
+    )
     console.print()
 
     # Validation Results
     if validation_result.errors:
-        console.print(f"[red]✗[/red] Validation: {len(validation_result.errors)} error(s)")
+        console.print(
+            f"[red]✗[/red] Validation: {len(validation_result.errors)} error(s)"
+        )
         for err in validation_result.errors[:5]:
             console.print(f"  [red]✗[/red] {err.location}: {err.message}")
             if err.suggestion:
                 console.print(f"    [dim]→ {err.suggestion}[/dim]")
         if len(validation_result.errors) > 5:
-            console.print(f"  [dim]... and {len(validation_result.errors) - 5} more[/dim]")
+            console.print(
+                f"  [dim]... and {len(validation_result.errors) - 5} more[/dim]"
+            )
     elif validation_result.warnings:
-        console.print(f"[green]✓[/green] Validation passed with {len(validation_result.warnings)} warning(s)")
+        console.print(
+            f"[green]✓[/green] Validation passed with {len(validation_result.warnings)} warning(s)"
+        )
         for warn in validation_result.warnings[:3]:
             console.print(f"  [yellow]⚠[/yellow] {warn.location}: {warn.message}")
     else:

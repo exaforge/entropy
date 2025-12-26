@@ -48,7 +48,8 @@ class StateManager:
         cursor = self.conn.cursor()
 
         # Agent states table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS agent_states (
                 agent_id TEXT PRIMARY KEY,
                 aware INTEGER DEFAULT 0,
@@ -62,10 +63,12 @@ class StateManager:
                 raw_reasoning TEXT,
                 updated_at INTEGER DEFAULT 0
             )
-        """)
+        """
+        )
 
         # Exposure history table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS exposures (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 agent_id TEXT,
@@ -76,10 +79,12 @@ class StateManager:
                 credibility REAL,
                 FOREIGN KEY (agent_id) REFERENCES agent_states(agent_id)
             )
-        """)
+        """
+        )
 
         # Timeline events table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS timeline (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 timestep INTEGER,
@@ -88,10 +93,12 @@ class StateManager:
                 details_json TEXT,
                 wall_timestamp TEXT
             )
-        """)
+        """
+        )
 
         # Timestep summaries table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS timestep_summaries (
                 timestep INTEGER PRIMARY KEY,
                 new_exposures INTEGER,
@@ -102,29 +109,40 @@ class StateManager:
                 position_distribution_json TEXT,
                 average_sentiment REAL
             )
-        """)
+        """
+        )
 
         # Create indexes for common queries
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_exposures_agent
             ON exposures(agent_id)
-        """)
-        cursor.execute("""
+        """
+        )
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_exposures_timestep
             ON exposures(timestep)
-        """)
-        cursor.execute("""
+        """
+        )
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_timeline_timestep
             ON timeline(timestep)
-        """)
-        cursor.execute("""
+        """
+        )
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_agent_states_aware
             ON agent_states(aware)
-        """)
-        cursor.execute("""
+        """
+        )
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_agent_states_will_share
             ON agent_states(will_share)
-        """)
+        """
+        )
 
         self.conn.commit()
 
@@ -138,10 +156,13 @@ class StateManager:
 
         for agent in agents:
             agent_id = agent.get("_id", str(agent.get("id", "")))
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT OR IGNORE INTO agent_states (agent_id)
                 VALUES (?)
-            """, (agent_id,))
+            """,
+                (agent_id,),
+            )
 
         self.conn.commit()
 
@@ -157,18 +178,24 @@ class StateManager:
         cursor = self.conn.cursor()
 
         # Get main state
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT * FROM agent_states WHERE agent_id = ?
-        """, (agent_id,))
+        """,
+            (agent_id,),
+        )
         row = cursor.fetchone()
 
         if not row:
             return AgentState(agent_id=agent_id)
 
         # Get exposure history
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT * FROM exposures WHERE agent_id = ? ORDER BY timestep
-        """, (agent_id,))
+        """,
+            (agent_id,),
+        )
         exposure_rows = cursor.fetchall()
 
         exposures = [
@@ -215,9 +242,11 @@ class StateManager:
             List of matching agent IDs
         """
         cursor = self.conn.cursor()
-        cursor.execute(f"""
+        cursor.execute(
+            f"""
             SELECT agent_id FROM agent_states WHERE {condition}
-        """)
+        """
+        )
         return [row["agent_id"] for row in cursor.fetchall()]
 
     def get_unaware_agents(self) -> list[str]:
@@ -255,19 +284,23 @@ class StateManager:
         cursor = self.conn.cursor()
 
         # Agents who are aware but never reasoned
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT agent_id FROM agent_states
             WHERE aware = 1 AND last_reasoning_timestep < 0
-        """)
+        """
+        )
         never_reasoned = [row["agent_id"] for row in cursor.fetchall()]
 
         # For multi-touch, we need to check exposure counts
         # Get agents who have had exposures since their last reasoning
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT agent_id, exposure_count, last_reasoning_timestep
             FROM agent_states
             WHERE aware = 1 AND last_reasoning_timestep >= 0
-        """)
+        """
+        )
 
         multi_touch = []
         for row in cursor.fetchall():
@@ -276,10 +309,13 @@ class StateManager:
             last_timestep = row["last_reasoning_timestep"]
 
             # Count exposures at time of last reasoning
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT COUNT(*) as cnt FROM exposures
                 WHERE agent_id = ? AND timestep <= ?
-            """, (agent_id, last_timestep))
+            """,
+                (agent_id, last_timestep),
+            )
             count_at_last = cursor.fetchone()["cnt"]
 
             if current_count - count_at_last >= threshold:
@@ -287,9 +323,7 @@ class StateManager:
 
         return never_reasoned + multi_touch
 
-    def record_exposure(
-        self, agent_id: str, exposure: ExposureRecord
-    ) -> None:
+    def record_exposure(self, agent_id: str, exposure: ExposureRecord) -> None:
         """Record an exposure event for an agent.
 
         Args:
@@ -299,24 +333,30 @@ class StateManager:
         cursor = self.conn.cursor()
 
         # Insert exposure record
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO exposures (agent_id, timestep, channel, source_agent_id, content, credibility)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            agent_id,
-            exposure.timestep,
-            exposure.channel,
-            exposure.source_agent_id,
-            exposure.content,
-            exposure.credibility,
-        ))
+        """,
+            (
+                agent_id,
+                exposure.timestep,
+                exposure.channel,
+                exposure.source_agent_id,
+                exposure.content,
+                exposure.credibility,
+            ),
+        )
 
         # Update agent state
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE agent_states
             SET aware = 1, exposure_count = exposure_count + 1, updated_at = ?
             WHERE agent_id = ?
-        """, (exposure.timestep, agent_id))
+        """,
+            (exposure.timestep, agent_id),
+        )
 
         self.conn.commit()
 
@@ -334,7 +374,8 @@ class StateManager:
 
         outcomes_json = json.dumps(state.outcomes) if state.outcomes else None
 
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE agent_states
             SET position = ?,
                 sentiment = ?,
@@ -345,17 +386,19 @@ class StateManager:
                 last_reasoning_timestep = ?,
                 updated_at = ?
             WHERE agent_id = ?
-        """, (
-            state.position,
-            state.sentiment,
-            state.action_intent,
-            1 if state.will_share else 0,
-            outcomes_json,
-            state.raw_reasoning,
-            timestep,
-            timestep,
-            agent_id,
-        ))
+        """,
+            (
+                state.position,
+                state.sentiment,
+                state.action_intent,
+                1 if state.will_share else 0,
+                outcomes_json,
+                state.raw_reasoning,
+                timestep,
+                timestep,
+                agent_id,
+            ),
+        )
 
         self.conn.commit()
 
@@ -373,7 +416,8 @@ class StateManager:
         for agent_id, state in updates:
             outcomes_json = json.dumps(state.outcomes) if state.outcomes else None
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE agent_states
                 SET position = ?,
                     sentiment = ?,
@@ -384,17 +428,19 @@ class StateManager:
                     last_reasoning_timestep = ?,
                     updated_at = ?
                 WHERE agent_id = ?
-            """, (
-                state.position,
-                state.sentiment,
-                state.action_intent,
-                1 if state.will_share else 0,
-                outcomes_json,
-                state.raw_reasoning,
-                timestep,
-                timestep,
-                agent_id,
-            ))
+            """,
+                (
+                    state.position,
+                    state.sentiment,
+                    state.action_intent,
+                    1 if state.will_share else 0,
+                    outcomes_json,
+                    state.raw_reasoning,
+                    timestep,
+                    timestep,
+                    agent_id,
+                ),
+            )
 
         self.conn.commit()
 
@@ -406,16 +452,19 @@ class StateManager:
         """
         cursor = self.conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO timeline (timestep, event_type, agent_id, details_json, wall_timestamp)
             VALUES (?, ?, ?, ?, ?)
-        """, (
-            event.timestep,
-            event.event_type.value,
-            event.agent_id,
-            json.dumps(event.details),
-            event.timestamp.isoformat(),
-        ))
+        """,
+            (
+                event.timestep,
+                event.event_type.value,
+                event.agent_id,
+                json.dumps(event.details),
+                event.timestamp.isoformat(),
+            ),
+        )
 
         self.conn.commit()
 
@@ -438,12 +487,14 @@ class StateManager:
         """Get count of agents per position."""
         cursor = self.conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT position, COUNT(*) as cnt
             FROM agent_states
             WHERE position IS NOT NULL
             GROUP BY position
-        """)
+        """
+        )
 
         return {row["position"]: row["cnt"] for row in cursor.fetchall()}
 
@@ -451,11 +502,13 @@ class StateManager:
         """Get average sentiment of aware agents."""
         cursor = self.conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT AVG(sentiment) as avg_sentiment
             FROM agent_states
             WHERE sentiment IS NOT NULL
-        """)
+        """
+        )
         row = cursor.fetchone()
 
         return row["avg_sentiment"] if row else None
@@ -468,21 +521,24 @@ class StateManager:
         """
         cursor = self.conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT OR REPLACE INTO timestep_summaries
             (timestep, new_exposures, agents_reasoned, shares_occurred,
              state_changes, exposure_rate, position_distribution_json, average_sentiment)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            summary.timestep,
-            summary.new_exposures,
-            summary.agents_reasoned,
-            summary.shares_occurred,
-            summary.state_changes,
-            summary.exposure_rate,
-            json.dumps(summary.position_distribution),
-            summary.average_sentiment,
-        ))
+        """,
+            (
+                summary.timestep,
+                summary.new_exposures,
+                summary.agents_reasoned,
+                summary.shares_occurred,
+                summary.state_changes,
+                summary.exposure_rate,
+                json.dumps(summary.position_distribution),
+                summary.average_sentiment,
+            ),
+        )
 
         self.conn.commit()
 
@@ -490,9 +546,11 @@ class StateManager:
         """Get all timestep summaries."""
         cursor = self.conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT * FROM timestep_summaries ORDER BY timestep
-        """)
+        """
+        )
 
         summaries = []
         for row in cursor.fetchall():
@@ -503,16 +561,18 @@ class StateManager:
                 except json.JSONDecodeError:
                     pass
 
-            summaries.append(TimestepSummary(
-                timestep=row["timestep"],
-                new_exposures=row["new_exposures"],
-                agents_reasoned=row["agents_reasoned"],
-                shares_occurred=row["shares_occurred"],
-                state_changes=row["state_changes"],
-                exposure_rate=row["exposure_rate"],
-                position_distribution=position_dist,
-                average_sentiment=row["average_sentiment"],
-            ))
+            summaries.append(
+                TimestepSummary(
+                    timestep=row["timestep"],
+                    new_exposures=row["new_exposures"],
+                    agents_reasoned=row["agents_reasoned"],
+                    shares_occurred=row["shares_occurred"],
+                    state_changes=row["state_changes"],
+                    exposure_rate=row["exposure_rate"],
+                    position_distribution=position_dist,
+                    average_sentiment=row["average_sentiment"],
+                )
+            )
 
         return summaries
 
@@ -529,9 +589,12 @@ class StateManager:
 
         for row in cursor.fetchall():
             # Get exposures
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT COUNT(*) as cnt FROM exposures WHERE agent_id = ?
-            """, (row["agent_id"],))
+            """,
+                (row["agent_id"],),
+            )
             exposure_count = cursor.fetchone()["cnt"]
 
             outcomes = {}
@@ -541,18 +604,20 @@ class StateManager:
                 except json.JSONDecodeError:
                     pass
 
-            states.append({
-                "agent_id": row["agent_id"],
-                "aware": bool(row["aware"]),
-                "exposure_count": exposure_count,
-                "last_reasoning_timestep": row["last_reasoning_timestep"],
-                "position": row["position"],
-                "sentiment": row["sentiment"],
-                "action_intent": row["action_intent"],
-                "will_share": bool(row["will_share"]),
-                "outcomes": outcomes,
-                "raw_reasoning": row["raw_reasoning"],
-            })
+            states.append(
+                {
+                    "agent_id": row["agent_id"],
+                    "aware": bool(row["aware"]),
+                    "exposure_count": exposure_count,
+                    "last_reasoning_timestep": row["last_reasoning_timestep"],
+                    "position": row["position"],
+                    "sentiment": row["sentiment"],
+                    "action_intent": row["action_intent"],
+                    "will_share": bool(row["will_share"]),
+                    "outcomes": outcomes,
+                    "raw_reasoning": row["raw_reasoning"],
+                }
+            )
 
         return states
 
@@ -575,13 +640,15 @@ class StateManager:
                 except json.JSONDecodeError:
                     pass
 
-            events.append({
-                "timestep": row["timestep"],
-                "event_type": row["event_type"],
-                "agent_id": row["agent_id"],
-                "details": details,
-                "timestamp": row["wall_timestamp"],
-            })
+            events.append(
+                {
+                    "timestep": row["timestep"],
+                    "event_type": row["event_type"],
+                    "agent_id": row["agent_id"],
+                    "details": details,
+                    "timestamp": row["wall_timestamp"],
+                }
+            )
 
         return events
 

@@ -79,7 +79,9 @@ def display_summary(console: Console, reader: ResultsReader) -> None:
     # Exposure stats
     console.print("[bold]EXPOSURE[/bold]")
     console.print("─" * 40)
-    console.print(f"Final exposure rate: {format_percentage(summary.final_exposure_rate)}")
+    console.print(
+        f"Final exposure rate: {format_percentage(summary.final_exposure_rate)}"
+    )
     console.print(f"Total exposures: {summary.total_exposures:,}")
     console.print(f"Reasoning calls: {summary.total_reasoning_calls:,}")
     console.print()
@@ -100,9 +102,13 @@ def display_summary(console: Console, reader: ResultsReader) -> None:
                         console.print(f"  std: {distribution['std']:.2f}")
                 else:
                     # Categorical distribution
-                    for option, pct in sorted(distribution.items(), key=lambda x: -x[1]):
+                    for option, pct in sorted(
+                        distribution.items(), key=lambda x: -x[1]
+                    ):
                         bar = make_bar(pct)
-                        console.print(f"  {option:25s} {format_percentage(pct):>6s}  {bar}")
+                        console.print(
+                            f"  {option:25s} {format_percentage(pct):>6s}  {bar}"
+                        )
 
             console.print()
 
@@ -131,17 +137,17 @@ def display_segment_breakdown(
     console.print()
 
     for segment in segments:
-        console.print(f"[bold]{segment.segment_value}[/bold] ({segment.agent_count} agents)")
+        console.print(
+            f"[bold]{segment.segment_value}[/bold] ({segment.agent_count} agents)"
+        )
 
         # Show position distribution
         if segment.position_distribution:
             positions = sorted(
-                segment.position_distribution.items(),
-                key=lambda x: -x[1]
+                segment.position_distribution.items(), key=lambda x: -x[1]
             )
             pos_str = ", ".join(
-                f"{k}: {format_percentage(v)}"
-                for k, v in positions[:3]
+                f"{k}: {format_percentage(v)}" for k, v in positions[:3]
             )
             console.print(f"  positions: {pos_str}")
 
@@ -264,15 +270,21 @@ def display_quick_stats(
 
     console.print()
     console.print(f"Total agents: {summary['total']}")
-    console.print(f"Aware: {summary['aware']} ({format_percentage(summary['aware'] / summary['total'] if summary['total'] > 0 else 0)})")
+    console.print(
+        f"Aware: {summary['aware']} ({format_percentage(summary['aware'] / summary['total'] if summary['total'] > 0 else 0)})"
+    )
     console.print()
 
     if summary["positions"]:
         console.print("[bold]Position Distribution:[/bold]")
-        for position, count in sorted(summary["positions"].items(), key=lambda x: -x[1]):
+        for position, count in sorted(
+            summary["positions"].items(), key=lambda x: -x[1]
+        ):
             pct = count / summary["total"] if summary["total"] > 0 else 0
             bar = make_bar(pct)
-            console.print(f"  {position:25s} {count:5d}  {format_percentage(pct):>6s}  {bar}")
+            console.print(
+                f"  {position:25s} {count:5d}  {format_percentage(pct):>6s}  {bar}"
+            )
 
 
 def display_help(console: Console) -> None:

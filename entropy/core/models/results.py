@@ -110,9 +110,7 @@ class SimulationResults(BaseModel):
     """Complete simulation results."""
 
     meta: RunMeta = Field(description="Run metadata")
-    summary: SimulationSummary | None = Field(
-        default=None, description="Quick summary"
-    )
+    summary: SimulationSummary | None = Field(default=None, description="Quick summary")
     timeline: list[TimelinePoint] = Field(
         default_factory=list, description="Timeline data"
     )

@@ -73,14 +73,16 @@ def _check_noop_modifiers(attr: AttributeSpec) -> list[ValidationIssue]:
             is_noop = False
 
         if is_noop:
-            issues.append(ValidationIssue(
-                severity=Severity.WARNING,
-                category="NO_OP",
-                attribute=attr.name,
-                modifier_index=i,
-                message="modifier has no effect (multiply=1.0, add=0, no overrides)",
-                suggestion="Remove this modifier or add meaningful values",
-            ))
+            issues.append(
+                ValidationIssue(
+                    severity=Severity.WARNING,
+                    category="NO_OP",
+                    attribute=attr.name,
+                    modifier_index=i,
+                    message="modifier has no effect (multiply=1.0, add=0, no overrides)",
+                    suggestion="Remove this modifier or add meaningful values",
+                )
+            )
 
     return issues
 
@@ -99,7 +101,15 @@ def _check_modifier_stacking(attr: AttributeSpec) -> list[ValidationIssue]:
         return issues
 
     # Only analyze numeric distributions with hard constraints
-    if not isinstance(dist, (NormalDistribution, LognormalDistribution, UniformDistribution, BetaDistribution)):
+    if not isinstance(
+        dist,
+        (
+            NormalDistribution,
+            LognormalDistribution,
+            UniformDistribution,
+            BetaDistribution,
+        ),
+    ):
         return issues
 
     # Find hard constraints
@@ -151,13 +161,15 @@ def _check_modifier_stacking(attr: AttributeSpec) -> list[ValidationIssue]:
 
     # Check against constraints
     if hard_max is not None and worst_high > hard_max * 1.5:
-        issues.append(ValidationIssue(
-            severity=Severity.WARNING,
-            category="MODIFIER_STACKING",
-            attribute=attr.name,
-            message=f"stacked modifiers could push value to {worst_high:.1f} (hard_max={hard_max})",
-            suggestion="Review modifier values or add clamping logic",
-        ))
+        issues.append(
+            ValidationIssue(
+                severity=Severity.WARNING,
+                category="MODIFIER_STACKING",
+                attribute=attr.name,
+                message=f"stacked modifiers could push value to {worst_high:.1f} (hard_max={hard_max})",
+                suggestion="Review modifier values or add clamping logic",
+            )
+        )
 
     # Calculate worst-case low value (all negative adds, smallest multipliers)
     min_multiply = 1.0
@@ -171,13 +183,15 @@ def _check_modifier_stacking(attr: AttributeSpec) -> list[ValidationIssue]:
     worst_low = base_value * min_multiply + min_add
 
     if hard_min is not None and worst_low < hard_min * 0.5:
-        issues.append(ValidationIssue(
-            severity=Severity.WARNING,
-            category="MODIFIER_STACKING",
-            attribute=attr.name,
-            message=f"stacked modifiers could push value to {worst_low:.1f} (hard_min={hard_min})",
-            suggestion="Review modifier values or add clamping logic",
-        ))
+        issues.append(
+            ValidationIssue(
+                severity=Severity.WARNING,
+                category="MODIFIER_STACKING",
+                attribute=attr.name,
+                message=f"stacked modifiers could push value to {worst_low:.1f} (hard_min={hard_min})",
+                suggestion="Review modifier values or add clamping logic",
+            )
+        )
 
     return issues
 
@@ -208,8 +222,8 @@ def _check_condition_values(
 
         # Extract attribute names from condition
         # Simple pattern: look for word before == or in
-        eq_matches = re.findall(r'(\w+)\s*==', mod.when)
-        in_matches = re.findall(r'(\w+)\s+in\s+\[', mod.when)
+        eq_matches = re.findall(r"(\w+)\s*==", mod.when)
+        in_matches = re.findall(r"(\w+)\s+in\s+\[", mod.when)
         compared_attrs = set(eq_matches + in_matches)
 
         # Check each compared attribute
@@ -238,13 +252,15 @@ def _check_condition_values(
                         # Check if literal appears near this attribute name
                         pattern = rf"{compared_attr}\s*(?:==|in)\s*.*?{re.escape(repr(literal))}"
                         if re.search(pattern, mod.when):
-                            issues.append(ValidationIssue(
-                                severity=Severity.WARNING,
-                                category="CONDITION_VALUE",
-                                attribute=attr.name,
-                                modifier_index=i,
-                                message=f"condition compares {compared_attr} to '{literal}' which is not in its options",
-                                suggestion=f"Valid options for {compared_attr}: {', '.join(sorted(valid_options))}",
-                            ))
+                            issues.append(
+                                ValidationIssue(
+                                    severity=Severity.WARNING,
+                                    category="CONDITION_VALUE",
+                                    attribute=attr.name,
+                                    modifier_index=i,
+                                    message=f"condition compares {compared_attr} to '{literal}' which is not in its options",
+                                    suggestion=f"Valid options for {compared_attr}: {', '.join(sorted(valid_options))}",
+                                )
+                            )
 
     return issues

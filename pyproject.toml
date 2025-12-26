@@ -35,3 +35,8 @@ entropy = "entropy.cli:app"
 [tool.hatch.build.targets.wheel]
 packages = ["entropy"]
 
+[dependency-groups]
+dev = [
+    "black>=25.12.0",
+]
+

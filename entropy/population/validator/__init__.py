@@ -17,14 +17,16 @@ from ...core.models import PopulationSpec
 
 class Severity(Enum):
     """Severity level for validation issues."""
-    ERROR = "error"      # Blocks sampling
+
+    ERROR = "error"  # Blocks sampling
     WARNING = "warning"  # Sampling proceeds
-    INFO = "info"        # Informational notes
+    INFO = "info"  # Informational notes
 
 
 @dataclass
 class ValidationIssue:
     """A single validation issue found in a spec."""
+
     severity: Severity
     category: str
     attribute: str
@@ -42,6 +44,7 @@ class ValidationIssue:
 @dataclass
 class ValidationResult:
     """Result of validating a spec."""
+
     valid: bool  # True if no errors (warnings OK)
     errors: list[ValidationIssue] = field(default_factory=list)
     warnings: list[ValidationIssue] = field(default_factory=list)

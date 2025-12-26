@@ -193,6 +193,7 @@ def sigmoid(x: float, threshold: float = 0.3, steepness: float = 10.0) -> float:
         Sigmoid output in (0, 1)
     """
     import math
+
     z = steepness * (x - threshold)
     # Clamp to avoid overflow
     z = max(-500, min(500, z))

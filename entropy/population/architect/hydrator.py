@@ -209,7 +209,7 @@ Return JSON with distribution, constraints, and grounding for each attribute."""
 
     # Build validator for fail-fast validation
     expected_names = [a.name for a in independent_attrs]
-    
+
     def validate_response(data: dict) -> tuple[bool, str]:
         result = validate_independent_response(data, expected_names)
         if result.valid:
@@ -235,7 +235,9 @@ Return JSON with distribution, constraints, and grounding for each attribute."""
         if not original:
             continue
 
-        distribution = parse_distribution(attr_data.get("distribution", {}), original.type)
+        distribution = parse_distribution(
+            attr_data.get("distribution", {}), original.type
+        )
         constraints = parse_constraints(attr_data.get("constraints", []))
 
         grounding_data = attr_data.get("grounding", {})
@@ -315,7 +317,9 @@ def hydrate_derived(
     context_section = ""
     if context:
         context_section = "## READ-ONLY CONTEXT ATTRIBUTES (from base population)\n\n"
-        context_section += "These attributes already exist. You can reference them in formulas.\n\n"
+        context_section += (
+            "These attributes already exist. You can reference them in formulas.\n\n"
+        )
         for attr in context:
             context_section += f"- {attr.name} ({attr.type}): {attr.description}\n"
         context_section += "\n---\n\n"
@@ -331,7 +335,9 @@ def hydrate_derived(
                     dist_info = f" (mean={dist.mean})"
                 elif hasattr(dist, "options"):
                     dist_info = f" (options: {', '.join(dist.options[:3])}...)"
-            independent_summary += f"- {attr.name} ({attr.type}): {attr.description}{dist_info}\n"
+            independent_summary += (
+                f"- {attr.name} ({attr.type}): {attr.description}{dist_info}\n"
+            )
         independent_summary += "\n---\n\n"
 
     attr_list = "\n".join(
@@ -377,7 +383,7 @@ Return JSON array with formula for each attribute."""
 
     # Build validator for fail-fast validation
     expected_names = [a.name for a in derived_attrs]
-    
+
     def validate_response(data: dict) -> tuple[bool, str]:
         result = validate_derived_response(data, expected_names)
         if result.valid:
@@ -435,7 +441,9 @@ Return JSON array with formula for each attribute."""
         )
 
     # Build set of all known attribute names (independent + derived + context)
-    all_names = {a.name for a in (independent_attrs or [])} | {a.name for a in derived_attrs}
+    all_names = {a.name for a in (independent_attrs or [])} | {
+        a.name for a in derived_attrs
+    }
     if context:
         all_names |= {a.name for a in context}
     errors = validate_derived_hydration(hydrated, all_names)
@@ -508,7 +516,9 @@ def hydrate_conditional_base(
                     dist_info = f" (options: {', '.join(dist.options[:3])}...)"
             elif attr.sampling.formula:
                 dist_info = f" (formula: {attr.sampling.formula[:30]}...)"
-            context_summary += f"- {attr.name} ({attr.type}): {attr.description}{dist_info}\n"
+            context_summary += (
+                f"- {attr.name} ({attr.type}): {attr.description}{dist_info}\n"
+            )
         context_summary += "\n---\n\n"
 
     attr_list = "\n".join(
@@ -609,7 +619,7 @@ Return JSON with distribution, constraints, and grounding for each attribute."""
 
     # Build validator for fail-fast validation
     expected_names = [a.name for a in conditional_attrs]
-    
+
     def validate_response(data: dict) -> tuple[bool, str]:
         result = validate_conditional_base_response(data, expected_names)
         if result.valid:
@@ -635,7 +645,9 @@ Return JSON with distribution, constraints, and grounding for each attribute."""
         if not original:
             continue
 
-        distribution = parse_distribution(attr_data.get("distribution", {}), original.type)
+        distribution = parse_distribution(
+            attr_data.get("distribution", {}), original.type
+        )
         constraints = parse_constraints(attr_data.get("constraints", []))
 
         grounding_data = attr_data.get("grounding", {})
@@ -718,11 +730,15 @@ def hydrate_conditional_modifiers(
         context_section += "These attributes already exist. You can reference them in 'when' conditions.\n\n"
         for attr in context:
             opt_info = ""
-            if attr.sampling.distribution and hasattr(attr.sampling.distribution, "options"):
+            if attr.sampling.distribution and hasattr(
+                attr.sampling.distribution, "options"
+            ):
                 opts = attr.sampling.distribution.options
                 if opts:
                     opt_info = f"\n    VALID OPTIONS (use exactly): {opts}"
-            context_section += f"- {attr.name} ({attr.type}): {attr.description}{opt_info}\n"
+            context_section += (
+                f"- {attr.name} ({attr.type}): {attr.description}{opt_info}\n"
+            )
         context_section += "\n---\n\n"
 
     context_summary = context_section + "## Full Context\n\n"
@@ -738,14 +754,20 @@ def hydrate_conditional_modifiers(
                     dist_info = f"\n    VALID OPTIONS (use exactly): {dist.options}"
                 elif hasattr(dist, "mean") and dist.mean is not None:
                     dist_info = f" — mean={dist.mean}, std={getattr(dist, 'std', '?')}"
-            context_summary += f"- {attr.name} ({attr.type}): {attr.description}{dist_info}\n"
+            context_summary += (
+                f"- {attr.name} ({attr.type}): {attr.description}{dist_info}\n"
+            )
         context_summary += "\n"
 
     if derived_attrs:
         context_summary += "**Derived Attributes:**\n"
         for attr in derived_attrs:
-            formula_info = f" — formula: {attr.sampling.formula}" if attr.sampling.formula else ""
-            context_summary += f"- {attr.name} ({attr.type}): {attr.description}{formula_info}\n"
+            formula_info = (
+                f" — formula: {attr.sampling.formula}" if attr.sampling.formula else ""
+            )
+            context_summary += (
+                f"- {attr.name} ({attr.type}): {attr.description}{formula_info}\n"
+            )
         context_summary += "\n"
 
     context_summary += "**Conditional Attributes (with base distributions):**\n"
@@ -760,7 +782,9 @@ def hydrate_conditional_modifiers(
             elif hasattr(dist, "options"):
                 dist_info = f" — options: {', '.join(dist.options)}"
         deps_info = f" [depends on: {', '.join(attr.depends_on)}]"
-        context_summary += f"- {attr.name} ({attr.type}): {attr.description}{dist_info}{deps_info}\n"
+        context_summary += (
+            f"- {attr.name} ({attr.type}): {attr.description}{dist_info}{deps_info}\n"
+        )
 
     context_summary += "\n---\n\n"
 
@@ -883,7 +907,7 @@ Return JSON array with modifiers for each conditional attribute."""
                 attr_dist_types[attr.name] = "categorical"
             elif "boolean" in dist_class_name:
                 attr_dist_types[attr.name] = "boolean"
-    
+
     def validate_response(data: dict) -> tuple[bool, str]:
         result = validate_modifiers_response(data, attr_dist_types)
         if result.valid:
@@ -938,7 +962,9 @@ Return JSON array with modifiers for each conditional attribute."""
     for original in attr_lookup.values():
         updated.append(original)
 
-    all_attrs = {a.name: a for a in (independent_attrs or []) + (derived_attrs or []) + updated}
+    all_attrs = {
+        a.name: a for a in (independent_attrs or []) + (derived_attrs or []) + updated
+    }
     errors, warnings = validate_modifiers(updated, all_attrs)
     # Combine errors and warnings - errors are blocking, warnings are informational
     all_issues = errors + warnings
@@ -1005,13 +1031,19 @@ def hydrate_attributes(
 
     def make_retry_callback(step: str) -> RetryCallback:
         """Create a retry callback for a specific step."""
+
         def on_retry(attempt: int, max_retries: int, error_summary: str):
             if attempt > max_retries:
                 # Retries exhausted
                 report(step, f"⚠️ Validation failed after {max_retries} retries", None)
             else:
                 # Retrying
-                report(step, f"Retrying ({attempt}/{max_retries}): {error_summary[:40]}...", None)
+                report(
+                    step,
+                    f"Retrying ({attempt}/{max_retries}): {error_summary[:40]}...",
+                    None,
+                )
+
         return on_retry
 
     # Step 2a: Independent attributes
@@ -1027,7 +1059,9 @@ def hydrate_attributes(
     )
     all_sources.extend(independent_sources)
     all_warnings.extend([f"[2a] {e}" for e in independent_errors])
-    report("2a", f"Hydrated {len(independent_attrs)} independent", len(independent_sources))
+    report(
+        "2a", f"Hydrated {len(independent_attrs)} independent", len(independent_sources)
+    )
 
     # Step 2b: Derived attributes
     report("2b", "Specifying derived formulas...")
@@ -1046,33 +1080,41 @@ def hydrate_attributes(
 
     # Step 2c: Conditional base distributions
     report("2c", "Researching conditional distributions...")
-    conditional_base_attrs, conditional_sources, conditional_errors = hydrate_conditional_base(
-        attributes=attributes,
-        population=population,
-        geography=geography,
-        independent_attrs=independent_attrs,
-        derived_attrs=derived_attrs,
-        context=context,
-        model=model,
-        reasoning_effort=reasoning_effort,
-        on_retry=make_retry_callback("2c"),
+    conditional_base_attrs, conditional_sources, conditional_errors = (
+        hydrate_conditional_base(
+            attributes=attributes,
+            population=population,
+            geography=geography,
+            independent_attrs=independent_attrs,
+            derived_attrs=derived_attrs,
+            context=context,
+            model=model,
+            reasoning_effort=reasoning_effort,
+            on_retry=make_retry_callback("2c"),
+        )
     )
     all_sources.extend(conditional_sources)
     all_warnings.extend([f"[2c] {e}" for e in conditional_errors])
-    report("2c", f"Hydrated {len(conditional_base_attrs)} conditional", len(conditional_sources))
+    report(
+        "2c",
+        f"Hydrated {len(conditional_base_attrs)} conditional",
+        len(conditional_sources),
+    )
 
     # Step 2d: Conditional modifiers
     report("2d", "Specifying conditional modifiers...")
-    conditional_attrs, modifier_sources, modifier_errors = hydrate_conditional_modifiers(
-        conditional_attrs=conditional_base_attrs,
-        population=population,
-        geography=geography,
-        independent_attrs=independent_attrs,
-        derived_attrs=derived_attrs,
-        context=context,
-        model=model,
-        reasoning_effort=reasoning_effort,
-        on_retry=make_retry_callback("2d"),
+    conditional_attrs, modifier_sources, modifier_errors = (
+        hydrate_conditional_modifiers(
+            conditional_attrs=conditional_base_attrs,
+            population=population,
+            geography=geography,
+            independent_attrs=independent_attrs,
+            derived_attrs=derived_attrs,
+            context=context,
+            model=model,
+            reasoning_effort=reasoning_effort,
+            on_retry=make_retry_callback("2d"),
+        )
     )
     all_sources.extend(modifier_sources)
     all_warnings.extend([f"[2d] {e}" for e in modifier_errors])

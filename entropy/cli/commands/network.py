@@ -13,13 +13,25 @@ from ..utils import format_elapsed
 
 @app.command("network")
 def network_command(
-    agents_file: Path = typer.Argument(..., help="Agents JSON file to generate network from"),
+    agents_file: Path = typer.Argument(
+        ..., help="Agents JSON file to generate network from"
+    ),
     output: Path = typer.Option(..., "--output", "-o", help="Output network JSON file"),
-    avg_degree: float = typer.Option(20.0, "--avg-degree", help="Target average degree (connections per agent)"),
-    rewire_prob: float = typer.Option(0.05, "--rewire-prob", help="Watts-Strogatz rewiring probability"),
-    seed: int | None = typer.Option(None, "--seed", help="Random seed for reproducibility"),
-    validate: bool = typer.Option(False, "--validate", "-v", help="Print validation metrics"),
-    no_metrics: bool = typer.Option(False, "--no-metrics", help="Skip computing node metrics (faster)"),
+    avg_degree: float = typer.Option(
+        20.0, "--avg-degree", help="Target average degree (connections per agent)"
+    ),
+    rewire_prob: float = typer.Option(
+        0.05, "--rewire-prob", help="Watts-Strogatz rewiring probability"
+    ),
+    seed: int | None = typer.Option(
+        None, "--seed", help="Random seed for reproducibility"
+    ),
+    validate: bool = typer.Option(
+        False, "--validate", "-v", help="Print validation metrics"
+    ),
+    no_metrics: bool = typer.Option(
+        False, "--no-metrics", help="Skip computing node metrics (faster)"
+    ),
 ):
     """
     Generate a social network from sampled agents.
@@ -55,7 +67,9 @@ def network_command(
             console.print(f"[red]✗[/red] Failed to load agents: {e}")
             raise typer.Exit(1)
 
-    console.print(f"[green]✓[/green] Loaded {len(agents)} agents from [bold]{agents_file}[/bold]")
+    console.print(
+        f"[green]✓[/green] Loaded {len(agents)} agents from [bold]{agents_file}[/bold]"
+    )
 
     # Generate Network
     config = NetworkConfig(avg_degree=avg_degree, rewire_prob=rewire_prob, seed=seed)
@@ -94,7 +108,9 @@ def network_command(
             stage, current, total = current_stage
             if total > 0:
                 pct = current / total * 100
-                live.update(f"[cyan]⠋[/cyan] {stage}... {current}/{total} ({pct:.0f}%) {format_elapsed(elapsed)}")
+                live.update(
+                    f"[cyan]⠋[/cyan] {stage}... {current}/{total} ({pct:.0f}%) {format_elapsed(elapsed)}"
+                )
             else:
                 live.update(f"[cyan]⠋[/cyan] {stage}... {format_elapsed(elapsed)}")
             time.sleep(0.1)
@@ -137,7 +153,9 @@ def network_command(
             if is_valid:
                 console.print("[green]✓[/green] All metrics within expected ranges")
             else:
-                console.print(f"[yellow]⚠[/yellow] {len(warnings)} metric(s) outside expected range:")
+                console.print(
+                    f"[yellow]⚠[/yellow] {len(warnings)} metric(s) outside expected range:"
+                )
                 for w in warnings:
                     console.print(f"  [yellow]•[/yellow] {w}")
         else:

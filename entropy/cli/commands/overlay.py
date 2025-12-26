@@ -90,7 +90,9 @@ def overlay_command(
     with Live(console=console, refresh_per_second=1, transient=True) as live:
         while not selection_done.is_set():
             elapsed = time.time() - selection_start
-            live.update(f"[cyan]⠋[/cyan] Discovering scenario attributes... {format_elapsed(elapsed)}")
+            live.update(
+                f"[cyan]⠋[/cyan] Discovering scenario attributes... {format_elapsed(elapsed)}"
+            )
             time.sleep(0.1)
 
     selection_elapsed = time.time() - selection_start
@@ -99,13 +101,21 @@ def overlay_command(
         console.print(f"[red]✗[/red] Attribute selection failed: {selection_error}")
         raise typer.Exit(1)
 
-    console.print(f"[green]✓[/green] Found {len(new_attributes)} NEW attributes ({format_elapsed(selection_elapsed)})")
+    console.print(
+        f"[green]✓[/green] Found {len(new_attributes)} NEW attributes ({format_elapsed(selection_elapsed)})"
+    )
 
     # Human Checkpoint #1
-    display_overlay_attributes(len(base.attributes), new_attributes, base.meta.geography)
+    display_overlay_attributes(
+        len(base.attributes), new_attributes, base.meta.geography
+    )
 
     if not yes:
-        choice = typer.prompt("[Y] Proceed  [n] Cancel", default="Y", show_default=False).strip().lower()
+        choice = (
+            typer.prompt("[Y] Proceed  [n] Cancel", default="Y", show_default=False)
+            .strip()
+            .lower()
+        )
         if choice == "n":
             console.print("[dim]Cancelled.[/dim]")
             raise typer.Exit(0)
@@ -146,7 +156,9 @@ def overlay_command(
         while not hydration_done.is_set():
             elapsed = time.time() - hydration_start
             step, status = current_step
-            live.update(f"[cyan]⠋[/cyan] Step {step}: {status} {format_elapsed(elapsed)}")
+            live.update(
+                f"[cyan]⠋[/cyan] Step {step}: {status} {format_elapsed(elapsed)}"
+            )
             time.sleep(0.1)
 
     hydration_elapsed = time.time() - hydration_start
@@ -155,7 +167,9 @@ def overlay_command(
         console.print(f"[red]✗[/red] Distribution research failed: {hydration_error}")
         raise typer.Exit(1)
 
-    console.print(f"[green]✓[/green] Researched distributions ({format_elapsed(hydration_elapsed)}, {len(sources)} sources)")
+    console.print(
+        f"[green]✓[/green] Researched distributions ({format_elapsed(hydration_elapsed)}, {len(sources)} sources)"
+    )
 
     if warnings:
         console.print(f"[yellow]⚠[/yellow] {len(warnings)} validation warning(s):")
@@ -167,7 +181,9 @@ def overlay_command(
     # Step 3: Constraint Binding
     with console.status("[cyan]Binding constraints...[/cyan]"):
         try:
-            bound_attrs, sampling_order, bind_warnings = bind_constraints(hydrated, context=base.attributes)
+            bound_attrs, sampling_order, bind_warnings = bind_constraints(
+                hydrated, context=base.attributes
+            )
         except CircularDependencyError as e:
             console.print(f"[red]✗[/red] Circular dependency detected: {e}")
             raise typer.Exit(1)
@@ -196,7 +212,9 @@ def overlay_command(
         )
         merged_spec = base.merge(overlay_spec)
 
-    console.print(f"[green]✓[/green] Merged: {len(base.attributes)} base + {len(bound_attrs)} overlay = {len(merged_spec.attributes)} total")
+    console.print(
+        f"[green]✓[/green] Merged: {len(base.attributes)} base + {len(bound_attrs)} overlay = {len(merged_spec.attributes)} total"
+    )
 
     # Validation Gate
     with console.status("[cyan]Validating merged spec...[/cyan]"):
@@ -218,7 +236,11 @@ def overlay_command(
     display_spec_summary(merged_spec)
 
     if not yes:
-        choice = typer.prompt("[Y] Save spec  [n] Cancel", default="Y", show_default=False).strip().lower()
+        choice = (
+            typer.prompt("[Y] Save spec  [n] Cancel", default="Y", show_default=False)
+            .strip()
+            .lower()
+        )
         if choice == "n":
             console.print("[dim]Cancelled.[/dim]")
             raise typer.Exit(0)

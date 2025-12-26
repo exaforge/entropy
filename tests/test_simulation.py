@@ -229,8 +229,11 @@ class TestStateManager:
                 timestep=0, channel="email", content="First", credibility=0.9
             )
             exposure2 = ExposureRecord(
-                timestep=1, channel="network", source_agent_id="agent_001",
-                content="Second", credibility=0.7
+                timestep=1,
+                channel="network",
+                source_agent_id="agent_001",
+                content="Second",
+                credibility=0.7,
             )
 
             manager.record_exposure("agent_000", exposure1)
@@ -332,7 +335,7 @@ class TestStateManager:
             manager.record_exposure("agent_000", exposure)
 
             rate = manager.get_exposure_rate()
-            assert rate == pytest.approx(1/3, abs=0.01)
+            assert rate == pytest.approx(1 / 3, abs=0.01)
 
     def test_get_agents_to_reason(self, temp_db, agents):
         """Test getting agents who should reason."""
@@ -482,12 +485,15 @@ class TestStateManagerEdgeCases:
 
             # Batch update
             updates = [
-                (f"agent_{i}", AgentState(
-                    agent_id=f"agent_{i}",
-                    aware=True,
-                    position="supportive" if i % 2 == 0 else "resistant",
-                    sentiment=0.5 if i % 2 == 0 else -0.5,
-                ))
+                (
+                    f"agent_{i}",
+                    AgentState(
+                        agent_id=f"agent_{i}",
+                        aware=True,
+                        position="supportive" if i % 2 == 0 else "resistant",
+                        sentiment=0.5 if i % 2 == 0 else -0.5,
+                    ),
+                )
                 for i in range(5)
             ]
             manager.batch_update_states(updates, timestep=0)
@@ -507,7 +513,13 @@ class TestStateManagerEdgeCases:
             )
 
             # Set up different positions
-            positions = ["supportive", "supportive", "resistant", "considering", "supportive"]
+            positions = [
+                "supportive",
+                "supportive",
+                "resistant",
+                "considering",
+                "supportive",
+            ]
             for i, pos in enumerate(positions):
                 manager.record_exposure(f"agent_{i}", exposure)
                 state = AgentState(agent_id=f"agent_{i}", aware=True, position=pos)

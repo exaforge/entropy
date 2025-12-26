@@ -94,12 +94,14 @@ def display_spec_summary(spec: PopulationSpec) -> None:
                 if dist.probability_true is not None:
                     dist_info = f"P={dist.probability_true:.0%}"
 
-        attr_rows.append([
-            f"{level_icon} {attr.name}",
-            attr.type,
-            dist_info[:25] if dist_info else "-",
-            attr.grounding.method[:20] if attr.grounding.method else "-",
-        ])
+        attr_rows.append(
+            [
+                f"{level_icon} {attr.name}",
+                attr.type,
+                dist_info[:25] if dist_info else "-",
+                attr.grounding.method[:20] if attr.grounding.method else "-",
+            ]
+        )
 
     table = Table(title="Attributes", show_header=True, header_style="bold")
     table.add_column("Name", style="cyan")
@@ -193,29 +195,39 @@ def display_validation_result(result, strict: bool = False) -> bool:
             if err.suggestion:
                 console.print(f"    [dim]→ {err.suggestion}[/dim]")
         if len(result.errors) > 10:
-            console.print(f"  [dim]... and {len(result.errors) - 10} more error(s)[/dim]")
+            console.print(
+                f"  [dim]... and {len(result.errors) - 10} more error(s)[/dim]"
+            )
         return False
 
     if result.warnings:
         if strict:
-            console.print(f"[red]✗[/red] Spec has {len(result.warnings)} warning(s) (strict mode)")
+            console.print(
+                f"[red]✗[/red] Spec has {len(result.warnings)} warning(s) (strict mode)"
+            )
             for warn in result.warnings[:5]:
                 loc = warn.attribute
                 if warn.modifier_index is not None:
                     loc = f"{warn.attribute}[{warn.modifier_index}]"
                 console.print(f"  [yellow]⚠[/yellow] {loc}: {warn.message}")
             if len(result.warnings) > 5:
-                console.print(f"  [dim]... and {len(result.warnings) - 5} more warning(s)[/dim]")
+                console.print(
+                    f"  [dim]... and {len(result.warnings) - 5} more warning(s)[/dim]"
+                )
             return False
         else:
-            console.print(f"[green]✓[/green] Spec validated with {len(result.warnings)} warning(s)")
+            console.print(
+                f"[green]✓[/green] Spec validated with {len(result.warnings)} warning(s)"
+            )
             for warn in result.warnings[:3]:
                 loc = warn.attribute
                 if warn.modifier_index is not None:
                     loc = f"{warn.attribute}[{warn.modifier_index}]"
                 console.print(f"  [yellow]⚠[/yellow] {loc}: {warn.message}")
             if len(result.warnings) > 3:
-                console.print(f"  [dim]... and {len(result.warnings) - 3} more warning(s)[/dim]")
+                console.print(
+                    f"  [dim]... and {len(result.warnings) - 3} more warning(s)[/dim]"
+                )
             return True
 
     return True
@@ -261,13 +273,17 @@ def create_sample_agent(spec: PopulationSpec) -> dict:
                 agent[attr.name] = 0.5
 
         elif attr.type == "categorical":
-            if attr.sampling.distribution and hasattr(attr.sampling.distribution, "options"):
+            if attr.sampling.distribution and hasattr(
+                attr.sampling.distribution, "options"
+            ):
                 options = attr.sampling.distribution.options
                 if options:
                     agent[attr.name] = options[0]
 
         elif attr.type == "boolean":
-            if attr.sampling.distribution and hasattr(attr.sampling.distribution, "probability_true"):
+            if attr.sampling.distribution and hasattr(
+                attr.sampling.distribution, "probability_true"
+            ):
                 agent[attr.name] = attr.sampling.distribution.probability_true > 0.5
             else:
                 agent[attr.name] = True
@@ -336,7 +352,9 @@ def generate_and_review_persona_template(
     gen_elapsed = time.time() - gen_start
 
     if template_error:
-        console.print(f"[yellow]⚠[/yellow] Could not generate persona template: {template_error}")
+        console.print(
+            f"[yellow]⚠[/yellow] Could not generate persona template: {template_error}"
+        )
         console.print("[dim]Falling back to built-in persona generation[/dim]")
         return None
 
@@ -345,7 +363,9 @@ def generate_and_review_persona_template(
         console.print("[dim]Falling back to built-in persona generation[/dim]")
         return None
 
-    console.print(f"[green]✓[/green] Template generated ({format_elapsed(gen_elapsed)})")
+    console.print(
+        f"[green]✓[/green] Template generated ({format_elapsed(gen_elapsed)})"
+    )
     console.print()
 
     # Display the template
@@ -391,7 +411,9 @@ def generate_and_review_persona_template(
         if choice == "y":
             return template
         elif choice == "s":
-            console.print("[dim]Skipping persona template, will use built-in generation[/dim]")
+            console.print(
+                "[dim]Skipping persona template, will use built-in generation[/dim]"
+            )
             return None
         elif choice == "r":
             console.print()

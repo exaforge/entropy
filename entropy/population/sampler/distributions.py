@@ -68,7 +68,7 @@ def _resolve_param(
     param_name: str,
 ) -> float:
     """Resolve a parameter that may be static or formula-based.
-    
+
     Formula takes precedence over static value when both are provided.
     This allows specs to define a fallback static value while using
     a formula for dynamic computation.
@@ -92,15 +92,15 @@ def _resolve_optional_param(
     agent: dict[str, Any] | None,
 ) -> float | None:
     """Resolve an optional parameter (min/max) that may be static or formula-based.
-    
+
     Unlike _resolve_param(), this returns None if neither static nor formula provided.
     Formula takes precedence when both are provided.
-    
+
     Args:
         static_value: Static value (e.g., dist.min)
         formula: Formula string (e.g., dist.min_formula)
         agent: Agent context for formula evaluation
-        
+
     Returns:
         Resolved float value, or None if neither provided
     """
@@ -117,21 +117,29 @@ def _sample_normal(
     agent: dict[str, Any] | None,
 ) -> float:
     """Sample from normal distribution with optional formula-based parameters.
-    
+
     Supports both static and formula-based bounds:
     - min/max: Static bounds (always applied)
     - min_formula/max_formula: Dynamic bounds evaluated with agent context
-    
+
     Formula bounds take precedence over static bounds when both are provided.
     """
     mean = _resolve_param(dist.mean, dist.mean_formula, agent, "mean")
-    std = _resolve_param(dist.std, dist.std_formula, agent, "std") if (dist.std is not None or dist.std_formula is not None) else 1.0
+    std = (
+        _resolve_param(dist.std, dist.std_formula, agent, "std")
+        if (dist.std is not None or dist.std_formula is not None)
+        else 1.0
+    )
 
     value = rng.gauss(mean, std)
 
     # Resolve min/max bounds - formula takes precedence over static
-    min_bound = _resolve_optional_param(dist.min, getattr(dist, 'min_formula', None), agent)
-    max_bound = _resolve_optional_param(dist.max, getattr(dist, 'max_formula', None), agent)
+    min_bound = _resolve_optional_param(
+        dist.min, getattr(dist, "min_formula", None), agent
+    )
+    max_bound = _resolve_optional_param(
+        dist.max, getattr(dist, "max_formula", None), agent
+    )
 
     # Apply clamping
     if min_bound is not None:
@@ -148,33 +156,41 @@ def _sample_lognormal(
     agent: dict[str, Any] | None,
 ) -> float:
     """Sample from lognormal distribution.
-    
+
     Note: The spec provides mean and std as the actual lognormal distribution
     parameters, but Python's lognormvariate expects log-space (mu, sigma).
     We convert using the standard formulas.
-    
+
     Supports both static and formula-based bounds:
     - min/max: Static bounds (always applied)
     - min_formula/max_formula: Dynamic bounds evaluated with agent context
     """
     import math
-    
+
     mean = _resolve_param(dist.mean, dist.mean_formula, agent, "mean")
-    std = _resolve_param(dist.std, dist.std_formula, agent, "std") if (dist.std is not None or dist.std_formula is not None) else mean * 0.5
-    
+    std = (
+        _resolve_param(dist.std, dist.std_formula, agent, "std")
+        if (dist.std is not None or dist.std_formula is not None)
+        else mean * 0.5
+    )
+
     # Convert from actual mean/std to log-space mu/sigma
     # mu = log(mean^2 / sqrt(mean^2 + std^2))
     # sigma = sqrt(log(1 + std^2/mean^2))
-    variance = std ** 2
-    mean_sq = mean ** 2
+    variance = std**2
+    mean_sq = mean**2
     mu = math.log(mean_sq / math.sqrt(mean_sq + variance))
     sigma = math.sqrt(math.log(1 + variance / mean_sq))
-    
+
     value = rng.lognormvariate(mu, sigma)
 
     # Resolve min/max bounds - formula takes precedence over static
-    min_bound = _resolve_optional_param(dist.min, getattr(dist, 'min_formula', None), agent)
-    max_bound = _resolve_optional_param(dist.max, getattr(dist, 'max_formula', None), agent)
+    min_bound = _resolve_optional_param(
+        dist.min, getattr(dist, "min_formula", None), agent
+    )
+    max_bound = _resolve_optional_param(
+        dist.max, getattr(dist, "max_formula", None), agent
+    )
 
     # Apply clamping
     if min_bound is not None:
@@ -196,18 +212,22 @@ def _sample_beta(
     agent: dict[str, Any] | None = None,
 ) -> float:
     """Sample from beta distribution (outputs 0-1, optionally scaled).
-    
+
     Supports both static and formula-based bounds for scaling:
     - min/max: Static bounds for scaling
     - min_formula/max_formula: Dynamic bounds evaluated with agent context
-    
+
     Formula bounds take precedence over static bounds when both are provided.
     """
     value = rng.betavariate(dist.alpha, dist.beta)
 
     # Resolve min/max bounds - formula takes precedence over static
-    min_bound = _resolve_optional_param(dist.min, getattr(dist, 'min_formula', None), agent)
-    max_bound = _resolve_optional_param(dist.max, getattr(dist, 'max_formula', None), agent)
+    min_bound = _resolve_optional_param(
+        dist.min, getattr(dist, "min_formula", None), agent
+    )
+    max_bound = _resolve_optional_param(
+        dist.max, getattr(dist, "max_formula", None), agent
+    )
 
     # Scale if both min and max bounds are provided
     if min_bound is not None and max_bound is not None:

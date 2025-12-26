@@ -124,9 +124,7 @@ def bind_constraints(
         unknown_deps = [d for d in attr.depends_on if d not in known_names]
         if unknown_deps:
             for dep in unknown_deps:
-                warnings.append(
-                    f"{attr.name}: removed unknown dependency '{dep}'"
-                )
+                warnings.append(f"{attr.name}: removed unknown dependency '{dep}'")
 
         # Filter depends_on to only known attributes
         filtered_depends_on = [d for d in attr.depends_on if d in known_names]

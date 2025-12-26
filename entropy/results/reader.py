@@ -63,7 +63,9 @@ class ResultsReader:
                 model=data.get("model", "unknown"),
                 seed=data.get("seed", 0),
                 multi_touch_threshold=data.get("multi_touch_threshold", 3),
-                completed_at=datetime.fromisoformat(data.get("completed_at", datetime.now().isoformat())),
+                completed_at=datetime.fromisoformat(
+                    data.get("completed_at", datetime.now().isoformat())
+                ),
             )
 
         return self._meta
@@ -116,7 +118,9 @@ class ResultsReader:
                     agent_id=agent.get("agent_id", ""),
                     attributes=agent.get("attributes", {}),
                     aware=agent.get("final_state", {}).get("aware", False),
-                    exposure_count=agent.get("final_state", {}).get("exposure_count", 0),
+                    exposure_count=agent.get("final_state", {}).get(
+                        "exposure_count", 0
+                    ),
                     position=agent.get("final_state", {}).get("position"),
                     sentiment=agent.get("final_state", {}).get("sentiment"),
                     action_intent=agent.get("final_state", {}).get("action_intent"),
@@ -192,24 +196,30 @@ class ResultsReader:
                 if state.aware:
                     aware_count += 1
                 if state.position:
-                    position_counts[state.position] = position_counts.get(state.position, 0) + 1
+                    position_counts[state.position] = (
+                        position_counts.get(state.position, 0) + 1
+                    )
                 if state.sentiment is not None:
                     sentiments.append(state.sentiment)
 
             total = len(segment_states)
-            position_dist = {
-                k: v / total for k, v in position_counts.items()
-            } if total > 0 else {}
+            position_dist = (
+                {k: v / total for k, v in position_counts.items()} if total > 0 else {}
+            )
 
-            results.append(SegmentAggregate(
-                segment_attribute=attribute,
-                segment_value=value,
-                agent_count=len(segment_states),
-                aware_count=aware_count,
-                position_distribution=position_dist,
-                position_counts=position_counts,
-                average_sentiment=sum(sentiments) / len(sentiments) if sentiments else None,
-            ))
+            results.append(
+                SegmentAggregate(
+                    segment_attribute=attribute,
+                    segment_value=value,
+                    agent_count=len(segment_states),
+                    aware_count=aware_count,
+                    position_distribution=position_dist,
+                    position_counts=position_counts,
+                    average_sentiment=(
+                        sum(sentiments) / len(sentiments) if sentiments else None
+                    ),
+                )
+            )
 
         # Sort by count
         results.sort(key=lambda x: x.agent_count, reverse=True)
@@ -284,15 +294,15 @@ class ResultsReader:
         position_counts: dict[str, int] = {}
         for state in states:
             if state.position:
-                position_counts[state.position] = position_counts.get(state.position, 0) + 1
+                position_counts[state.position] = (
+                    position_counts.get(state.position, 0) + 1
+                )
 
         return {
             "total": total,
             "aware": sum(1 for s in states if s.aware),
             "positions": position_counts,
-            "position_pct": {
-                k: v / total for k, v in position_counts.items()
-            },
+            "position_pct": {k: v / total for k, v in position_counts.items()},
         }
 
 

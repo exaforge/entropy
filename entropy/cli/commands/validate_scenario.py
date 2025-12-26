@@ -9,7 +9,9 @@ from ..app import app, console
 
 @app.command("validate-scenario")
 def validate_scenario_command(
-    scenario_file: Path = typer.Argument(..., help="Scenario spec YAML file to validate"),
+    scenario_file: Path = typer.Argument(
+        ..., help="Scenario spec YAML file to validate"
+    ),
 ):
     """
     Validate a scenario spec against its referenced files.
@@ -42,21 +44,29 @@ def validate_scenario_command(
 
     pop_path = Path(spec.meta.population_spec)
     if pop_path.exists():
-        console.print(f"  [green]✓[/green] Population spec: {spec.meta.population_spec}")
+        console.print(
+            f"  [green]✓[/green] Population spec: {spec.meta.population_spec}"
+        )
     else:
-        console.print(f"  [red]✗[/red] Population spec: {spec.meta.population_spec} (not found)")
+        console.print(
+            f"  [red]✗[/red] Population spec: {spec.meta.population_spec} (not found)"
+        )
 
     agents_path = Path(spec.meta.agents_file)
     if agents_path.exists():
         console.print(f"  [green]✓[/green] Agents file: {spec.meta.agents_file}")
     else:
-        console.print(f"  [red]✗[/red] Agents file: {spec.meta.agents_file} (not found)")
+        console.print(
+            f"  [red]✗[/red] Agents file: {spec.meta.agents_file} (not found)"
+        )
 
     network_path = Path(spec.meta.network_file)
     if network_path.exists():
         console.print(f"  [green]✓[/green] Network file: {spec.meta.network_file}")
     else:
-        console.print(f"  [red]✗[/red] Network file: {spec.meta.network_file} (not found)")
+        console.print(
+            f"  [red]✗[/red] Network file: {spec.meta.network_file} (not found)"
+        )
 
     console.print()
 
@@ -64,7 +74,9 @@ def validate_scenario_command(
     if result.errors:
         console.print(f"[red]✗[/red] {len(result.errors)} error(s) found:")
         for err in result.errors:
-            console.print(f"  [red]✗[/red] [{err.category}] {err.location}: {err.message}")
+            console.print(
+                f"  [red]✗[/red] [{err.category}] {err.location}: {err.message}"
+            )
             if err.suggestion:
                 console.print(f"    [dim]→ {err.suggestion}[/dim]")
         console.print()
@@ -74,7 +86,9 @@ def validate_scenario_command(
     if result.warnings:
         console.print(f"[yellow]⚠[/yellow] {len(result.warnings)} warning(s):")
         for warn in result.warnings:
-            console.print(f"  [yellow]⚠[/yellow] [{warn.category}] {warn.location}: {warn.message}")
+            console.print(
+                f"  [yellow]⚠[/yellow] [{warn.category}] {warn.location}: {warn.message}"
+            )
         console.print()
 
     console.print("[green]✓ Scenario spec is valid[/green]")

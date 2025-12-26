@@ -28,7 +28,9 @@ from ..utils import format_elapsed
 
 @app.command("spec")
 def spec_command(
-    description: str = typer.Argument(..., help="Natural language population description"),
+    description: str = typer.Argument(
+        ..., help="Natural language population description"
+    ),
     output: Path = typer.Option(..., "--output", "-o", help="Output YAML file path"),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompts"),
 ):
@@ -87,7 +89,9 @@ def spec_command(
     with Live(console=console, refresh_per_second=1, transient=True) as live:
         while not selection_done.is_set():
             elapsed = time.time() - selection_start
-            live.update(f"[cyan]⠋[/cyan] Discovering attributes... {format_elapsed(elapsed)}")
+            live.update(
+                f"[cyan]⠋[/cyan] Discovering attributes... {format_elapsed(elapsed)}"
+            )
             time.sleep(0.1)
 
     selection_elapsed = time.time() - selection_start
@@ -96,13 +100,19 @@ def spec_command(
         console.print(f"[red]✗[/red] Attribute selection failed: {selection_error}")
         raise typer.Exit(1)
 
-    console.print(f"[green]✓[/green] Found {len(attributes)} attributes ({format_elapsed(selection_elapsed)})")
+    console.print(
+        f"[green]✓[/green] Found {len(attributes)} attributes ({format_elapsed(selection_elapsed)})"
+    )
 
     # Human Checkpoint #1
     display_discovered_attributes(attributes, geography)
 
     if not yes:
-        choice = typer.prompt("[Y] Proceed  [n] Cancel", default="Y", show_default=False).strip().lower()
+        choice = (
+            typer.prompt("[Y] Proceed  [n] Cancel", default="Y", show_default=False)
+            .strip()
+            .lower()
+        )
         if choice == "n":
             console.print("[dim]Cancelled.[/dim]")
             raise typer.Exit(0)
@@ -139,7 +149,9 @@ def spec_command(
         while not hydration_done.is_set():
             elapsed = time.time() - hydration_start
             step, status = current_step
-            live.update(f"[cyan]⠋[/cyan] Step {step}: {status} {format_elapsed(elapsed)}")
+            live.update(
+                f"[cyan]⠋[/cyan] Step {step}: {status} {format_elapsed(elapsed)}"
+            )
             time.sleep(0.1)
 
     hydration_elapsed = time.time() - hydration_start
@@ -148,7 +160,9 @@ def spec_command(
         console.print(f"[red]✗[/red] Distribution research failed: {hydration_error}")
         raise typer.Exit(1)
 
-    console.print(f"[green]✓[/green] Researched distributions ({format_elapsed(hydration_elapsed)}, {len(sources)} sources)")
+    console.print(
+        f"[green]✓[/green] Researched distributions ({format_elapsed(hydration_elapsed)}, {len(sources)} sources)"
+    )
 
     if warnings:
         console.print(f"[yellow]⚠[/yellow] {len(warnings)} validation warning(s):")
@@ -209,7 +223,11 @@ def spec_command(
     display_spec_summary(population_spec)
 
     if not yes:
-        choice = typer.prompt("[Y] Save spec  [n] Cancel", default="Y", show_default=False).strip().lower()
+        choice = (
+            typer.prompt("[Y] Save spec  [n] Cancel", default="Y", show_default=False)
+            .strip()
+            .lower()
+        )
         if choice == "n":
             console.print("[dim]Cancelled.[/dim]")
             raise typer.Exit(0)

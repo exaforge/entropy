@@ -27,7 +27,9 @@ from entropy.population.validator.syntactic import (
 )
 
 
-def make_spec(attributes: list[AttributeSpec], sampling_order: list[str] | None = None) -> PopulationSpec:
+def make_spec(
+    attributes: list[AttributeSpec], sampling_order: list[str] | None = None
+) -> PopulationSpec:
     """Helper to create a PopulationSpec for testing."""
     if sampling_order is None:
         sampling_order = [a.name for a in attributes]
@@ -61,7 +63,9 @@ def make_attr(
         if attr_type == "int" or attr_type == "float":
             distribution = NormalDistribution(mean=50.0, std=10.0)
         elif attr_type == "categorical":
-            distribution = CategoricalDistribution(options=["A", "B"], weights=[0.5, 0.5])
+            distribution = CategoricalDistribution(
+                options=["A", "B"], weights=[0.5, 0.5]
+            )
         elif attr_type == "boolean":
             distribution = BooleanDistribution(probability_true=0.5)
 
@@ -102,14 +106,18 @@ class TestValidateSpec:
 
     def test_all_issues_property(self):
         """Test all_issues property combines all issue types."""
-        spec = make_spec([
-            make_attr("age", "int"),
-            make_attr("age", "int"),  # Duplicate - will cause ERROR
-        ])
+        spec = make_spec(
+            [
+                make_attr("age", "int"),
+                make_attr("age", "int"),  # Duplicate - will cause ERROR
+            ]
+        )
         result = validate_spec(spec)
 
         all_issues = result.all_issues
-        assert len(all_issues) == len(result.errors) + len(result.warnings) + len(result.info)
+        assert len(all_issues) == len(result.errors) + len(result.warnings) + len(
+            result.info
+        )
 
 
 class TestExtractNamesFromExpression:
@@ -164,7 +172,9 @@ class TestTypeModifierCompatibility:
             strategy="conditional",
             depends_on=["role"],
             modifiers=[
-                Modifier(when="role == 'senior'", weight_overrides={"A": 0.5, "B": 0.5}),
+                Modifier(
+                    when="role == 'senior'", weight_overrides={"A": 0.5, "B": 0.5}
+                ),
             ],
         )
         spec = make_spec([make_attr("role", "categorical"), attr], ["role", "salary"])
@@ -316,7 +326,11 @@ class TestWeightValidity:
                 modifiers=[
                     Modifier(
                         when="age > 50",
-                        weight_overrides={"A": 0.5, "B": 0.3, "D": 0.2},  # "D" doesn't exist
+                        weight_overrides={
+                            "A": 0.5,
+                            "B": 0.3,
+                            "D": 0.2,
+                        },  # "D" doesn't exist
                     ),
                 ],
             ),
@@ -379,7 +393,9 @@ class TestDistributionParameters:
             description="Value",
             sampling=SamplingConfig(
                 strategy="independent",
-                distribution=NormalDistribution(mean=50.0, std=10.0, min=100.0, max=50.0),
+                distribution=NormalDistribution(
+                    mean=50.0, std=10.0, min=100.0, max=50.0
+                ),
             ),
             grounding=GroundingInfo(level="low", method="estimated"),
         )
@@ -423,7 +439,9 @@ class TestDependencyValidation:
             make_attr("a"),
             make_attr("b", strategy="derived", formula="a + 1", depends_on=["a"]),
         ]
-        spec = make_spec(attrs, sampling_order=["b", "a"])  # b depends on a but comes first
+        spec = make_spec(
+            attrs, sampling_order=["b", "a"]
+        )  # b depends on a but comes first
         result = validate_spec(spec)
 
         assert not result.valid
@@ -458,10 +476,15 @@ class TestConditionSyntax:
             strategy="conditional",
             depends_on=["age"],
             modifiers=[
-                Modifier(when="role == 'senior'", multiply=1.5),  # role not in depends_on
+                Modifier(
+                    when="role == 'senior'", multiply=1.5
+                ),  # role not in depends_on
             ],
         )
-        spec = make_spec([make_attr("age"), make_attr("role", "categorical"), attr], ["age", "role", "value"])
+        spec = make_spec(
+            [make_attr("age"), make_attr("role", "categorical"), attr],
+            ["age", "role", "value"],
+        )
         result = validate_spec(spec)
 
         assert not result.valid
@@ -484,7 +507,10 @@ class TestFormulaValidation:
         result = validate_spec(spec)
 
         assert not result.valid
-        assert any("formula" in str(e).lower() and "syntax" in str(e).lower() for e in result.errors)
+        assert any(
+            "formula" in str(e).lower() and "syntax" in str(e).lower()
+            for e in result.errors
+        )
 
     def test_formula_references_not_in_depends_on(self):
         """Test that formula referencing attr not in depends_on is an error."""
@@ -495,7 +521,9 @@ class TestFormulaValidation:
             formula="age + bonus",
             depends_on=["age"],  # bonus not in depends_on
         )
-        spec = make_spec([make_attr("age"), make_attr("bonus"), attr], ["age", "bonus", "derived"])
+        spec = make_spec(
+            [make_attr("age"), make_attr("bonus"), attr], ["age", "bonus", "derived"]
+        )
         result = validate_spec(spec)
 
         assert not result.valid

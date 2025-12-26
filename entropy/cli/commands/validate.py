@@ -50,7 +50,9 @@ def validate_command(
             try:
                 spec = PopulationSpec.from_yaml(spec_file)
             except Exception as e:
-                out.error(f"Failed to load spec: {e}", exit_code=ExitCode.VALIDATION_ERROR)
+                out.error(
+                    f"Failed to load spec: {e}", exit_code=ExitCode.VALIDATION_ERROR
+                )
                 raise typer.Exit(out.finish())
     else:
         try:
@@ -79,7 +81,10 @@ def validate_command(
 
     # Handle errors
     if result.errors:
-        out.error(f"Spec has {len(result.errors)} error(s)", exit_code=ExitCode.VALIDATION_ERROR)
+        out.error(
+            f"Spec has {len(result.errors)} error(s)",
+            exit_code=ExitCode.VALIDATION_ERROR,
+        )
 
         if not get_json_mode():
             # Show error table for human mode
@@ -99,7 +104,9 @@ def validate_command(
                 )
 
             if len(result.errors) > 15:
-                out.text(f"  [dim]... and {len(result.errors) - 15} more error(s)[/dim]")
+                out.text(
+                    f"  [dim]... and {len(result.errors) - 15} more error(s)[/dim]"
+                )
 
             # Show suggestions for first few errors
             out.blank()
@@ -145,7 +152,9 @@ def validate_command(
                     out.warning(f"{loc}: {warn.message}")
 
                 if len(result.warnings) > 3:
-                    out.text(f"  [dim]... and {len(result.warnings) - 3} more warning(s)[/dim]")
+                    out.text(
+                        f"  [dim]... and {len(result.warnings) - 3} more warning(s)[/dim]"
+                    )
     else:
         out.success("Spec validated")
 

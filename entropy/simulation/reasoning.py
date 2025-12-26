@@ -65,11 +65,13 @@ def build_reasoning_prompt(
 
     # Add peer opinions if available
     if context.peer_opinions:
-        prompt_parts.extend([
-            "",
-            "## What People Around You Think",
-            "",
-        ])
+        prompt_parts.extend(
+            [
+                "",
+                "## What People Around You Think",
+                "",
+            ]
+        )
         for peer in context.peer_opinions:
             if peer.position:
                 prompt_parts.append(
@@ -77,24 +79,28 @@ def build_reasoning_prompt(
                 )
 
     # Add instructions
-    prompt_parts.extend([
-        "",
-        "## Your Response",
-        "",
-        "Based on who you are and what you've learned, respond naturally. Consider:",
-        "- How does this affect you personally?",
-        "- How do you feel about this?",
-        "- What, if anything, will you do?",
-        "- Will you discuss this with others?",
-        "",
-    ])
+    prompt_parts.extend(
+        [
+            "",
+            "## Your Response",
+            "",
+            "Based on who you are and what you've learned, respond naturally. Consider:",
+            "- How does this affect you personally?",
+            "- How do you feel about this?",
+            "- What, if anything, will you do?",
+            "- Will you discuss this with others?",
+            "",
+        ]
+    )
 
     # Add extraction instructions if provided
     if scenario.outcomes.extraction_instructions:
-        prompt_parts.extend([
-            scenario.outcomes.extraction_instructions,
-            "",
-        ])
+        prompt_parts.extend(
+            [
+                scenario.outcomes.extraction_instructions,
+                "",
+            ]
+        )
 
     prompt_parts.append(
         "Respond in character as this person would actually think and react."
@@ -248,9 +254,7 @@ def reason_agent(
                 f"attempt {attempt + 1}: {e}"
             )
             if attempt == config.max_retries - 1:
-                logger.error(
-                    f"All retries exhausted for agent {context.agent_id}"
-                )
+                logger.error(f"All retries exhausted for agent {context.agent_id}")
                 return None
 
     return None
