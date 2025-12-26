@@ -20,13 +20,7 @@ from entropy.core.models.simulation import (
 from entropy.simulation.state import StateManager
 from entropy.simulation.persona import (
     generate_persona,
-    generate_persona_for_reasoning,
-    _format_age,
-    _format_gender,
-    _format_role,
-    _format_experience,
-    _get_descriptor,
-    OPENNESS_DESCRIPTORS,
+    render_persona,
 )
 
 
@@ -410,67 +404,25 @@ class TestStateManager:
 class TestPersonaGeneration:
     """Tests for persona generation."""
 
-    def test_format_age(self):
-        """Test age formatting."""
-        assert _format_age(45) == "45-year-old"
-        assert _format_age(30.5) == "30-year-old"
-
-    def test_format_gender(self):
-        """Test gender formatting."""
-        assert _format_gender("male") == "man"
-        assert _format_gender("female") == "woman"
-        assert _format_gender("other") == "person"
-        assert _format_gender(None) == "person"
-        assert _format_gender("M") == "man"
-
-    def test_format_role(self):
-        """Test role formatting."""
-        agent = {
-            "role_seniority": "chief_physician_Chefarzt",
-            "surgical_specialty": "cardiology",
-        }
-        role = _format_role(agent)
-        assert "chief_physician_Chefarzt" in role
-        assert "cardiology" in role
-
-    def test_format_experience(self):
-        """Test experience formatting."""
-        agent = {"years_experience": 15}
-        result = _format_experience(agent)
-        assert "15 years" in result
-
-    def test_get_descriptor(self):
-        """Test personality descriptor selection."""
-        # Low openness
-        desc = _get_descriptor(0.2, OPENNESS_DESCRIPTORS)
-        assert "routine" in desc
-
-        # High openness
-        desc = _get_descriptor(0.8, OPENNESS_DESCRIPTORS)
-        assert "curious" in desc or "creative" in desc
-
     def test_generate_persona_basic(self, sample_agents):
         """Test basic persona generation."""
         agent = sample_agents[0]
         persona = generate_persona(agent)
 
+        # Should generate something with age and gender
         assert len(persona) > 0
-        assert "45-year-old" in persona
-        assert "man" in persona
+        assert "45" in persona
+        assert "male" in persona or "man" in persona
 
-    def test_generate_persona_with_role(self, sample_agents):
-        """Test persona with professional role."""
+    def test_generate_persona_with_template(self, sample_agents):
+        """Test persona with a template."""
         agent = sample_agents[0]
-        persona = generate_persona(agent)
+        template = "You are a {age}-year-old {gender} working in {surgical_specialty}."
+        persona = render_persona(agent, template)
 
-        assert "chief_physician_Chefarzt" in persona or "cardiology" in persona
-
-    def test_generate_persona_with_location(self, sample_agents):
-        """Test persona with location."""
-        agent = sample_agents[0]
-        persona = generate_persona(agent)
-
-        assert "Bayern" in persona
+        assert "45" in persona
+        assert "male" in persona
+        assert "cardiology" in persona
 
     def test_generate_persona_minimal_agent(self):
         """Test persona generation with minimal agent data."""
@@ -480,14 +432,15 @@ class TestPersonaGeneration:
         # Should generate something
         assert len(persona) > 0
 
-    def test_generate_persona_for_reasoning(self, sample_agents, complex_population_spec):
-        """Test enhanced persona for reasoning."""
+    def test_render_persona_with_template(self, sample_agents):
+        """Test rendering persona with a template."""
         agent = sample_agents[0]
-        persona = generate_persona_for_reasoning(agent, complex_population_spec)
+        template = "You are a {age}-year-old {gender}."
+        persona = render_persona(agent, template)
 
-        # Should include framing text
-        assert "simulating" in persona.lower()
-        assert len(persona) > len(generate_persona(agent))
+        # Should render correctly
+        assert str(agent["age"]) in persona
+        assert agent["gender"] in persona
 
 
 class TestStateManagerEdgeCases:
