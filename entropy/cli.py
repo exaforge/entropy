@@ -820,16 +820,12 @@ def overlay_command(
     # Step 5: Persona Template Generation
     # =========================================================================
 
-    # Only generate template if the base spec doesn't already have one
-    if not base.meta.persona_template:
-        persona_template = _generate_and_review_persona_template(merged_spec, yes)
-        if persona_template:
-            merged_spec.meta.persona_template = persona_template
-            console.print(f"[green]✓[/green] Persona template added to spec")
-    else:
-        # Preserve base spec's persona template
-        merged_spec.meta.persona_template = base.meta.persona_template
-        console.print(f"[dim]Using persona template from base spec[/dim]")
+    # Always generate template after merge - it needs to include all attributes
+    # (base + overlay) for the persona to be complete
+    persona_template = _generate_and_review_persona_template(merged_spec, yes)
+    if persona_template:
+        merged_spec.meta.persona_template = persona_template
+        console.print(f"[green]✓[/green] Persona template added to spec")
 
     # =========================================================================
     # Human Checkpoint #2: Confirm and Save

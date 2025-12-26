@@ -55,7 +55,7 @@ from .engine import (
 )
 
 from .state import StateManager
-from .persona import generate_persona, generate_persona_for_reasoning
+from .persona import generate_persona, render_persona
 from .reasoning import reason_agent, build_reasoning_prompt, build_response_schema
 from .propagation import (
     apply_seed_exposures,
@@ -91,7 +91,7 @@ __all__ = [
     "StateManager",
     # Persona generation
     "generate_persona",
-    "generate_persona_for_reasoning",
+    "render_persona",
     # Reasoning
     "reason_agent",
     "build_reasoning_prompt",
