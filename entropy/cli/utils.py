@@ -5,11 +5,11 @@ This module provides utilities for CLI commands to support both:
 - Machine mode (--json): Structured JSON output for AI coding tools
 
 Example:
-    from .cli_utils import Output, ExitCode, get_output_context
+    from ..cli.utils import Output, ExitCode
 
     @app.command()
-    def my_command(json_output: bool = typer.Option(False, "--json")):
-        out = Output(console, json_mode=json_output)
+    def my_command():
+        out = Output(console, json_mode=get_json_mode())
         out.success("Loaded spec", spec_name="surgeons.yaml", count=500)
         out.table("Attributes", ["Name", "Type"], [["age", "int"], ["income", "float"]])
         return out.finish()
@@ -18,7 +18,6 @@ Example:
 from __future__ import annotations
 
 import json
-import sys
 from dataclasses import dataclass, field
 from typing import Any
 
