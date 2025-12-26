@@ -191,7 +191,7 @@ def overlay_command(
             console.print(f"[red]✗[/red] Constraint binding failed: {e}")
             raise typer.Exit(1)
 
-    console.print(f"[green]✓[/green] Constraints bound")
+    console.print("[green]✓[/green] Constraints bound")
 
     if bind_warnings:
         console.print(f"[yellow]⚠[/yellow] {len(bind_warnings)} binding warning(s):")
@@ -230,7 +230,7 @@ def overlay_command(
     persona_template = generate_and_review_persona_template(merged_spec, yes)
     if persona_template:
         merged_spec.meta.persona_template = persona_template
-        console.print(f"[green]✓[/green] Persona template added to spec")
+        console.print("[green]✓[/green] Persona template added to spec")
 
     # Human Checkpoint #2
     display_spec_summary(merged_spec)

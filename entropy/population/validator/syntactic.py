@@ -108,7 +108,6 @@ def run_syntactic_checks(spec: PopulationSpec) -> list[ValidationIssue]:
 
     # Build lookup structures
     attr_names = {a.name for a in spec.attributes}
-    attr_lookup = {a.name: a for a in spec.attributes}
 
     # Category 8: Duplicate Detection (check first)
     issues.extend(_check_duplicates(spec.attributes))

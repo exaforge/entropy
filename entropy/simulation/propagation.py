@@ -92,7 +92,6 @@ def apply_seed_exposures(
         Count of new exposures
     """
     new_exposures = 0
-    agent_map = {a.get("_id", str(i)): a for i, a in enumerate(agents)}
 
     for rule in scenario.seed_exposure.rules:
         if rule.timestep != timestep:

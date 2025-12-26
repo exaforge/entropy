@@ -8,9 +8,6 @@ import pytest
 from entropy.network.config import (
     NetworkConfig,
     AttributeWeightConfig,
-    DegreeMultiplierConfig,
-    DEFAULT_ATTRIBUTE_WEIGHTS,
-    SENIORITY_LEVELS,
 )
 from entropy.network.similarity import (
     compute_match_score,
@@ -427,8 +424,8 @@ class TestGenerateNetwork:
         result1 = generate_network(sample_agents, config1)
         result2 = generate_network(sample_agents, config2)
 
-        edges1 = set((e.source, e.target) for e in result1.edges)
-        edges2 = set((e.source, e.target) for e in result2.edges)
+        set((e.source, e.target) for e in result1.edges)
+        set((e.source, e.target) for e in result2.edges)
 
         # May be the same by chance with small network, but likely different
         # Just check they're valid networks
@@ -467,7 +464,8 @@ class TestGenerateNetwork:
             progress_calls.append((stage, current, total))
 
         config = NetworkConfig(avg_degree=2.0, seed=42)
-        result = generate_network(sample_agents, config, on_progress=on_progress)
+
+        generate_network(sample_agents, config, on_progress=on_progress)
 
         assert len(progress_calls) > 0
         # Check various stages were reported

@@ -37,6 +37,6 @@ packages = ["entropy"]
 
 [dependency-groups]
 dev = [
-    "black>=25.12.0",
+    "ruff>=0.14.10",
 ]
 

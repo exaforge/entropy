@@ -4,17 +4,9 @@ Provides rich console output for displaying simulation results
 in a user-friendly format.
 """
 
-from typing import Any
-
 from rich.console import Console
 from rich.table import Table
 
-from ..core.models import (
-    SimulationSummary,
-    SegmentAggregate,
-    TimelinePoint,
-    AgentFinalState,
-)
 from .reader import ResultsReader
 
 

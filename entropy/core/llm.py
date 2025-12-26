@@ -177,7 +177,6 @@ def reasoning_call(
         effective_prompt = f"{previous_errors}\n\n---\n\n{prompt}"
 
     attempts = 0
-    last_error = None
     last_error_summary = ""
 
     while attempts <= max_retries:
@@ -230,7 +229,7 @@ def reasoning_call(
 
         # Validation failed - prepare for retry
         attempts += 1
-        last_error = error_msg
+
         # Extract meaningful error summary (skip header lines)
         last_error_summary = _extract_error_summary(error_msg)
 
@@ -314,7 +313,6 @@ def agentic_research(
         effective_prompt = f"{previous_errors}\n\n---\n\n{prompt}"
 
     attempts = 0
-    last_error = None
     last_error_summary = ""
     all_sources: list[str] = []
 
@@ -400,7 +398,6 @@ def agentic_research(
 
         # Validation failed - prepare for retry
         attempts += 1
-        last_error = error_msg
         # Extract meaningful error summary (skip header lines)
         last_error_summary = _extract_error_summary(error_msg)
 

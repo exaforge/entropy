@@ -18,7 +18,6 @@ from entropy.core.models.population import (
     UniformDistribution,
     BetaDistribution,
     Modifier,
-    Constraint,
 )
 
 

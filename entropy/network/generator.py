@@ -4,7 +4,6 @@ Implements the hybrid approach: attribute similarity + Watts-Strogatz rewiring.
 """
 
 import json
-import math
 import random
 from dataclasses import dataclass, field
 from datetime import datetime

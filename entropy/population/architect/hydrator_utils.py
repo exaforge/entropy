@@ -11,7 +11,6 @@ import re
 
 from ...core.models import (
     Constraint,
-    GroundingInfo,
     HydratedAttribute,
     Modifier,
     NormalDistribution,

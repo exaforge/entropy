@@ -16,7 +16,6 @@ from ..core.models import (
     PopulationSpec,
     ScenarioSpec,
     AgentState,
-    ExposureRecord,
     PeerOpinion,
     ReasoningContext,
     SimulationEvent,
@@ -432,7 +431,7 @@ class SimulationEngine:
         self.timeline.close()
 
         # Compute final aggregates
-        final_aggregates = compute_final_aggregates(
+        compute_final_aggregates(
             self.state_manager,
             self.agents,
             self.population_spec,

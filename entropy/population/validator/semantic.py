@@ -15,7 +15,6 @@ from ...core.models import (
     UniformDistribution,
     BetaDistribution,
     CategoricalDistribution,
-    BooleanDistribution,
 )
 
 

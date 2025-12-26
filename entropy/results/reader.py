@@ -242,7 +242,6 @@ class ResultsReader:
         # Compute summary stats
         total = len(states)
         aware = sum(1 for s in states if s.aware)
-        reasoned = sum(1 for s in states if s.reasoning_count > 0)
 
         final_timestep = timeline[-1].timestep if timeline else 0
 

@@ -1,6 +1,5 @@
 """Tests for the population sampler module."""
 
-import random
 import tempfile
 from pathlib import Path
 
@@ -16,8 +15,6 @@ from entropy.core.models.population import (
     NormalDistribution,
     LognormalDistribution,
     CategoricalDistribution,
-    BooleanDistribution,
-    UniformDistribution,
     BetaDistribution,
     Modifier,
     Constraint,
@@ -27,7 +24,6 @@ from entropy.population.sampler.core import (
     save_json,
     save_sqlite,
     SamplingResult,
-    SamplingStats,
     SamplingError,
 )
 from entropy.population.sampler.distributions import (
@@ -436,7 +432,7 @@ class TestSamplePopulation:
         def on_progress(current, total):
             progress_calls.append((current, total))
 
-        result = sample_population(
+        sample_population(
             minimal_population_spec, count=10, seed=42, on_progress=on_progress
         )
 
@@ -779,9 +775,9 @@ class TestDynamicBounds:
         agent = {"lower": 30, "upper": 70}
 
         values = [sample_distribution(dist, rng, agent) for _ in range(100)]
-        assert all(
-            30 <= v <= 70 for v in values
-        ), f"Values out of range: min={min(values)}, max={max(values)}"
+        assert all(30 <= v <= 70 for v in values), (
+            f"Values out of range: min={min(values)}, max={max(values)}"
+        )
 
     def test_formula_takes_precedence_over_static(self, rng):
         """Formula bounds should take precedence over static bounds."""
@@ -797,9 +793,9 @@ class TestDynamicBounds:
 
         values = [sample_distribution(dist, rng, agent) for _ in range(100)]
         # Formula bounds (40, 60) should be used, not static (0, 100)
-        assert all(
-            40 <= v <= 60 for v in values
-        ), f"Values out of range: min={min(values)}, max={max(values)}"
+        assert all(40 <= v <= 60 for v in values), (
+            f"Values out of range: min={min(values)}, max={max(values)}"
+        )
 
     def test_lognormal_with_max_formula(self, rng):
         """max_formula should work with lognormal distribution."""
@@ -831,9 +827,9 @@ class TestDynamicBounds:
 
         values = [sample_distribution(dist, rng, agent) for _ in range(100)]
         # Beta should be scaled to [10, 20]
-        assert all(
-            10 <= v <= 20 for v in values
-        ), f"Values out of range: min={min(values)}, max={max(values)}"
+        assert all(10 <= v <= 20 for v in values), (
+            f"Values out of range: min={min(values)}, max={max(values)}"
+        )
 
     def test_integration_children_count_pattern(self):
         """Integration test: children_count should never exceed household_size - 1."""
@@ -901,13 +897,12 @@ class TestDynamicBounds:
 
         # Also verify by checking actual values
         for agent in result.agents:
-            assert agent["children_count"] <= max(
-                0, agent["household_size"] - 1
-            ), f"Agent {agent['_id']}: children={agent['children_count']}, household={agent['household_size']}"
+            assert agent["children_count"] <= max(0, agent["household_size"] - 1), (
+                f"Agent {agent['_id']}: children={agent['children_count']}, household={agent['household_size']}"
+            )
 
     def test_modifier_respects_formula_bounds(self):
         """Modifiers should respect max_formula bounds after applying multiply/add."""
-        from entropy.core.models.population import Modifier
 
         spec = PopulationSpec(
             meta=SpecMeta(description="Test modifier bounds", size=500),
@@ -965,9 +960,9 @@ class TestDynamicBounds:
         # Even with modifier multiply/add, values should still respect max_formula
         for agent in result.agents:
             max_allowed = max(0, agent["household_size"] - 1)
-            assert (
-                agent["children_count"] <= max_allowed
-            ), f"Agent {agent['_id']}: children={agent['children_count']}, household={agent['household_size']}, max_allowed={max_allowed}"
+            assert agent["children_count"] <= max_allowed, (
+                f"Agent {agent['_id']}: children={agent['children_count']}, household={agent['household_size']}, max_allowed={max_allowed}"
+            )
 
 
 class TestConstraintValidation:

@@ -13,7 +13,7 @@ This module contains all Phase 1 (Population Creation) models:
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Literal
+from typing import Literal
 
 import yaml
 from pydantic import BaseModel, Field

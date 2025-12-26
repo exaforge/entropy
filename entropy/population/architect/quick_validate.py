@@ -304,7 +304,7 @@ def validate_distribution_data(
             ValidationError(
                 field=f"{attr_name}.distribution.type",
                 value=dist_type,
-                error=f"unknown distribution type",
+                error="unknown distribution type",
                 suggestion=f"Use one of: {', '.join(sorted(valid_types))}",
             )
         )

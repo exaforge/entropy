@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 
 from ...core.models import PopulationSpec
 
+from .fixer import fix_modifier_conditions, fix_spec_file, ConditionFix, FixResult
+
 
 class Severity(Enum):
     """Severity level for validation issues."""
@@ -118,9 +120,6 @@ def validate_spec(spec: PopulationSpec) -> ValidationResult:
         warnings=warnings,
         info=info,
     )
-
-
-from .fixer import fix_modifier_conditions, fix_spec_file, ConditionFix, FixResult
 
 
 __all__ = [

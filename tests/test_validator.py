@@ -1,7 +1,5 @@
 """Tests for the population validator module."""
 
-import pytest
-
 from entropy.core.models.population import (
     PopulationSpec,
     SpecMeta,
@@ -22,7 +20,6 @@ from entropy.population.validator import (
     Severity,
 )
 from entropy.population.validator.syntactic import (
-    run_syntactic_checks,
     extract_names_from_expression,
 )
 

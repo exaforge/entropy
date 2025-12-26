@@ -260,7 +260,7 @@ def sample_command(
                 counts = result.stats.categorical_counts.get(attr.name, {})
                 total = sum(counts.values()) or 1
                 top_3 = sorted(counts.items(), key=lambda x: -x[1])[:3]
-                dist_str = ", ".join(f"{k}: {v/total:.0%}" for k, v in top_3)
+                dist_str = ", ".join(f"{k}: {v / total:.0%}" for k, v in top_3)
                 cat_rows.append([attr.name, dist_str])
             out.table(
                 "Categorical Attributes",

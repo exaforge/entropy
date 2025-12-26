@@ -146,7 +146,7 @@ def determine_interaction_model(
         edge_type_info = f"""
 ### Network Edge Types (use in share_modifiers)
 
-The following edge types exist in this network: {', '.join(edge_types)}
+The following edge types exist in this network: {", ".join(edge_types)}
 
 Use these exact edge type names in share_modifier conditions, e.g.:
 - {{"when": "edge_type == '{edge_types[0]}'", "multiply": 1.5, "add": 0}}
@@ -168,7 +168,7 @@ Emotional valence: {event.emotional_valence:.2f}
 ## Population
 
 {population_spec.meta.description}
-Geography: {population_spec.meta.geography or 'Not specified'}
+Geography: {population_spec.meta.geography or "Not specified"}
 
 ### Attributes (use in share_modifiers 'when' clauses)
 

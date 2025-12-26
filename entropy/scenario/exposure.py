@@ -133,8 +133,8 @@ def generate_seed_exposure(
         edge_types = network_summary.get("edge_types", [])
         if edge_types:
             network_info = f"""
-Network edge types available: {', '.join(edge_types)}
-This means agents can be connected via: {', '.join(edge_types)}
+Network edge types available: {", ".join(edge_types)}
+This means agents can be connected via: {", ".join(edge_types)}
 Consider how information might spread through these network connections.
 """
 
@@ -156,7 +156,7 @@ Emotional valence: {event.emotional_valence:.2f}
 ## Population
 
 {population_spec.meta.description} ({population_spec.meta.size} agents)
-Geography: {population_spec.meta.geography or 'Not specified'}
+Geography: {population_spec.meta.geography or "Not specified"}
 
 ### Available Attributes (use these in 'when' clauses)
 

@@ -6,7 +6,6 @@ like max timesteps, exposure rate thresholds, or convergence.
 
 import logging
 import re
-from typing import Any
 
 from ..core.models import SimulationConfig, TimestepSummary
 from .state import StateManager

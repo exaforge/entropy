@@ -11,7 +11,6 @@ from ..core.llm import simple_call
 from ..core.models import (
     ScenarioSpec,
     OutcomeConfig,
-    OutcomeDefinition,
     ReasoningContext,
     ReasoningResponse,
     SimulationRunConfig,

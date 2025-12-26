@@ -21,7 +21,6 @@ from ...core.models import (
     PopulationSpec,
     AttributeSpec,
     CategoricalDistribution,
-    Modifier,
 )
 
 

@@ -308,7 +308,7 @@ def validate_network(
     is_valid, warnings = metrics.is_valid()
 
     if verbose:
-        print(f"Network Validation Report:")
+        print("Network Validation Report:")
         print(f"  Nodes: {metrics.node_count}")
         print(f"  Edges: {metrics.edge_count}")
         print(f"  Avg Degree: {metrics.avg_degree:.2f}")

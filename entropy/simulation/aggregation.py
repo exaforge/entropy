@@ -9,7 +9,6 @@ from typing import Any
 
 from ..core.models import (
     PopulationSpec,
-    ScenarioSpec,
     OutcomeDefinition,
     TimestepSummary,
 )
@@ -62,7 +61,6 @@ def compute_final_aggregates(
     Returns:
         Dict containing final aggregate statistics
     """
-    agent_map = {a.get("_id", str(i)): a for i, a in enumerate(agents)}
     final_states = state_manager.export_final_states()
 
     # Basic stats
@@ -126,7 +124,6 @@ def compute_segment_aggregates(
     Returns:
         List of segment aggregate dictionaries
     """
-    agent_map = {a.get("_id", str(i)): a for i, a in enumerate(agents)}
     final_states = state_manager.export_final_states()
 
     # Group agents by segment value
@@ -336,7 +333,6 @@ def identify_influencers(
     """
     agent_map = {a.get("_id", str(i)): a for i, a in enumerate(agents)}
     final_states = state_manager.export_final_states()
-    state_map = {s["agent_id"]: s for s in final_states}
 
     # Build adjacency list for degree calculation
     degree: dict[str, int] = defaultdict(int)

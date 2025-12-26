@@ -57,7 +57,7 @@ def spec_command(
             raise typer.Exit(1)
 
     if not sufficiency_result.sufficient:
-        console.print(f"[red]✗[/red] Description needs clarification:")
+        console.print("[red]✗[/red] Description needs clarification:")
         for q in sufficiency_result.clarifications_needed:
             console.print(f"  • {q}")
         raise typer.Exit(1)
@@ -182,7 +182,7 @@ def spec_command(
             console.print(f"[red]✗[/red] Constraint binding failed: {e}")
             raise typer.Exit(1)
 
-    console.print(f"[green]✓[/green] Constraints bound, sampling order determined")
+    console.print("[green]✓[/green] Constraints bound, sampling order determined")
 
     if bind_warnings:
         console.print(f"[yellow]⚠[/yellow] {len(bind_warnings)} binding warning(s):")
@@ -202,7 +202,7 @@ def spec_command(
             sources=sources,
         )
 
-    console.print(f"[green]✓[/green] Spec assembled")
+    console.print("[green]✓[/green] Spec assembled")
 
     # Validation Gate
     with console.status("[cyan]Validating spec...[/cyan]"):
@@ -217,7 +217,7 @@ def spec_command(
     persona_template = generate_and_review_persona_template(population_spec, yes)
     if persona_template:
         population_spec.meta.persona_template = persona_template
-        console.print(f"[green]✓[/green] Persona template added to spec")
+        console.print("[green]✓[/green] Persona template added to spec")
 
     # Human Checkpoint #2
     display_spec_summary(population_spec)

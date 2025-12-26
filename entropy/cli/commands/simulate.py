@@ -110,7 +110,7 @@ def simulate_command(
     # Display summary
     console.print()
     console.print("═" * 60)
-    console.print(f"[green]✓[/green] Simulation complete")
+    console.print("[green]✓[/green] Simulation complete")
     console.print("═" * 60)
     console.print()
 

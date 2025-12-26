@@ -132,7 +132,7 @@ Emotional valence: {event.emotional_valence:.2f}
 
 {population_spec.meta.description}
 Size: {population_spec.meta.size} agents
-Geography: {population_spec.meta.geography or 'Not specified'}
+Geography: {population_spec.meta.geography or "Not specified"}
 
 ## Original Scenario Description
 
