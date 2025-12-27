@@ -188,9 +188,9 @@ def display_validation_result(result, strict: bool = False) -> bool:
     if result.errors:
         console.print(f"[red]✗[/red] Spec has {len(result.errors)} error(s)")
         for err in result.errors[:10]:
-            loc = err.attribute
+            loc = err.location
             if err.modifier_index is not None:
-                loc = f"{err.attribute}[{err.modifier_index}]"
+                loc = f"{err.location}[{err.modifier_index}]"
             console.print(f"  [red]✗[/red] {loc}: {err.message}")
             if err.suggestion:
                 console.print(f"    [dim]→ {err.suggestion}[/dim]")
@@ -206,9 +206,9 @@ def display_validation_result(result, strict: bool = False) -> bool:
                 f"[red]✗[/red] Spec has {len(result.warnings)} warning(s) (strict mode)"
             )
             for warn in result.warnings[:5]:
-                loc = warn.attribute
+                loc = warn.location
                 if warn.modifier_index is not None:
-                    loc = f"{warn.attribute}[{warn.modifier_index}]"
+                    loc = f"{warn.location}[{warn.modifier_index}]"
                 console.print(f"  [yellow]⚠[/yellow] {loc}: {warn.message}")
             if len(result.warnings) > 5:
                 console.print(
@@ -220,9 +220,9 @@ def display_validation_result(result, strict: bool = False) -> bool:
                 f"[green]✓[/green] Spec validated with {len(result.warnings)} warning(s)"
             )
             for warn in result.warnings[:3]:
-                loc = warn.attribute
+                loc = warn.location
                 if warn.modifier_index is not None:
-                    loc = f"{warn.attribute}[{warn.modifier_index}]"
+                    loc = f"{warn.location}[{warn.modifier_index}]"
                 console.print(f"  [yellow]⚠[/yellow] {loc}: {warn.message}")
             if len(result.warnings) > 3:
                 console.print(
