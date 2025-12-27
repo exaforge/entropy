@@ -217,7 +217,7 @@ def _check_condition_values(
 
         # Parse condition with AST to get (attr_name, values) pairs
         comparisons = extract_comparisons_from_expression(mod.when)
-        
+
         for compared_attr, values in comparisons:
             if compared_attr not in attr_lookup:
                 continue
@@ -248,4 +248,3 @@ def _check_condition_values(
                     )
 
     return issues
-

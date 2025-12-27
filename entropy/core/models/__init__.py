@@ -44,8 +44,6 @@ from .validation import (
     Severity,
     ValidationIssue,
     ValidationResult,
-    ValidationIssue,
-    ValidationResult,
 )
 
 # Scenario models (Phase 2)
