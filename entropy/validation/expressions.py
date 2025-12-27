@@ -152,3 +152,69 @@ def validate_expression_syntax(expr: str | None) -> str | None:
         return f"invalid Python syntax: {error_msg}"
 
     return None
+
+
+# =============================================================================
+# Comparison Extraction
+# =============================================================================
+
+
+def extract_comparisons_from_expression(expr: str) -> list[tuple[str, list[str]]]:
+    """Extract (variable_name, [compared_values]) pairs from a condition expression.
+
+    Uses AST parsing to correctly handle compound conditions like:
+    - employer_type == 'x' and job_title in ['y', 'z']
+    - (age > 50 or job_title == 'chief') and employer_type == 'university'
+
+    Only extracts comparisons where the left-hand side is a variable name
+    and the right-hand side contains string literals.
+
+    Args:
+        expr: A Python condition expression string
+
+    Returns:
+        List of (variable_name, [string_values]) tuples
+
+    Example:
+        >>> extract_comparisons_from_expression("job_title == 'chief' and age > 50")
+        [('job_title', ['chief'])]
+        >>> extract_comparisons_from_expression("status in ['active', 'pending']")
+        [('status', ['active', 'pending'])]
+    """
+    try:
+        tree = ast.parse(expr, mode="eval")
+    except SyntaxError:
+        return []
+
+    comparisons: list[tuple[str, list[str]]] = []
+
+    def _extract_string_values(node) -> list[str]:
+        """Extract string values from a node (handles lists and single values)."""
+        values = []
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            values.append(node.value)
+        elif isinstance(node, ast.List):
+            for elt in node.elts:
+                if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+                    values.append(elt.value)
+        return values
+
+    def _visit(node):
+        """Recursively visit AST nodes to find comparisons."""
+        if isinstance(node, ast.Compare):
+            # Handle: attr == 'value' or attr in ['val1', 'val2']
+            left = node.left
+            if isinstance(left, ast.Name):
+                attr_name = left.id
+                values = []
+                for comparator in node.comparators:
+                    values.extend(_extract_string_values(comparator))
+                if values:
+                    comparisons.append((attr_name, values))
+
+        # Recurse into child nodes
+        for child in ast.iter_child_nodes(node):
+            _visit(child)
+
+    _visit(tree)
+    return comparisons

@@ -12,6 +12,7 @@ from .expressions import (
     BUILTIN_NAMES,
     PYTHON_KEYWORDS,
     extract_names_from_expression,
+    extract_comparisons_from_expression,
     validate_expression_syntax,
 )
 
@@ -30,6 +31,7 @@ __all__ = [
     "BUILTIN_NAMES",
     "PYTHON_KEYWORDS",
     "extract_names_from_expression",
+    "extract_comparisons_from_expression",
     "validate_expression_syntax",
     # Distribution utilities
     "validate_weight_sum",

@@ -4,8 +4,6 @@ These checks produce WARNING severity issues that don't block sampling.
 They help identify potential issues but don't indicate structural problems.
 """
 
-import re
-
 from ...core.models.validation import Severity, ValidationIssue
 from ...core.models import (
     PopulationSpec,
@@ -16,6 +14,7 @@ from ...core.models import (
     BetaDistribution,
     CategoricalDistribution,
 )
+from ...validation import extract_comparisons_from_expression
 
 
 # =============================================================================
@@ -200,63 +199,12 @@ def _check_modifier_stacking(attr: AttributeSpec) -> list[ValidationIssue]:
 # =============================================================================
 
 
-def _extract_comparisons_from_ast(expr: str) -> list[tuple[str, list[str]]]:
-    """Extract (attribute_name, [compared_values]) pairs from a condition expression.
-    
-    Uses AST parsing to correctly handle compound conditions like:
-    - employer_type == 'x' and job_title in ['y', 'z']
-    - (age > 50 or job_title == 'chief') and employer_type == 'university'
-    
-    Returns list of (attr_name, [values]) where values are string literals
-    being compared to that attribute.
-    """
-    import ast
-    
-    try:
-        tree = ast.parse(expr, mode='eval')
-    except SyntaxError:
-        return []
-    
-    comparisons: list[tuple[str, list[str]]] = []
-    
-    def extract_string_values(node) -> list[str]:
-        """Extract string values from a node (handles lists and single values)."""
-        values = []
-        if isinstance(node, ast.Constant) and isinstance(node.value, str):
-            values.append(node.value)
-        elif isinstance(node, ast.List):
-            for elt in node.elts:
-                if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
-                    values.append(elt.value)
-        return values
-    
-    def visit(node):
-        """Recursively visit AST nodes to find comparisons."""
-        if isinstance(node, ast.Compare):
-            # Handle: attr == 'value' or attr in ['val1', 'val2']
-            left = node.left
-            if isinstance(left, ast.Name):
-                attr_name = left.id
-                values = []
-                for comparator in node.comparators:
-                    values.extend(extract_string_values(comparator))
-                if values:
-                    comparisons.append((attr_name, values))
-        
-        # Recurse into child nodes
-        for child in ast.iter_child_nodes(node):
-            visit(child)
-    
-    visit(tree)
-    return comparisons
-
-
 def _check_condition_values(
     attr: AttributeSpec,
     attr_lookup: dict[str, AttributeSpec],
 ) -> list[ValidationIssue]:
     """Check that condition comparisons use valid categorical options.
-    
+
     Uses AST parsing to correctly identify which values are compared to which
     attributes, even in compound conditions like:
         employer_type == 'university_hospital' and job_title in ['senior_Oberarzt']
@@ -268,7 +216,7 @@ def _check_condition_values(
             continue
 
         # Parse condition with AST to get (attr_name, values) pairs
-        comparisons = _extract_comparisons_from_ast(mod.when)
+        comparisons = extract_comparisons_from_expression(mod.when)
         
         for compared_attr, values in comparisons:
             if compared_attr not in attr_lookup:
