@@ -293,7 +293,7 @@ def format_validation_for_json(result) -> dict[str, Any]:
         "warning_count": len(result.warnings) if result.warnings else 0,
         "errors": [
             {
-                "attribute": e.attribute,
+                "location": e.location,
                 "category": e.category,
                 "message": e.message,
                 "modifier_index": e.modifier_index,
@@ -303,7 +303,7 @@ def format_validation_for_json(result) -> dict[str, Any]:
         ],
         "warnings": [
             {
-                "attribute": w.attribute,
+                "location": w.location,
                 "category": w.category,
                 "message": w.message,
                 "modifier_index": w.modifier_index,
