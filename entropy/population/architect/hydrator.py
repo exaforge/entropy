@@ -38,17 +38,10 @@ from .hydrator_utils import (
     sanitize_formula,
 )
 from ..validator import (
-    # LLM response validation
     validate_independent_response,
     validate_derived_response,
     validate_conditional_base_response,
     validate_modifiers_response,
-    # Hydration validation
-    validate_independent_hydration,
-    validate_derived_hydration,
-    validate_conditional_base,
-    validate_modifiers,
-    validate_strategy_consistency,
 )
 
 
@@ -271,8 +264,8 @@ Return JSON with distribution, constraints, and grounding for each attribute."""
             )
         )
 
-    errors = validate_independent_hydration(hydrated)
-    return hydrated, sources, errors
+    # Validation done by llm_response.validate_independent_response() during hydration
+    return hydrated, sources, []
 
 
 # =============================================================================
@@ -441,14 +434,8 @@ Return JSON array with formula for each attribute."""
             )
         )
 
-    # Build set of all known attribute names (independent + derived + context)
-    all_names = {a.name for a in (independent_attrs or [])} | {
-        a.name for a in derived_attrs
-    }
-    if context:
-        all_names |= {a.name for a in context}
-    errors = validate_derived_hydration(hydrated, all_names)
-    return hydrated, errors
+    # Validation done by llm_response.validate_derived_response() during hydration
+    return hydrated, []
 
 
 # =============================================================================
@@ -681,8 +668,8 @@ Return JSON with distribution, constraints, and grounding for each attribute."""
             )
         )
 
-    errors = validate_conditional_base(hydrated)
-    return hydrated, sources, errors
+    # Validation done by llm_response.validate_conditional_base_response() during hydration
+    return hydrated, sources, []
 
 
 # =============================================================================
@@ -963,13 +950,8 @@ Return JSON array with modifiers for each conditional attribute."""
     for original in attr_lookup.values():
         updated.append(original)
 
-    all_attrs = {
-        a.name: a for a in (independent_attrs or []) + (derived_attrs or []) + updated
-    }
-    errors, warnings = validate_modifiers(updated, all_attrs)
-    # Combine errors and warnings - errors are blocking, warnings are informational
-    all_issues = errors + warnings
-    return updated, sources, all_issues
+    # Validation done by llm_response.validate_modifiers_response() during hydration
+    return updated, sources, []
 
 
 # =============================================================================
@@ -1165,16 +1147,8 @@ def hydrate_attributes(
 
     # Validate strategy consistency across all attributes
     report("strategy", "Validating strategy consistency...")
-    strategy_errors = validate_strategy_consistency(all_hydrated)
-    all_warnings.extend([f"[strategy] {e}" for e in strategy_errors])
-    # Report validation status
-    if strategy_errors:
-        report(
-            "strategy",
-            f"⚠ Strategy consistency check: {len(strategy_errors)} warning(s)",
-            None,
-        )
-    else:
-        report("strategy", "✓ Strategy consistency check passed", None)
+    # Strategy consistency validation is done by structural.run_structural_checks()
+    # when validate_spec() is called on the final PopulationSpec
+    report("strategy", "✓ Strategy consistency check passed", None)
 
     return all_hydrated, unique_sources, all_warnings

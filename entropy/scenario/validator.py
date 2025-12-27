@@ -4,7 +4,6 @@ Validates a ScenarioSpec against the population spec, agents, and network
 to ensure all references are valid and configurations are consistent.
 """
 
-import ast
 import json
 import re
 from pathlib import Path
@@ -16,64 +15,10 @@ from ..core.models import (
     ValidationWarning,
     ValidationResult,
 )
-
-
-def _extract_attribute_references(expression: str) -> set[str]:
-    """Extract attribute names referenced in a Python expression.
-
-    Args:
-        expression: Python expression like "age < 45 and income > 50000"
-
-    Returns:
-        Set of attribute names referenced (e.g., {'age', 'income'})
-    """
-    # Handle special case of 'true' or 'false'
-    if expression.lower() in ("true", "false"):
-        return set()
-
-    try:
-        tree = ast.parse(expression, mode="eval")
-    except SyntaxError:
-        # Can't parse - return empty set, will be caught by syntax check
-        return set()
-
-    names = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Name):
-            # Skip built-in names and common operators
-            if node.id not in (
-                "true",
-                "false",
-                "True",
-                "False",
-                "None",
-                "and",
-                "or",
-                "not",
-            ):
-                names.add(node.id)
-
-    return names
-
-
-def _validate_expression_syntax(expression: str) -> str | None:
-    """Check if a Python expression is syntactically valid.
-
-    Args:
-        expression: Python expression to validate
-
-    Returns:
-        Error message if invalid, None if valid
-    """
-    # Handle special case of 'true' or 'false'
-    if expression.lower() in ("true", "false"):
-        return None
-
-    try:
-        ast.parse(expression, mode="eval")
-        return None
-    except SyntaxError as e:
-        return str(e)
+from ..validation.expressions import (
+    extract_names_from_expression,
+    validate_expression_syntax,
+)
 
 
 def validate_scenario(
@@ -190,7 +135,7 @@ def validate_scenario(
             )
 
         # Check expression syntax
-        syntax_error = _validate_expression_syntax(rule.when)
+        syntax_error = validate_expression_syntax(rule.when)
         if syntax_error:
             errors.append(
                 ValidationError(
@@ -203,7 +148,7 @@ def validate_scenario(
         else:
             # Check attribute references
             if population_spec:
-                refs = _extract_attribute_references(rule.when)
+                refs = extract_names_from_expression(rule.when)
                 unknown_refs = refs - known_attributes
                 if unknown_refs:
                     errors.append(
@@ -263,7 +208,7 @@ def validate_scenario(
 
     for i, modifier in enumerate(spec.spread.share_modifiers):
         # Check expression syntax
-        syntax_error = _validate_expression_syntax(modifier.when)
+        syntax_error = validate_expression_syntax(modifier.when)
         if syntax_error:
             errors.append(
                 ValidationError(
@@ -275,7 +220,7 @@ def validate_scenario(
             )
         else:
             # Check attribute/edge type references
-            refs = _extract_attribute_references(modifier.when)
+            refs = extract_names_from_expression(modifier.when)
 
             # Allow 'edge_type' as a special reference
             refs_without_edge_type = refs - {"edge_type"}
@@ -409,7 +354,7 @@ def validate_scenario(
     # Validate stop conditions if present
     if spec.simulation.stop_conditions:
         for i, condition in enumerate(spec.simulation.stop_conditions):
-            syntax_error = _validate_expression_syntax(condition)
+            syntax_error = validate_expression_syntax(condition)
             if syntax_error:
                 errors.append(
                     ValidationError(

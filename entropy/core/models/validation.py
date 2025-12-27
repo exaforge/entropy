@@ -126,6 +126,11 @@ class ValidationResult(BaseModel):
         """All INFO-level issues."""
         return [i for i in self.issues if i.severity == Severity.INFO]
 
+    @property
+    def all_issues(self) -> list[ValidationIssue]:
+        """All issues regardless of severity (alias for issues)."""
+        return self.issues
+
     def add_error(
         self,
         category: str,

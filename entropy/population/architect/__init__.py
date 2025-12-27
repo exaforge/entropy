@@ -35,8 +35,8 @@ from .hydrator import (
 )
 from .binder import bind_constraints, build_spec
 from ..validator import (
-    QuickValidationResult,
-    ValidationError as QuickValidationError,
+    ValidationResult,
+    ValidationIssue,
     validate_formula_syntax,
     validate_condition_syntax,
     validate_distribution_data,
@@ -59,9 +59,9 @@ __all__ = [
     "hydrate_conditional_modifiers",
     "bind_constraints",
     "build_spec",
-    # Quick validation
-    "QuickValidationResult",
-    "QuickValidationError",
+    # Validation types
+    "ValidationResult",
+    "ValidationIssue",
     "validate_formula_syntax",
     "validate_condition_syntax",
     "validate_distribution_data",

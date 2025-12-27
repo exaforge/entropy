@@ -8,11 +8,8 @@ The philosophy is FAIL FAST:
 - Validate immediately after each LLM response
 - Feed errors back to LLM for self-correction
 - Never proceed with invalid data
-
-Moved from population/architect/quick_validate.py during validation consolidation.
 """
 
-import ast
 import re
 from typing import Any
 
@@ -21,10 +18,10 @@ from ...core.models.validation import (
     ValidationIssue,
     ValidationResult,
 )
-
-# Backwards compatibility aliases
-ValidationError = ValidationIssue
-QuickValidationResult = ValidationResult
+from ...validation.expressions import (
+    BUILTIN_NAMES,
+    validate_expression_syntax,
+)
 
 
 def _make_error(
@@ -43,28 +40,6 @@ def _make_error(
         value=value,
     )
 
-
-# Allowed builtins in formulas and expressions
-ALLOWED_BUILTINS = {
-    "True",
-    "False",
-    "None",
-    "abs",
-    "min",
-    "max",
-    "round",
-    "int",
-    "float",
-    "str",
-    "len",
-    "and",
-    "or",
-    "not",
-    "in",
-    "is",
-    "if",
-    "else",
-}
 
 # Spec-level variable patterns that should use spec_expression, not expression
 SPEC_LEVEL_PATTERNS = {"weights", "options"}
@@ -155,52 +130,12 @@ def validate_formula_syntax(
     if not formula:
         return None
 
-    # Check for unterminated strings
-    if formula.count('"') % 2 != 0:
+    error_msg = validate_expression_syntax(formula)
+    if error_msg:
         return _make_error(
             field=field_name,
             value=formula,
-            error="unterminated string literal (unmatched double quote)",
-            suggestion="Ensure all string literals have matching quotes",
-        )
-
-    if formula.count("'") % 2 != 0:
-        return _make_error(
-            field=field_name,
-            value=formula,
-            error="unterminated string literal (unmatched single quote)",
-            suggestion="Ensure all string literals have matching quotes",
-        )
-
-    # Check for unbalanced parentheses
-    if formula.count("(") != formula.count(")"):
-        return _make_error(
-            field=field_name,
-            value=formula,
-            error=f"unbalanced parentheses ({formula.count('(')} open, {formula.count(')')} close)",
-            suggestion="Check for missing or extra parentheses",
-        )
-
-    # Check for unbalanced brackets
-    if formula.count("[") != formula.count("]"):
-        return _make_error(
-            field=field_name,
-            value=formula,
-            error=f"unbalanced brackets ({formula.count('[')} open, {formula.count(']')} close)",
-            suggestion="Check for missing or extra brackets",
-        )
-
-    # Try to parse as Python expression
-    try:
-        ast.parse(formula, mode="eval")
-    except SyntaxError as e:
-        # Extract useful error message
-        error_msg = str(e.msg) if hasattr(e, "msg") else str(e)
-
-        return _make_error(
-            field=field_name,
-            value=formula,
-            error=f"invalid Python syntax: {error_msg}",
+            error=error_msg,
             suggestion="Ensure the formula is a valid Python expression",
         )
 
