@@ -4,7 +4,6 @@ Builds the dependency graph, determines sampling order via topological sort,
 and assembles the final PopulationSpec.
 """
 
-from collections import defaultdict
 from datetime import datetime
 
 from ...core.models import (
@@ -15,66 +14,7 @@ from ...core.models import (
     GroundingSummary,
     SamplingConfig,
 )
-
-
-class CircularDependencyError(Exception):
-    """Raised when circular dependencies are detected in attributes."""
-
-    pass
-
-
-def _topological_sort_specs(attributes: list[AttributeSpec]) -> list[str]:
-    """
-    Topological sort of AttributeSpec based on dependencies.
-
-    Uses Kahn's algorithm to determine a valid sampling order
-    where all dependencies are sampled before dependents.
-
-    Args:
-        attributes: List of AttributeSpec with sampling.depends_on fields
-
-    Returns:
-        List of attribute names in sampling order
-
-    Raises:
-        CircularDependencyError: If circular dependencies exist
-    """
-    # Build adjacency list and in-degree count
-    graph = defaultdict(list)  # attr -> list of attrs that depend on it
-    in_degree = {a.name: 0 for a in attributes}
-    attr_names = {a.name for a in attributes}
-
-    for attr in attributes:
-        for dep in attr.sampling.depends_on:
-            # Only count dependencies on attributes we're tracking
-            if dep in attr_names:
-                graph[dep].append(attr.name)
-                in_degree[attr.name] += 1
-
-    # Start with nodes that have no dependencies
-    queue = [name for name, degree in in_degree.items() if degree == 0]
-    order = []
-
-    while queue:
-        # Sort for deterministic ordering
-        queue.sort()
-        node = queue.pop(0)
-        order.append(node)
-
-        # Reduce in-degree for dependents
-        for dependent in graph[node]:
-            in_degree[dependent] -= 1
-            if in_degree[dependent] == 0:
-                queue.append(dependent)
-
-    # Check for cycles
-    if len(order) != len(attributes):
-        remaining = [a.name for a in attributes if a.name not in order]
-        raise CircularDependencyError(
-            f"Circular dependency detected involving: {remaining}"
-        )
-
-    return order
+from ...validation import topological_sort
 
 
 def bind_constraints(
@@ -151,7 +91,8 @@ def bind_constraints(
 
     # Compute sampling order using specs (which have filtered depends_on)
     # Context attributes are already sampled, so they don't need ordering
-    sampling_order = _topological_sort_specs(specs)
+    deps = {s.name: s.sampling.depends_on for s in specs}
+    sampling_order = topological_sort(deps)
 
     return specs, sampling_order, warnings
 

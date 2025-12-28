@@ -15,7 +15,7 @@ from ...population.architect import (
     bind_constraints,
     build_spec,
 )
-from ...population.architect.binder import CircularDependencyError
+from ...validation import topological_sort, CircularDependencyError
 from ...population.validator import validate_spec
 from ..app import app, console
 from ..display import (
@@ -115,6 +115,15 @@ def spec_command(
         if choice == "n":
             console.print("[dim]Cancelled.[/dim]")
             raise typer.Exit(0)
+
+    # Early cycle detection - check before expensive hydration
+    try:
+        deps = {a.name: a.depends_on for a in attributes}
+        topological_sort(deps)
+    except CircularDependencyError as e:
+        console.print(f"[red]✗[/red] {e}")
+        console.print("[dim]Please review attribute dependencies.[/dim]")
+        raise typer.Exit(1)
 
     # Step 2: Distribution Research
     console.print()

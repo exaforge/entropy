@@ -6,6 +6,7 @@ population specs, scenario specs, and LLM response validation.
 Modules:
     expressions: Expression/formula syntax validation and name extraction
     distributions: Distribution parameter validation (weights, ranges, etc.)
+    graphs: Dependency graph analysis (topological sort, cycle detection)
 """
 
 from .expressions import (
@@ -26,6 +27,11 @@ from .distributions import (
     validate_options_not_empty,
 )
 
+from .graphs import (
+    topological_sort,
+    CircularDependencyError,
+)
+
 __all__ = [
     # Expression utilities
     "BUILTIN_NAMES",
@@ -41,4 +47,7 @@ __all__ = [
     "validate_std_positive",
     "validate_beta_params",
     "validate_options_not_empty",
+    # Graph utilities
+    "topological_sort",
+    "CircularDependencyError",
 ]

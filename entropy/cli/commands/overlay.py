@@ -14,7 +14,7 @@ from ...population.architect import (
     bind_constraints,
     build_spec,
 )
-from ...population.architect.binder import CircularDependencyError
+from ...validation import topological_sort, CircularDependencyError
 from ...core.models import PopulationSpec
 from ...population.validator import validate_spec
 from ..app import app, console
@@ -121,6 +121,21 @@ def overlay_command(
         if choice == "n":
             console.print("[dim]Cancelled.[/dim]")
             raise typer.Exit(0)
+
+    # Early cycle detection - check new attributes + base context
+    try:
+        # Build combined dependency map (new attrs can depend on base attrs)
+        base_names = {a.name for a in base.attributes}
+        deps = {a.name: a.depends_on for a in new_attributes}
+        # Filter deps to only include new attrs (base attrs are already sampled)
+        deps_filtered = {
+            name: [d for d in ds if d not in base_names] for name, ds in deps.items()
+        }
+        topological_sort(deps_filtered)
+    except CircularDependencyError as e:
+        console.print(f"[red]✗[/red] {e}")
+        console.print("[dim]Please review attribute dependencies.[/dim]")
+        raise typer.Exit(1)
 
     # Step 2: Distribution Research
     console.print()
