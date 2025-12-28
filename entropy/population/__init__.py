@@ -1,13 +1,13 @@
 """Population Creation module for Entropy (Phase 1).
 
 This package handles all aspects of population creation:
-- architect/: Spec generation pipeline (sufficiency → selection → hydration → binding)
+- spec_builder/: Spec generation pipeline (sufficiency → selection → hydration → binding)
 - sampler/: Agent sampling from specs
 - validator/: Spec validation before sampling
 """
 
-# Architect layer exports
-from .architect import (
+# Spec builder exports
+from .spec_builder import (
     check_sufficiency,
     select_attributes,
     hydrate_attributes,
@@ -50,7 +50,7 @@ from .validator import (
 )
 
 __all__ = [
-    # Architect
+    # Spec builder
     "check_sufficiency",
     "select_attributes",
     "hydrate_attributes",

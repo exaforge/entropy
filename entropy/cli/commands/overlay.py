@@ -8,7 +8,7 @@ import typer
 from rich.live import Live
 from rich.spinner import Spinner
 
-from ...population.architect import (
+from ...population.spec_builder import (
     select_attributes,
     hydrate_attributes,
     bind_constraints,

@@ -1,6 +1,6 @@
-"""Architect layer for Entropy population spec generation.
+"""Spec builder for Entropy population spec generation.
 
-The architect layer discovers attributes, researches distributions,
+The spec builder discovers attributes, researches distributions,
 and builds a complete PopulationSpec without sampling.
 
 Pipeline (Base Mode):

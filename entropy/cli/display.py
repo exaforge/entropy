@@ -310,7 +310,7 @@ def generate_and_review_persona_template(
     import typer
     from rich.live import Live
 
-    from ..population.architect import (
+    from ..population.spec_builder import (
         generate_persona_template,
         validate_persona_template,
         refine_persona_template,
