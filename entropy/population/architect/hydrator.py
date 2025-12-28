@@ -73,6 +73,36 @@ Before outputting, mentally verify:
 
 
 # =============================================================================
+# Validator Factory
+# =============================================================================
+
+
+def _make_validator(
+    validator_fn: Callable, *args
+) -> Callable[[dict], tuple[bool, str]]:
+    """
+    Create a validator closure for LLM response validation.
+
+    This factory reduces duplication across hydration steps.
+
+    Args:
+        validator_fn: The validation function (e.g., validate_independent_response)
+        *args: Additional arguments to pass to validator_fn after data
+
+    Returns:
+        A closure that returns (is_valid, error_message_for_retry)
+    """
+
+    def validate_response(data: dict) -> tuple[bool, str]:
+        result = validator_fn(data, *args)
+        if result.valid:
+            return True, ""
+        return False, result.format_for_retry()
+
+    return validate_response
+
+
+# =============================================================================
 # Step 2a: Independent Attribute Hydration
 # =============================================================================
 
@@ -203,12 +233,7 @@ Return JSON with distribution, constraints, and grounding for each attribute."""
 
     # Build validator for fail-fast validation
     expected_names = [a.name for a in independent_attrs]
-
-    def validate_response(data: dict) -> tuple[bool, str]:
-        result = validate_independent_response(data, expected_names)
-        if result.valid:
-            return True, ""
-        return False, result.format_for_retry()
+    validate_response = _make_validator(validate_independent_response, expected_names)
 
     data, sources = agentic_research(
         prompt=prompt,
@@ -377,12 +402,7 @@ Return JSON array with formula for each attribute."""
 
     # Build validator for fail-fast validation
     expected_names = [a.name for a in derived_attrs]
-
-    def validate_response(data: dict) -> tuple[bool, str]:
-        result = validate_derived_response(data, expected_names)
-        if result.valid:
-            return True, ""
-        return False, result.format_for_retry()
+    validate_response = _make_validator(validate_derived_response, expected_names)
 
     data = reasoning_call(
         prompt=prompt,
@@ -607,12 +627,9 @@ Return JSON with distribution, constraints, and grounding for each attribute."""
 
     # Build validator for fail-fast validation
     expected_names = [a.name for a in conditional_attrs]
-
-    def validate_response(data: dict) -> tuple[bool, str]:
-        result = validate_conditional_base_response(data, expected_names)
-        if result.valid:
-            return True, ""
-        return False, result.format_for_retry()
+    validate_response = _make_validator(
+        validate_conditional_base_response, expected_names
+    )
 
     data, sources = agentic_research(
         prompt=prompt,
@@ -896,11 +913,7 @@ Return JSON array with modifiers for each conditional attribute."""
             elif "boolean" in dist_class_name:
                 attr_dist_types[attr.name] = "boolean"
 
-    def validate_response(data: dict) -> tuple[bool, str]:
-        result = validate_modifiers_response(data, attr_dist_types)
-        if result.valid:
-            return True, ""
-        return False, result.format_for_retry()
+    validate_response = _make_validator(validate_modifiers_response, attr_dist_types)
 
     data, sources = agentic_research(
         prompt=prompt,

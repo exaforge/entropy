@@ -11,6 +11,7 @@ This module contains all Phase 1 (Population Creation) models:
 - Spec: PopulationSpec with YAML I/O
 """
 
+from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Literal
@@ -428,8 +429,12 @@ class PopulationSpec(BaseModel):
 
     @staticmethod
     def _compute_sampling_order(attributes: list["AttributeSpec"]) -> list[str]:
-        """Compute sampling order via topological sort."""
-        from collections import defaultdict
+        """Compute sampling order via topological sort (Kahn's algorithm).
+
+        Note: This is a standalone implementation rather than using
+        validation.graphs.topological_sort to keep core/models dependency-free.
+        Cycles are handled gracefully by appending remaining nodes.
+        """
 
         # Build adjacency list and in-degree count
         graph = defaultdict(list)
@@ -456,7 +461,7 @@ class PopulationSpec(BaseModel):
                 if in_degree[dependent] == 0:
                     queue.append(dependent)
 
-        # If cycle detected, return partial order + remaining
+        # If cycle detected, append remaining (graceful degradation for merge)
         if len(order) != len(attributes):
             remaining = [a.name for a in attributes if a.name not in order]
             order.extend(remaining)

@@ -216,7 +216,13 @@ def spec_command(
         validation_result = validate_spec(population_spec)
 
     if not display_validation_result(validation_result):
+        # Save with .invalid.yaml suffix so work isn't lost
+        invalid_path = output.with_suffix(".invalid.yaml")
+        population_spec.to_yaml(invalid_path)
         console.print()
+        console.print(
+            f"[yellow]⚠[/yellow] Spec saved to [bold]{invalid_path}[/bold] for manual review"
+        )
         console.print("[red]Spec validation failed. Please fix the errors above.[/red]")
         raise typer.Exit(1)
 
