@@ -69,8 +69,6 @@ def _log_request_response(
     with open(log_file, "w") as f:
         json.dump(log_data, f, indent=2, default=str)
 
-    print(f"  [Logged to {log_file}]")
-
 
 def get_openai_client() -> OpenAI:
     """Get OpenAI client."""
