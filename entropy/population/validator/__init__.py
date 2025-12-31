@@ -8,7 +8,6 @@ Module structure:
 - structural.py: Categories 1-9 (ERROR checks - blocks sampling)
 - semantic.py: Categories 10-12 (WARNING checks - sampling proceeds)
 - llm_response.py: Fail-fast validation for LLM outputs
-- fixer.py: Auto-fix utilities (to be removed in future)
 """
 
 from ...core.models.validation import (
@@ -19,9 +18,6 @@ from ...core.models.validation import (
 
 # Spec validation
 from .spec import validate_spec
-
-# Fixer (legacy, to be removed)
-from .fixer import fix_modifier_conditions, fix_spec_file, ConditionFix, FixResult
 
 # LLM response validation
 from .llm_response import (
@@ -56,9 +52,5 @@ __all__ = [
     # Utility functions
     "is_spec_level_constraint",
     "extract_bound_from_constraint",
-    # Fixer (legacy)
-    "fix_modifier_conditions",
-    "fix_spec_file",
-    "ConditionFix",
-    "FixResult",
 ]
+

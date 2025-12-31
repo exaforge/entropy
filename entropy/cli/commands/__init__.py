@@ -2,7 +2,6 @@
 
 from . import (
     validate,
-    fix,
     overlay,
     spec,
     sample,
@@ -15,7 +14,6 @@ from . import (
 
 __all__ = [
     "validate",
-    "fix",
     "overlay",
     "spec",
     "sample",
@@ -25,3 +23,4 @@ __all__ = [
     "simulate",
     "results",
 ]
+

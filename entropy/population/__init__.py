@@ -43,10 +43,6 @@ from .validator import (
     ValidationIssue,
     ValidationResult,
     validate_spec,
-    fix_modifier_conditions,
-    fix_spec_file,
-    ConditionFix,
-    FixResult,
 )
 
 __all__ = [
@@ -80,8 +76,5 @@ __all__ = [
     "ValidationIssue",
     "ValidationResult",
     "validate_spec",
-    "fix_modifier_conditions",
-    "fix_spec_file",
-    "ConditionFix",
-    "FixResult",
 ]
+
