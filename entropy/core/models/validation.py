@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 class Severity(str, Enum):
     """Severity level for validation issues."""
 
-    ERROR = "error"  # Blocks processing
+    ERROR = "error"
     WARNING = "warning"  # Processing continues
     INFO = "info"  # Informational only
 
@@ -90,15 +90,6 @@ class ValidationResult(BaseModel):
 
     Provides a unified interface for all validation results with
     helper properties and methods for common operations.
-
-    Example:
-        >>> result = ValidationResult()
-        >>> result.add_error("SYNTAX", "formula", "Invalid Python syntax")
-        >>> result.valid
-        False
-        >>> print(result.format_for_retry())
-        ## VALIDATION ERRORS - PLEASE FIX:
-        ...
     """
 
     issues: list[ValidationIssue] = Field(
@@ -125,6 +116,11 @@ class ValidationResult(BaseModel):
     def info(self) -> list[ValidationIssue]:
         """All INFO-level issues."""
         return [i for i in self.issues if i.severity == Severity.INFO]
+
+    @property
+    def all_issues(self) -> list[ValidationIssue]:
+        """All issues regardless of severity (alias for issues)."""
+        return self.issues
 
     def add_error(
         self,
@@ -213,11 +209,11 @@ class ValidationResult(BaseModel):
             parts.append(f"{len(self.warnings)} warning(s)")
         return ", ".join(parts)
 
-    def __add__(self, other: "ValidationResult") -> "ValidationResult":
-        """Combine two validation results."""
-        return ValidationResult(issues=self.issues + other.issues)
+    # def __add__(self, other: "ValidationResult") -> "ValidationResult":
+    #     """Combine two validation results."""
+    #     return ValidationResult(issues=self.issues + other.issues)
 
-    def __iadd__(self, other: "ValidationResult") -> "ValidationResult":
-        """In-place combine."""
-        self.issues.extend(other.issues)
-        return self
+    # def __iadd__(self, other: "ValidationResult") -> "ValidationResult":
+    #     """In-place combine."""
+    #     self.issues.extend(other.issues)
+    #     return self

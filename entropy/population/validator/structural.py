@@ -1,8 +1,10 @@
-"""Syntactic validation checks (Categories 1-9).
+"""Structural validation checks (Categories 1-9).
 
 These checks produce ERROR severity issues that block sampling.
 All checks are structural - no sampling required.
 """
+
+import ast
 
 from ...core.models.validation import Severity, ValidationIssue
 from ...core.models import (
@@ -15,7 +17,7 @@ from ...core.models import (
     CategoricalDistribution,
     BooleanDistribution,
 )
-from .common import BUILTIN_NAMES, extract_names_from_expression
+from ...utils.expressions import extract_names_from_expression
 
 
 # =============================================================================
@@ -23,8 +25,8 @@ from .common import BUILTIN_NAMES, extract_names_from_expression
 # =============================================================================
 
 
-def run_syntactic_checks(spec: PopulationSpec) -> list[ValidationIssue]:
-    """Run all syntactic (ERROR) checks on a spec.
+def run_structural_checks(spec: PopulationSpec) -> list[ValidationIssue]:
+    """Run all structural (ERROR) checks on a spec.
 
     Categories:
     1. Type/Modifier Compatibility

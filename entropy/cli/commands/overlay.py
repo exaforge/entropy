@@ -8,13 +8,13 @@ import typer
 from rich.live import Live
 from rich.spinner import Spinner
 
-from ...population.architect import (
+from ...population.spec_builder import (
     select_attributes,
     hydrate_attributes,
     bind_constraints,
     build_spec,
 )
-from ...population.architect.binder import CircularDependencyError
+from ...utils import topological_sort, CircularDependencyError
 from ...core.models import PopulationSpec
 from ...population.validator import validate_spec
 from ..app import app, console
@@ -122,6 +122,21 @@ def overlay_command(
             console.print("[dim]Cancelled.[/dim]")
             raise typer.Exit(0)
 
+    # Early cycle detection - check new attributes + base context
+    try:
+        # Build combined dependency map (new attrs can depend on base attrs)
+        base_names = {a.name for a in base.attributes}
+        deps = {a.name: a.depends_on for a in new_attributes}
+        # Filter deps to only include new attrs (base attrs are already sampled)
+        deps_filtered = {
+            name: [d for d in ds if d not in base_names] for name, ds in deps.items()
+        }
+        topological_sort(deps_filtered)
+    except CircularDependencyError as e:
+        console.print(f"[red]✗[/red] {e}")
+        console.print("[dim]Please review attribute dependencies.[/dim]")
+        raise typer.Exit(1)
+
     # Step 2: Distribution Research
     console.print()
     hydration_start = time.time()
@@ -222,7 +237,13 @@ def overlay_command(
         validation_result = validate_spec(merged_spec)
 
     if not display_validation_result(validation_result):
+        # Save with .invalid.yaml suffix so work isn't lost
+        invalid_path = output.with_suffix(".invalid.yaml")
+        merged_spec.to_yaml(invalid_path)
         console.print()
+        console.print(
+            f"[yellow]⚠[/yellow] Spec saved to [bold]{invalid_path}[/bold] for manual review"
+        )
         console.print("[red]Spec validation failed. Please fix the errors above.[/red]")
         raise typer.Exit(1)
 

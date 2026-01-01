@@ -11,6 +11,7 @@ This module contains all Phase 1 (Population Creation) models:
 - Spec: PopulationSpec with YAML I/O
 """
 
+from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Literal
@@ -40,6 +41,7 @@ class GroundingInfo(BaseModel):
 # =============================================================================
 # Distribution Configurations
 # =============================================================================
+
 
 class NormalDistribution(BaseModel):
     """Normal/Gaussian distribution parameters.
@@ -154,45 +156,21 @@ Distribution = (
 # =============================================================================
 
 
-class NumericModifier(BaseModel):
-    """Modifies numeric distributions via multiply/add.
-
-    Multiple matching modifiers STACK multiplicatively.
-    E.g., base × 1.8 × 1.15 for chief at private clinic.
-    """
-
-    when: str = Field(description="Python expression, e.g., \"role == 'chief'\"")
-    multiply: float = 1.0
-    add: float = 0.0
-
-
-class CategoricalModifier(BaseModel):
-    """Replaces weights for categorical distributions.
-
-    The LAST matching modifier wins (they don't stack).
-    """
-
-    when: str = Field(description="Python expression for when to apply")
-    weight_overrides: dict[str, float] = Field(
-        description="Map of option -> new weight, must sum to ~1.0"
-    )
-
-
-class BooleanModifier(BaseModel):
-    """Replaces probability for boolean distributions."""
-
-    when: str = Field(description="Python expression for when to apply")
-    probability_override: float = Field(ge=0, le=1)
-
-
-# Legacy modifier for backwards compatibility
 class Modifier(BaseModel):
-    """A conditional modifier for sampling (legacy format)."""
+    """A conditional modifier for sampling.
+
+    Modifies distributions based on conditions. The fields used depend on
+    the distribution type:
+    - Numeric (normal, lognormal, uniform, beta): use multiply/add
+    - Categorical: use weight_overrides
+    - Boolean: use probability_override
+
+    Validation ensures type-appropriate fields are used.
+    """
 
     when: str = Field(description="Python expression using other attribute names")
     multiply: float | None = None
     add: float | None = None
-    # New type-specific fields
     weight_overrides: dict[str, float] | None = None
     probability_override: float | None = None
 
@@ -451,8 +429,12 @@ class PopulationSpec(BaseModel):
 
     @staticmethod
     def _compute_sampling_order(attributes: list["AttributeSpec"]) -> list[str]:
-        """Compute sampling order via topological sort."""
-        from collections import defaultdict
+        """Compute sampling order via topological sort (Kahn's algorithm).
+
+        Note: This is a standalone implementation rather than using
+        validation.graphs.topological_sort to keep core/models dependency-free.
+        Cycles are handled gracefully by appending remaining nodes.
+        """
 
         # Build adjacency list and in-degree count
         graph = defaultdict(list)
@@ -479,7 +461,7 @@ class PopulationSpec(BaseModel):
                 if in_degree[dependent] == 0:
                     queue.append(dependent)
 
-        # If cycle detected, return partial order + remaining
+        # If cycle detected, append remaining (graceful degradation for merge)
         if len(order) != len(attributes):
             remaining = [a.name for a in attributes if a.name not in order]
             order.extend(remaining)
@@ -511,7 +493,9 @@ class DiscoveredAttribute(BaseModel):
     )
     depends_on: list[str] = Field(default_factory=list)
 
+
 # hydrated attribute seems to be an extension of discovered attribute.
+
 
 class HydratedAttribute(BaseModel):
     """An attribute with distribution data from research (Step 2).

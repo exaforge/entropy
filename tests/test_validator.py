@@ -19,9 +19,7 @@ from entropy.population.validator import (
     ValidationIssue,
     Severity,
 )
-from entropy.population.validator.syntactic import (
-    extract_names_from_expression,
-)
+from entropy.utils.expressions import extract_names_from_expression
 
 
 def make_spec(
@@ -686,7 +684,7 @@ class TestValidationIssue:
         issue = ValidationIssue(
             severity=Severity.ERROR,
             category="TEST",
-            attribute="age",
+            location="age",
             message="Test error message",
         )
         str_repr = str(issue)
@@ -698,7 +696,7 @@ class TestValidationIssue:
         issue = ValidationIssue(
             severity=Severity.ERROR,
             category="TEST",
-            attribute="salary",
+            location="salary",
             message="Test error",
             modifier_index=2,
         )

@@ -22,8 +22,10 @@ from entropy.core.models.scenario import (
     SimulationConfig,
     ScenarioMeta,
     ScenarioSpec,
-    ValidationError,
-    ValidationWarning,
+)
+from entropy.core.models.validation import (
+    ValidationIssue as ValidationError,
+    ValidationIssue as ValidationWarning,
     ValidationResult,
 )
 
@@ -458,19 +460,19 @@ class TestValidation:
 
     def test_validation_result_valid(self):
         """Test valid validation result."""
-        result = ValidationResult(valid=True, errors=[], warnings=[])
+        result = ValidationResult(issues=[])
         assert result.valid is True
 
     def test_validation_result_with_errors(self):
         """Test validation result with errors."""
-        errors = [
+        issues = [
             ValidationError(
                 category="test",
                 location="test",
                 message="Test error",
             ),
         ]
-        result = ValidationResult(valid=False, errors=errors)
+        result = ValidationResult(issues=issues)
         assert result.valid is False
         assert len(result.errors) == 1
 

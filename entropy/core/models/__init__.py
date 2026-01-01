@@ -21,9 +21,6 @@ from .population import (
     BooleanDistribution,
     Distribution,
     # Modifiers
-    NumericModifier,
-    CategoricalModifier,
-    BooleanModifier,
     Modifier,
     # Sampling
     SamplingConfig,
@@ -42,8 +39,6 @@ from .population import (
 # Validation models (shared across population and scenario)
 from .validation import (
     Severity,
-    ValidationIssue,
-    ValidationResult,
     ValidationIssue,
     ValidationResult,
 )
@@ -110,9 +105,6 @@ __all__ = [
     "BooleanDistribution",
     "Distribution",
     # Population - Modifiers
-    "NumericModifier",
-    "CategoricalModifier",
-    "BooleanModifier",
     "Modifier",
     # Population - Sampling
     "SamplingConfig",

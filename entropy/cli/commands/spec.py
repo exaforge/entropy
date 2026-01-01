@@ -8,21 +8,20 @@ import typer
 from rich.live import Live
 from rich.spinner import Spinner
 
-from ...population.architect import (
+from ...population.spec_builder import (
     check_sufficiency,
     select_attributes,
     hydrate_attributes,
     bind_constraints,
     build_spec,
 )
-from ...population.architect.binder import CircularDependencyError
+from ...utils import topological_sort, CircularDependencyError
 from ...population.validator import validate_spec
 from ..app import app, console
 from ..display import (
     display_discovered_attributes,
     display_spec_summary,
     display_validation_result,
-    generate_and_review_persona_template,
 )
 from ..utils import format_elapsed
 
@@ -117,6 +116,15 @@ def spec_command(
             console.print("[dim]Cancelled.[/dim]")
             raise typer.Exit(0)
 
+    # Early cycle detection - check before expensive hydration
+    try:
+        deps = {a.name: a.depends_on for a in attributes}
+        topological_sort(deps)
+    except CircularDependencyError as e:
+        console.print(f"[red]✗[/red] {e}")
+        console.print("[dim]Please review attribute dependencies.[/dim]")
+        raise typer.Exit(1)
+
     # Step 2: Distribution Research
     console.print()
     hydration_start = time.time()
@@ -208,15 +216,18 @@ def spec_command(
         validation_result = validate_spec(population_spec)
 
     if not display_validation_result(validation_result):
+        # Save with .invalid.yaml suffix so work isn't lost
+        invalid_path = output.with_suffix(".invalid.yaml")
+        population_spec.to_yaml(invalid_path)
         console.print()
+        console.print(
+            f"[yellow]⚠[/yellow] Spec saved to [bold]{invalid_path}[/bold] for manual review"
+        )
         console.print("[red]Spec validation failed. Please fix the errors above.[/red]")
         raise typer.Exit(1)
 
-    # Step 5: Persona Template Generation
-    persona_template = generate_and_review_persona_template(population_spec, yes)
-    if persona_template:
-        population_spec.meta.persona_template = persona_template
-        console.print("[green]✓[/green] Persona template added to spec")
+    # Note: Persona template generation happens in overlay, not base spec
+    # This ensures the template includes scenario attributes
 
     # Human Checkpoint #2
     display_spec_summary(population_spec)

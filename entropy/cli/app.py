@@ -44,7 +44,6 @@ def main_callback(
 # Import commands to register them with the app
 from .commands import (  # noqa: E402, F401
     validate,
-    fix,
     overlay,
     spec,
     sample,

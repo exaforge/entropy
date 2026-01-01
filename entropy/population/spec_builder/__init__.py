@@ -1,6 +1,6 @@
-"""Architect layer for Entropy population spec generation.
+"""Spec builder for Entropy population spec generation.
 
-The architect layer discovers attributes, researches distributions,
+The spec builder discovers attributes, researches distributions,
 and builds a complete PopulationSpec without sampling.
 
 Pipeline (Base Mode):
@@ -26,8 +26,8 @@ FAIL-FAST VALIDATION:
 
 from .sufficiency import check_sufficiency
 from .selector import select_attributes
-from .hydrator import (
-    hydrate_attributes,
+from .hydrator import hydrate_attributes
+from .hydrators import (
     hydrate_independent,
     hydrate_derived,
     hydrate_conditional_base,
@@ -35,8 +35,8 @@ from .hydrator import (
 )
 from .binder import bind_constraints, build_spec
 from ..validator import (
-    QuickValidationResult,
-    ValidationError as QuickValidationError,
+    ValidationResult,
+    ValidationIssue,
     validate_formula_syntax,
     validate_condition_syntax,
     validate_distribution_data,
@@ -59,9 +59,9 @@ __all__ = [
     "hydrate_conditional_modifiers",
     "bind_constraints",
     "build_spec",
-    # Quick validation
-    "QuickValidationResult",
-    "QuickValidationError",
+    # Validation types
+    "ValidationResult",
+    "ValidationIssue",
     "validate_formula_syntax",
     "validate_condition_syntax",
     "validate_distribution_data",

@@ -90,9 +90,9 @@ def validate_command(
             # Show error table for human mode
             error_rows = []
             for err in result.errors[:15]:
-                loc = err.attribute
+                loc = err.location
                 if err.modifier_index is not None:
-                    loc = f"{err.attribute}[{err.modifier_index}]"
+                    loc = f"{err.location}[{err.modifier_index}]"
                 error_rows.append([loc, err.category, err.message[:60]])
 
             if error_rows:
@@ -113,7 +113,7 @@ def validate_command(
             out.text("[bold]Suggestions:[/bold]")
             for err in result.errors[:3]:
                 if err.suggestion:
-                    out.text(f"  [dim]→ {err.attribute}: {err.suggestion}[/dim]")
+                    out.text(f"  [dim]→ {err.location}: {err.suggestion}[/dim]")
 
         raise typer.Exit(out.finish())
 
@@ -128,9 +128,9 @@ def validate_command(
             if not get_json_mode():
                 warning_rows = []
                 for warn in result.warnings[:10]:
-                    loc = warn.attribute
+                    loc = warn.location
                     if warn.modifier_index is not None:
-                        loc = f"{warn.attribute}[{warn.modifier_index}]"
+                        loc = f"{warn.location}[{warn.modifier_index}]"
                     warning_rows.append([loc, warn.category, warn.message[:60]])
 
                 out.table(
@@ -146,9 +146,9 @@ def validate_command(
 
             if not get_json_mode():
                 for warn in result.warnings[:3]:
-                    loc = warn.attribute
+                    loc = warn.location
                     if warn.modifier_index is not None:
-                        loc = f"{warn.attribute}[{warn.modifier_index}]"
+                        loc = f"{warn.location}[{warn.modifier_index}]"
                     out.warning(f"{loc}: {warn.message}")
 
                 if len(result.warnings) > 3:

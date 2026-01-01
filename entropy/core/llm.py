@@ -45,9 +45,14 @@ def _log_request_response(
     log_file = logs_dir / f"{timestamp}_{function_name}.json"
 
     # Convert response to dict if possible
+    # Use mode='json' to avoid Pydantic warnings on complex SDK types
     response_dict = None
     if hasattr(response, "model_dump"):
-        response_dict = response.model_dump()
+        try:
+            response_dict = response.model_dump(mode="json", warnings=False)
+        except Exception:
+            # Fallback if model_dump fails
+            response_dict = str(response)
     elif hasattr(response, "__dict__"):
         response_dict = str(response)
     else:
@@ -63,8 +68,6 @@ def _log_request_response(
 
     with open(log_file, "w") as f:
         json.dump(log_data, f, indent=2, default=str)
-
-    print(f"  [Logged to {log_file}]")
 
 
 def get_openai_client() -> OpenAI:
