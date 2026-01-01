@@ -14,7 +14,7 @@ from ....core.models import (
 from ..schemas import build_independent_schema
 from ..parsers import parse_distribution, parse_constraints
 from ...validator import validate_independent_response
-from .prompts import make_validator
+from .prompts import make_validator, format_context_section
 
 
 def hydrate_independent(
@@ -52,13 +52,7 @@ def hydrate_independent(
     geo_context = f" in {geography}" if geography else ""
 
     # Build context section for overlay mode
-    context_section = ""
-    if context:
-        context_section = "## READ-ONLY CONTEXT ATTRIBUTES (from base population)\n\n"
-        context_section += "These attributes already exist. Do NOT redefine them, but you may reference them.\n\n"
-        for attr in context:
-            context_section += f"- {attr.name} ({attr.type}): {attr.description}\n"
-        context_section += "\n---\n\n"
+    context_section = format_context_section(context)
 
     attr_list = "\n".join(
         f"- {attr.name} ({attr.type}, {attr.category}): {attr.description}"

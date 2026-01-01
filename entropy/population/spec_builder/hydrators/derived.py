@@ -14,7 +14,12 @@ from ....core.models import (
 from ..schemas import build_derived_schema
 from ..parsers import sanitize_formula
 from ...validator import validate_derived_response
-from .prompts import make_validator, FORMULA_SYNTAX_GUIDELINES
+from .prompts import (
+    make_validator,
+    format_context_section,
+    format_hydrated_section,
+    FORMULA_SYNTAX_GUIDELINES,
+)
 
 
 def hydrate_derived(
@@ -51,39 +56,19 @@ def hydrate_derived(
     if not derived_attrs:
         return [], [], []
 
-    # Build context sections
-    context_section = ""
-    if context:
-        context_section = "## READ-ONLY CONTEXT ATTRIBUTES (from base population)\n\n"
-        context_section += (
-            "These attributes already exist. You can reference them in formulas.\n\n"
-        )
-        for attr in context:
-            context_section += f"- {attr.name} ({attr.type}): {attr.description}\n"
-        context_section += "\n---\n\n"
-
-    independent_summary = context_section
-    if independent_attrs:
-        independent_summary += "## Available Upstream Attributes (already hydrated)\n\n"
-        for attr in independent_attrs:
-            dist_info = ""
-            if attr.sampling.distribution:
-                dist = attr.sampling.distribution
-                if hasattr(dist, "mean") and dist.mean is not None:
-                    dist_info = f" (mean={dist.mean})"
-                elif hasattr(dist, "options"):
-                    dist_info = f" (options: {', '.join(dist.options[:3])}...)"
-            independent_summary += (
-                f"- {attr.name} ({attr.type}): {attr.description}{dist_info}\n"
-            )
-        independent_summary += "\n---\n\n"
+    # Build context sections using helpers
+    context_section = format_context_section(
+        context, instruction="You can reference them in formulas."
+    )
+    hydrated_section = format_hydrated_section(independent_attrs)
 
     attr_list = "\n".join(
         f"- {attr.name} ({attr.type}): {attr.description} [depends on: {', '.join(attr.depends_on)}]"
         for attr in derived_attrs
     )
 
-    prompt = f"""{independent_summary}Specify deterministic formulas for these DERIVED attributes of {population}:
+
+    prompt = f"""{context_section}{hydrated_section}Specify deterministic formulas for these DERIVED attributes of {population}:
 
 {attr_list}
 {FORMULA_SYNTAX_GUIDELINES}

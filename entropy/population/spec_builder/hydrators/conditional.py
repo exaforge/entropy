@@ -17,7 +17,13 @@ from ...validator import (
     validate_conditional_base_response,
     validate_modifiers_response,
 )
-from .prompts import make_validator, FORMULA_SYNTAX_GUIDELINES
+from .prompts import (
+    make_validator,
+    format_context_section,
+    format_hydrated_section,
+    format_conditional_context,
+    FORMULA_SYNTAX_GUIDELINES,
+)
 
 
 def hydrate_conditional_base(
@@ -58,40 +64,19 @@ def hydrate_conditional_base(
 
     geo_context = f" in {geography}" if geography else ""
 
-    # Build context sections
-    context_section = ""
-    if context:
-        context_section = "## READ-ONLY CONTEXT ATTRIBUTES (from base population)\n\n"
-        context_section += "These attributes already exist. You can reference them in mean_formula.\n\n"
-        for attr in context:
-            context_section += f"- {attr.name} ({attr.type}): {attr.description}\n"
-        context_section += "\n---\n\n"
-
-    context_summary = context_section
+    # Build context sections using helpers
+    context_section = format_context_section(
+        context, instruction="You can reference them in mean_formula."
+    )
     all_hydrated = (independent_attrs or []) + (derived_attrs or [])
-    if all_hydrated:
-        context_summary += "## Context: Already Hydrated Attributes\n\n"
-        for attr in all_hydrated:
-            dist_info = ""
-            if attr.sampling.distribution:
-                dist = attr.sampling.distribution
-                if hasattr(dist, "mean") and dist.mean is not None:
-                    dist_info = f" (mean={dist.mean})"
-                elif hasattr(dist, "options"):
-                    dist_info = f" (options: {', '.join(dist.options[:3])}...)"
-            elif attr.sampling.formula:
-                dist_info = f" (formula: {attr.sampling.formula[:30]}...)"
-            context_summary += (
-                f"- {attr.name} ({attr.type}): {attr.description}{dist_info}\n"
-            )
-        context_summary += "\n---\n\n"
+    hydrated_section = format_hydrated_section(all_hydrated, title="Context: Already Hydrated Attributes")
 
     attr_list = "\n".join(
         f"- {attr.name} ({attr.type}): {attr.description} [depends on: {', '.join(attr.depends_on)}]"
         for attr in conditional_attrs
     )
 
-    prompt = f"""{context_summary}Research BASE distributions for these CONDITIONAL attributes of {population}{geo_context}:
+    prompt = f"""{context_section}{hydrated_section}Research BASE distributions for these CONDITIONAL attributes of {population}{geo_context}:
 
 {attr_list}
 {FORMULA_SYNTAX_GUIDELINES}
@@ -279,70 +264,14 @@ def hydrate_conditional_modifiers(
 
     geo_context = f" in {geography}" if geography else ""
 
-    # Build context sections
-    context_section = ""
-    if context:
-        context_section = "## READ-ONLY CONTEXT ATTRIBUTES (from base population)\n\n"
-        context_section += "These attributes already exist. You can reference them in 'when' conditions.\n\n"
-        for attr in context:
-            opt_info = ""
-            if attr.sampling.distribution and hasattr(
-                attr.sampling.distribution, "options"
-            ):
-                opts = attr.sampling.distribution.options
-                if opts:
-                    opt_info = f"\n    VALID OPTIONS (use exactly): {opts}"
-            context_section += (
-                f"- {attr.name} ({attr.type}): {attr.description}{opt_info}\n"
-            )
-        context_section += "\n---\n\n"
-
-    context_summary = context_section + "## Full Context\n\n"
-
-    if independent_attrs:
-        context_summary += "**Independent Attributes:**\n"
-        for attr in independent_attrs:
-            dist_info = ""
-            if attr.sampling.distribution:
-                dist = attr.sampling.distribution
-                if hasattr(dist, "options") and dist.options:
-                    # List options explicitly for easy copy-paste
-                    dist_info = f"\n    VALID OPTIONS (use exactly): {dist.options}"
-                elif hasattr(dist, "mean") and dist.mean is not None:
-                    dist_info = f" — mean={dist.mean}, std={getattr(dist, 'std', '?')}"
-            context_summary += (
-                f"- {attr.name} ({attr.type}): {attr.description}{dist_info}\n"
-            )
-        context_summary += "\n"
-
-    if derived_attrs:
-        context_summary += "**Derived Attributes:**\n"
-        for attr in derived_attrs:
-            formula_info = (
-                f" — formula: {attr.sampling.formula}" if attr.sampling.formula else ""
-            )
-            context_summary += (
-                f"- {attr.name} ({attr.type}): {attr.description}{formula_info}\n"
-            )
-        context_summary += "\n"
-
-    context_summary += "**Conditional Attributes (with base distributions):**\n"
-    for attr in conditional_attrs:
-        dist_info = ""
-        if attr.sampling.distribution:
-            dist = attr.sampling.distribution
-            if hasattr(dist, "mean_formula") and dist.mean_formula:
-                dist_info = f" — mean_formula: {dist.mean_formula}"
-            elif hasattr(dist, "mean") and dist.mean is not None:
-                dist_info = f" — base mean={dist.mean}"
-            elif hasattr(dist, "options"):
-                dist_info = f" — options: {', '.join(dist.options)}"
-        deps_info = f" [depends on: {', '.join(attr.depends_on)}]"
-        context_summary += (
-            f"- {attr.name} ({attr.type}): {attr.description}{dist_info}{deps_info}\n"
-        )
-
-    context_summary += "\n---\n\n"
+    # Build context using helper
+    context_summary = format_conditional_context(
+        independent_attrs=independent_attrs,
+        derived_attrs=derived_attrs,
+        conditional_attrs=conditional_attrs,
+        context=context,
+        show_options=True,
+    )
 
     prompt = f"""{context_summary}Specify MODIFIERS for conditional attributes of {population}{geo_context}.
 {FORMULA_SYNTAX_GUIDELINES}
