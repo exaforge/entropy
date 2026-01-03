@@ -23,9 +23,8 @@ from .core import (
     save_json,
     save_sqlite,
     SamplingError,
-    SamplingResult,
-    SamplingStats,
 )
+from ...core.models import SamplingResult, SamplingStats
 from ...utils.eval_safe import (
     eval_safe,
     eval_formula,

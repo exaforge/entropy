@@ -92,6 +92,12 @@ from .results import (
     SimulationResults,
 )
 
+# Sampling models (runtime)
+from .sampling import (
+    SamplingStats,
+    SamplingResult,
+)
+
 __all__ = [
     # Population - Grounding
     "GroundingInfo",
@@ -163,4 +169,7 @@ __all__ = [
     "TimelinePoint",
     "RunMeta",
     "SimulationResults",
+    # Sampling
+    "SamplingStats",
+    "SamplingResult",
 ]
