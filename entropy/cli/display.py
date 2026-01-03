@@ -318,10 +318,6 @@ def generate_and_review_persona_template(
     from .utils import format_elapsed
 
     console.print()
-    console.print("┌" + "─" * 58 + "┐")
-    console.print("│" + " PERSONA TEMPLATE".center(58) + "│")
-    console.print("└" + "─" * 58 + "┘")
-    console.print()
 
     # Generate initial template
     template = None
