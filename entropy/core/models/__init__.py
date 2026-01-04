@@ -158,8 +158,6 @@ __all__ = [
     "Severity",
     "ValidationIssue",
     "ValidationResult",
-    "ValidationError",
-    "ValidationWarning",
     # Simulation
     "SimulationEventType",
     "ExposureRecord",

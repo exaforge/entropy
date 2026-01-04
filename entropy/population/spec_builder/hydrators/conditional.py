@@ -48,7 +48,7 @@ def hydrate_conditional_base(
         geography: Geographic scope
         independent_attrs: Already hydrated independent attributes
         derived_attrs: Already hydrated derived attributes
-        context: Existing attributes from base population (for overlay mode)
+        context: Existing attributes from base population (for extend mode)
         model: Model to use
         reasoning_effort: "low", "medium", or "high"
 
@@ -254,7 +254,7 @@ def hydrate_conditional_modifiers(
         geography: Geographic scope
         independent_attrs: Already hydrated independent attributes
         derived_attrs: Already hydrated derived attributes
-        context: Existing attributes from base population (for overlay mode)
+        context: Existing attributes from base population (for extend mode)
         model: Model to use
         reasoning_effort: "low", "medium", or "high"
 

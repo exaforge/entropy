@@ -14,7 +14,7 @@ Usage:
 
 Pipeline Position:
     1. entropy spec → base spec (surgeons.yaml)
-    2. entropy overlay → merged spec (surgeons_ai.yaml) — optional
+    2. entropy extend → merged spec (surgeons_ai.yaml) — optional
     3. entropy sample → agents from whichever spec you provide
 """
 

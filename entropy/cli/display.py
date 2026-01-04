@@ -146,12 +146,12 @@ def display_spec_summary(spec: PopulationSpec) -> None:
     console.print()
 
 
-def display_overlay_attributes(
+def display_extend_attributes(
     base_count: int,
     new_attributes: list[DiscoveredAttribute],
     geography: str | None,
 ) -> None:
-    """Display overlay attributes with base context."""
+    """Display extend attributes with base context."""
     console.print()
     console.print("┌" + "─" * 58 + "┐")
     console.print("│" + " NEW SCENARIO ATTRIBUTES".center(58) + "│")

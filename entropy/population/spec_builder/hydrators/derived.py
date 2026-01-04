@@ -42,7 +42,7 @@ def hydrate_derived(
         population: Population description
         geography: Geographic scope
         independent_attrs: Already hydrated independent attributes for reference
-        context: Existing attributes from base population (for overlay mode)
+        context: Existing attributes from base population (for extend mode)
         model: Model to use
         reasoning_effort: "low", "medium", or "high"
 
