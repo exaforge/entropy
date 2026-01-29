@@ -37,6 +37,9 @@ venv/
 # Storage (database and populations)
 storage/
 
+# Simulation results
+results/
+
 # Cache
 data/cache/
 
