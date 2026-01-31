@@ -122,6 +122,10 @@ Generate:
 
 1. INTRO_TEMPLATE: A first-person narrative intro (2-4 sentences) using {{attribute_name}} placeholders.
    Focus on core identity. Example: "I'm a {{age}}-year-old {{gender}} living in {{home_zip_code}}..."
+   
+   IMPORTANT for booleans: Do NOT include boolean attributes directly like "...my awareness: {{aware}}".
+   Either skip them in the intro, OR weave them naturally: "I've been following the new policy closely" (if aware=true is common).
+   The intro should read naturally without "yes/no" or "true/false" appearing.
 
 2. ATTRIBUTE_TREATMENTS: For EACH attribute:
    - treatment: "concrete" (keep numbers) or "relative" (express relative to population)
