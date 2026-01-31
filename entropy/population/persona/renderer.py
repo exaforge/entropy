@@ -8,7 +8,6 @@ from typing import Any
 
 from .config import (
     PersonaConfig,
-    TreatmentType,
     BooleanPhrasing,
     CategoricalPhrasing,
     RelativePhrasing,
@@ -18,17 +17,17 @@ from .config import (
 
 def _format_time(decimal_hours: float, use_12hr: bool = True) -> str:
     """Convert decimal hours to human-readable time.
-    
+
     Args:
         decimal_hours: Time as decimal (e.g., 8.5 for 8:30)
         use_12hr: If True, use 12-hour format with AM/PM
-    
+
     Returns:
         Formatted time string
     """
     hours = int(decimal_hours)
     minutes = int((decimal_hours - hours) * 60)
-    
+
     if use_12hr:
         period = "AM" if hours < 12 else "PM"
         display_hour = hours % 12
@@ -39,17 +38,14 @@ def _format_time(decimal_hours: float, use_12hr: bool = True) -> str:
         return f"{hours}:{minutes:02d}"
 
 
-def _format_concrete_value(
-    value: Any,
-    phrasing: ConcretePhrasing
-) -> str:
+def _format_concrete_value(value: Any, phrasing: ConcretePhrasing) -> str:
     """Format a concrete value using the phrasing template."""
     if value is None:
         return ""
-    
+
     # Get format spec (default to sensible formatting)
     fmt = phrasing.format_spec
-    
+
     # Handle special format specs
     if fmt == "time12" and isinstance(value, (int, float)):
         formatted = _format_time(float(value), use_12hr=True)
@@ -74,11 +70,11 @@ def _format_concrete_value(
             formatted = f"{value:,}"
     else:
         formatted = str(value)
-    
+
     # Apply prefix/suffix
     if phrasing.prefix or phrasing.suffix:
         formatted = f"{phrasing.prefix}{formatted}{phrasing.suffix}"
-    
+
     # Fill template
     try:
         return phrasing.template.format(value=formatted)
@@ -87,26 +83,24 @@ def _format_concrete_value(
 
 
 def _format_relative_value(
-    value: Any,
-    phrasing: RelativePhrasing,
-    config: PersonaConfig
+    value: Any, phrasing: RelativePhrasing, config: PersonaConfig
 ) -> str:
     """Format a relative value using z-score positioning."""
     if value is None:
         return ""
-    
+
     try:
         numeric_value = float(value)
     except (ValueError, TypeError):
         return ""
-    
+
     # Get z-score from population stats
     z_score = config.population_stats.get_z_score(phrasing.attribute, numeric_value)
-    
+
     if z_score is None:
         # No stats available, default to average
         return phrasing.labels.average
-    
+
     return phrasing.labels.get_label(z_score)
 
 
@@ -114,15 +108,19 @@ def _format_boolean_value(value: Any, phrasing: BooleanPhrasing) -> str:
     """Format a boolean value."""
     if value is None:
         return ""
-    
+
     # Handle various boolean representations
     if isinstance(value, bool):
         return phrasing.true_phrase if value else phrasing.false_phrase
     if isinstance(value, str):
-        return phrasing.true_phrase if value.lower() in ("true", "yes", "1") else phrasing.false_phrase
+        return (
+            phrasing.true_phrase
+            if value.lower() in ("true", "yes", "1")
+            else phrasing.false_phrase
+        )
     if isinstance(value, (int, float)):
         return phrasing.true_phrase if value else phrasing.false_phrase
-    
+
     return phrasing.false_phrase
 
 
@@ -130,44 +128,40 @@ def _format_categorical_value(value: Any, phrasing: CategoricalPhrasing) -> str:
     """Format a categorical value."""
     if value is None:
         return phrasing.fallback or ""
-    
+
     str_value = str(value)
-    
+
     # Try exact match
     if str_value in phrasing.phrases:
         return phrasing.phrases[str_value]
-    
+
     # Try case-insensitive match
     for k, v in phrasing.phrases.items():
         if k.lower() == str_value.lower():
             return v
-    
+
     # Try with underscores replaced
     normalized = str_value.replace(" ", "_").lower()
     for k, v in phrasing.phrases.items():
         if k.replace(" ", "_").lower() == normalized:
             return v
-    
+
     # Fallback
     if phrasing.fallback:
         return phrasing.fallback
-    
+
     # Last resort: just format the value nicely
     return str_value.replace("_", " ").title()
 
 
-def render_attribute(
-    attr_name: str,
-    value: Any,
-    config: PersonaConfig
-) -> str:
+def render_attribute(attr_name: str, value: Any, config: PersonaConfig) -> str:
     """Render a single attribute value to first-person phrase."""
     phrasing = config.phrasings.get_phrasing(attr_name)
-    
+
     if phrasing is None:
         # No phrasing defined, return empty
         return ""
-    
+
     if isinstance(phrasing, BooleanPhrasing):
         return _format_boolean_value(value, phrasing)
     elif isinstance(phrasing, CategoricalPhrasing):
@@ -176,46 +170,44 @@ def render_attribute(
         return _format_relative_value(value, phrasing, config)
     elif isinstance(phrasing, ConcretePhrasing):
         return _format_concrete_value(value, phrasing)
-    
+
     return ""
 
 
 def render_persona_section(
-    group_name: str,
-    agent: dict[str, Any],
-    config: PersonaConfig
+    group_name: str, agent: dict[str, Any], config: PersonaConfig
 ) -> str:
     """Render a single section of the persona.
-    
+
     Args:
         group_name: Name of the attribute group
         agent: Agent attribute dictionary
         config: Persona configuration
-    
+
     Returns:
         Rendered section as markdown string
     """
     group = config.get_group(group_name)
     if not group:
         return ""
-    
+
     lines = [f"## {group.label}", ""]
-    
+
     phrases = []
     for attr_name in group.attributes:
         value = agent.get(attr_name)
         phrase = render_attribute(attr_name, value, config)
         if phrase:
             phrases.append(phrase)
-    
+
     if not phrases:
         return ""
-    
+
     # Join phrases into paragraphs
     # Group related phrases together (simple heuristic: every 3-4 phrases)
     current_para = []
     paragraphs = []
-    
+
     for phrase in phrases:
         current_para.append(phrase)
         # Start new paragraph after 3-4 phrases or if phrase ends with period
@@ -223,12 +215,12 @@ def render_persona_section(
             if current_para:
                 paragraphs.append(" ".join(current_para))
                 current_para = []
-    
+
     if current_para:
         paragraphs.append(" ".join(current_para))
-    
+
     lines.extend(paragraphs)
-    
+
     return "\n\n".join(lines)
 
 
@@ -236,7 +228,7 @@ def render_intro(agent: dict[str, Any], config: PersonaConfig) -> str:
     """Render the narrative intro section."""
     # Time-related attribute name patterns
     time_attrs = {"start_time", "departure_time", "arrival_time", "end_time"}
-    
+
     try:
         # Format values for template
         formatted = {}
@@ -251,7 +243,9 @@ def render_intro(agent: dict[str, Any], config: PersonaConfig) -> str:
                 if is_time and 0 <= float(value) <= 24:
                     formatted[key] = _format_time(float(value), use_12hr=True)
                 elif isinstance(value, float) and value == int(value):
-                    formatted[key] = f"{int(value):,}" if value >= 1000 else str(int(value))
+                    formatted[key] = (
+                        f"{int(value):,}" if value >= 1000 else str(int(value))
+                    )
                 elif isinstance(value, float):
                     # Round to 1 decimal for most floats, 2 for small values
                     if value >= 100:
@@ -267,7 +261,7 @@ def render_intro(agent: dict[str, Any], config: PersonaConfig) -> str:
                 formatted[key] = value.replace("_", " ")
             else:
                 formatted[key] = str(value)
-        
+
         intro = config.intro_template.format(**formatted)
         return f"## Who I Am\n\n{intro}"
     except (KeyError, ValueError) as e:
@@ -279,49 +273,47 @@ def render_persona(
     config: PersonaConfig,
 ) -> str:
     """Render complete first-person persona for an agent.
-    
+
     Args:
         agent: Agent attribute dictionary
         config: Persona configuration
-    
+
     Returns:
         Complete persona as markdown string
     """
     sections = []
-    
+
     # Render intro
     intro = render_intro(agent, config)
     if intro:
         sections.append(intro)
-    
+
     # Render each group in order
     for group in config.groups:
         section = render_persona_section(group.name, agent, config)
         if section:
             sections.append(section)
-    
+
     return "\n\n".join(sections)
 
 
 def preview_persona(
-    agent: dict[str, Any],
-    config: PersonaConfig,
-    max_width: int = 80
+    agent: dict[str, Any], config: PersonaConfig, max_width: int = 80
 ) -> str:
     """Render persona with word wrapping for terminal preview.
-    
+
     Args:
         agent: Agent attribute dictionary
         config: Persona configuration
         max_width: Maximum line width
-    
+
     Returns:
         Word-wrapped persona string
     """
     import textwrap
-    
+
     raw = render_persona(agent, config)
-    
+
     # Wrap each paragraph
     lines = []
     for line in raw.split("\n"):
@@ -334,5 +326,5 @@ def preview_persona(
             lines.append(wrapped)
         else:
             lines.append("")
-    
+
     return "\n".join(lines)

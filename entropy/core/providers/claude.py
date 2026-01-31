@@ -139,8 +139,13 @@ class ClaudeProvider(LLMProvider):
         return "claude-sonnet-4-5-20250929"
 
     def _is_oauth_token(self) -> bool:
-        """Check if the credential is an OAuth access token (not an API key)."""
-        return not self._api_key.startswith("sk-ant-")
+        """Check if the credential is an OAuth access token (not an API key).
+
+        OAuth tokens start with 'sk-ant-oat' while regular API keys start
+        with 'sk-ant-api' or similar. If it came from ANTHROPIC_ACCESS_TOKEN
+        or contains 'oat' after the prefix, treat it as OAuth.
+        """
+        return "oat" in self._api_key[:15]
 
     def _get_client(self) -> anthropic.Anthropic:
         if self._is_oauth_token():

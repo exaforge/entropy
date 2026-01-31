@@ -14,28 +14,28 @@ def compute_population_stats(
     numeric_attributes: list[str] | None = None,
 ) -> PopulationStats:
     """Compute population statistics from sampled agents.
-    
+
     Args:
         agents: List of sampled agent dictionaries
         numeric_attributes: Optional list of attribute names to compute stats for.
                           If None, computes for all numeric attributes found.
-    
+
     Returns:
         PopulationStats with mean, std, min, max for each attribute
     """
     if not agents:
         return PopulationStats()
-    
+
     # Collect all numeric values per attribute
     attr_values: dict[str, list[float]] = {}
-    
+
     for agent in agents:
         for key, value in agent.items():
             if key.startswith("_"):
                 continue
             if numeric_attributes is not None and key not in numeric_attributes:
                 continue
-            
+
             # Try to convert to float
             if isinstance(value, bool):
                 # Treat booleans as 0/1 for stats
@@ -48,24 +48,24 @@ def compute_population_stats(
                     attr_values.setdefault(key, []).append(float(value))
                 except ValueError:
                     pass  # Not numeric, skip
-    
+
     # Compute stats for each attribute
     stats: dict[str, dict[str, float]] = {}
-    
+
     for attr_name, values in attr_values.items():
         if not values:
             continue
-        
+
         n = len(values)
         mean = sum(values) / n
-        
+
         # Compute std
         if n > 1:
             variance = sum((x - mean) ** 2 for x in values) / (n - 1)
-            std = variance ** 0.5
+            std = variance**0.5
         else:
             std = 0.0
-        
+
         stats[attr_name] = {
             "mean": mean,
             "std": std,
@@ -73,5 +73,5 @@ def compute_population_stats(
             "max": max(values),
             "count": float(n),
         }
-    
+
     return PopulationStats(stats=stats)

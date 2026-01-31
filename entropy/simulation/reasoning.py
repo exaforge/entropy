@@ -57,13 +57,9 @@ def build_reasoning_prompt(
     # Add exposure history
     for exp in context.exposure_history:
         if exp.source_agent_id:
-            prompt_parts.append(
-                f"- Someone in your network told you about this"
-            )
+            prompt_parts.append("- Someone in your network told you about this")
         else:
-            prompt_parts.append(
-                f"- You heard about this via {exp.channel}"
-            )
+            prompt_parts.append(f"- You heard about this via {exp.channel}")
 
     # Add peer opinions if available
     if context.peer_opinions:
@@ -212,13 +208,19 @@ def reason_agent(
     # Heavy logging - payload
     logger.info(f"[REASON] Agent {context.agent_id} - preparing LLM call")
     logger.info(f"[REASON] Agent {context.agent_id} - model: {config.model}")
-    logger.info(f"[REASON] Agent {context.agent_id} - prompt length: {len(prompt)} chars")
+    logger.info(
+        f"[REASON] Agent {context.agent_id} - prompt length: {len(prompt)} chars"
+    )
     logger.debug(f"[REASON] Agent {context.agent_id} - PROMPT:\n{prompt[:500]}...")
-    logger.debug(f"[REASON] Agent {context.agent_id} - SCHEMA: {json.dumps(schema, indent=2)}")
+    logger.debug(
+        f"[REASON] Agent {context.agent_id} - SCHEMA: {json.dumps(schema, indent=2)}"
+    )
 
     for attempt in range(config.max_retries):
         try:
-            logger.info(f"[REASON] Agent {context.agent_id} - attempt {attempt + 1}/{config.max_retries}")
+            logger.info(
+                f"[REASON] Agent {context.agent_id} - attempt {attempt + 1}/{config.max_retries}"
+            )
 
             call_start = time.time()
             response = simple_call(
@@ -230,8 +232,12 @@ def reason_agent(
             )
             call_elapsed = time.time() - call_start
 
-            logger.info(f"[REASON] Agent {context.agent_id} - API call took {call_elapsed:.2f}s")
-            logger.info(f"[REASON] Agent {context.agent_id} - RESPONSE: {json.dumps(response) if response else 'None'}")
+            logger.info(
+                f"[REASON] Agent {context.agent_id} - API call took {call_elapsed:.2f}s"
+            )
+            logger.info(
+                f"[REASON] Agent {context.agent_id} - RESPONSE: {json.dumps(response) if response else 'None'}"
+            )
 
             if not response:
                 logger.warning(
@@ -271,7 +277,9 @@ def reason_agent(
                 f"[REASON] Agent {context.agent_id} - EXCEPTION attempt {attempt + 1}: {e}"
             )
             if attempt == config.max_retries - 1:
-                logger.error(f"[REASON] Agent {context.agent_id} - All retries exhausted")
+                logger.error(
+                    f"[REASON] Agent {context.agent_id} - All retries exhausted"
+                )
                 return None
 
     return None
@@ -298,7 +306,9 @@ async def _reason_agent_async(
             )
             call_elapsed = time.time() - call_start
 
-            logger.info(f"[ASYNC] Agent {context.agent_id} - API call took {call_elapsed:.2f}s")
+            logger.info(
+                f"[ASYNC] Agent {context.agent_id} - API call took {call_elapsed:.2f}s"
+            )
 
             if not response:
                 continue
@@ -324,7 +334,9 @@ async def _reason_agent_async(
             )
 
         except Exception as e:
-            logger.warning(f"[ASYNC] Agent {context.agent_id} - attempt {attempt + 1} failed: {e}")
+            logger.warning(
+                f"[ASYNC] Agent {context.agent_id} - attempt {attempt + 1} failed: {e}"
+            )
             if attempt == config.max_retries - 1:
                 return None
 
@@ -354,13 +366,17 @@ def batch_reason_agents(
         return []
 
     total = len(contexts)
-    logger.info(f"[BATCH] Starting async reasoning for {total} agents (max_concurrency={max_concurrency})")
+    logger.info(
+        f"[BATCH] Starting async reasoning for {total} agents (max_concurrency={max_concurrency})"
+    )
 
     async def run_all():
         semaphore = asyncio.Semaphore(max_concurrency)
         completed = [0]
 
-        async def reason_with_semaphore(ctx: ReasoningContext) -> tuple[str, ReasoningResponse | None]:
+        async def reason_with_semaphore(
+            ctx: ReasoningContext,
+        ) -> tuple[str, ReasoningResponse | None]:
             async with semaphore:
                 start = time.time()
                 result = await _reason_agent_async(ctx, scenario, config)
@@ -373,7 +389,9 @@ def batch_reason_agents(
                         f"(position={result.position})"
                     )
                 else:
-                    logger.warning(f"[BATCH] {completed[0]}/{total}: {ctx.agent_id} FAILED")
+                    logger.warning(
+                        f"[BATCH] {completed[0]}/{total}: {ctx.agent_id} FAILED"
+                    )
 
                 return (ctx.agent_id, result)
 
@@ -384,7 +402,9 @@ def batch_reason_agents(
     results = asyncio.run(run_all())
     batch_elapsed = time.time() - batch_start
 
-    logger.info(f"[BATCH] Completed {total} agents in {batch_elapsed:.2f}s ({batch_elapsed/total:.2f}s/agent avg)")
+    logger.info(
+        f"[BATCH] Completed {total} agents in {batch_elapsed:.2f}s ({batch_elapsed / total:.2f}s/agent avg)"
+    )
     return list(results)
 
 

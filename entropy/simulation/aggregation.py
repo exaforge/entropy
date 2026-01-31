@@ -290,5 +290,3 @@ def compute_timeline_aggregates(
         )
 
     return timeline
-
-

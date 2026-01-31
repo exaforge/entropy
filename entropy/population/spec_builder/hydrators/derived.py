@@ -28,7 +28,7 @@ def hydrate_derived(
     geography: str | None = None,
     independent_attrs: list[HydratedAttribute] | None = None,
     context: list[AttributeSpec] | None = None,
-    model: str = "gpt-5",
+    model: str | None = None,
     reasoning_effort: str = "low",
     on_retry: RetryCallback | None = None,
 ) -> tuple[list[HydratedAttribute], list[str], list[str]]:

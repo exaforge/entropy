@@ -172,12 +172,27 @@ def _apply_dict(config: EntropyConfig, data: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
-# API key resolution (always from env vars)
+# API key resolution (env vars + .env file)
 # ---------------------------------------------------------------------------
+
+_dotenv_loaded = False
+
+
+def _ensure_dotenv() -> None:
+    """Load .env file into os.environ if not already loaded."""
+    global _dotenv_loaded
+    if not _dotenv_loaded:
+        _dotenv_loaded = True
+        try:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+        except ImportError:
+            pass  # python-dotenv not installed, skip
 
 
 def get_api_key(provider: str) -> str:
-    """Get API key for a provider from environment variables.
+    """Get API key for a provider from environment variables or .env file.
 
     Supports:
         - openai: OPENAI_API_KEY
@@ -185,6 +200,7 @@ def get_api_key(provider: str) -> str:
 
     Returns empty string if not found (providers will raise on missing keys).
     """
+    _ensure_dotenv()
     if provider == "openai":
         return os.environ.get("OPENAI_API_KEY", "")
     elif provider == "claude":

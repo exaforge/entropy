@@ -291,7 +291,9 @@ def create_sample_agent(spec: PopulationSpec) -> dict:
     return agent
 
 
-def _preview_full_persona(spec: PopulationSpec, sample_agent: dict, template: str) -> str:
+def _preview_full_persona(
+    spec: PopulationSpec, sample_agent: dict, template: str
+) -> str:
     """Generate full persona preview with template + characteristics list."""
     from ..simulation.persona import (
         format_agent,

@@ -33,7 +33,7 @@ def hydrate_conditional_base(
     independent_attrs: list[HydratedAttribute] | None = None,
     derived_attrs: list[HydratedAttribute] | None = None,
     context: list[AttributeSpec] | None = None,
-    model: str = "gpt-5",
+    model: str | None = None,
     reasoning_effort: str = "low",
     on_retry: RetryCallback | None = None,
 ) -> tuple[list[HydratedAttribute], list[str], list[str]]:
@@ -239,7 +239,7 @@ def hydrate_conditional_modifiers(
     independent_attrs: list[HydratedAttribute] | None = None,
     derived_attrs: list[HydratedAttribute] | None = None,
     context: list[AttributeSpec] | None = None,
-    model: str = "gpt-5",
+    model: str | None = None,
     reasoning_effort: str = "low",
     on_retry: RetryCallback | None = None,
 ) -> tuple[list[HydratedAttribute], list[str], list[str]]:

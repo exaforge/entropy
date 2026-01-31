@@ -59,7 +59,7 @@ def define_outcomes(
     event: Event,
     population_spec: PopulationSpec,
     scenario_description: str,
-    model: str = "gpt-5-mini",
+    model: str | None = None,
 ) -> OutcomeConfig:
     """
     Define minimal outcomes for simulation.

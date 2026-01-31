@@ -84,7 +84,7 @@ def select_attributes(
     size: int,
     geography: str | None = None,
     context: list[AttributeSpec] | None = None,
-    model: str = "gpt-5",
+    model: str | None = None,
     reasoning_effort: str = "low",
 ) -> list[DiscoveredAttribute]:
     """

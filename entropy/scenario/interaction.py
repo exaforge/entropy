@@ -106,7 +106,7 @@ def determine_interaction_model(
     event: Event,
     population_spec: PopulationSpec,
     network_summary: dict | None = None,
-    model: str = "gpt-5",
+    model: str | None = None,
     reasoning_effort: str = "low",
 ) -> tuple[InteractionConfig, SpreadConfig]:
     """

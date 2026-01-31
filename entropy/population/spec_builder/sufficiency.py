@@ -37,7 +37,7 @@ SUFFICIENCY_SCHEMA = {
 def check_sufficiency(
     description: str,
     default_size: int = 1000,
-    model: str = "gpt-5-mini",
+    model: str | None = None,
 ) -> SufficiencyResult:
     """
     Check if a population description is sufficient for spec generation.

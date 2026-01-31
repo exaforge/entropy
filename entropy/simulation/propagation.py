@@ -274,5 +274,3 @@ def propagate_through_network(
             new_exposures += 1
 
     return new_exposures
-
-

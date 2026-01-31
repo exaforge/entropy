@@ -208,20 +208,21 @@ def generate_persona(
     2. Append ALL remaining attributes as structured list
 
     This ensures nothing is filtered out while maintaining readability.
-    
+
     Args:
         agent: Agent attribute dictionary
         population_spec: Population specification (for legacy rendering)
         persona_config: PersonaConfig for new embodied rendering (optional)
-    
+
     Returns:
         Complete persona as string
     """
     # Use new PersonaConfig rendering if available
     if persona_config is not None:
         from ..population.persona import render_persona as render_new_persona
+
         return render_new_persona(agent, persona_config)
-    
+
     # Legacy rendering below
     if not population_spec:
         return _fallback_persona(agent)
@@ -284,7 +285,13 @@ def _build_simple_intro(
         intro_parts.append("You are a member of this population")
 
     # Add role/occupation/specialty if available
-    for attr_name in ("surgical_specialty", "specialty", "occupation", "role", "role_rank"):
+    for attr_name in (
+        "surgical_specialty",
+        "specialty",
+        "occupation",
+        "role",
+        "role_rank",
+    ):
         if attr_name in formatted and agent.get(attr_name):
             value = formatted[attr_name].lower()
             intro_parts[0] += f" {value}"

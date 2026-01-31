@@ -121,7 +121,9 @@ Output only the template string, no explanation."""
 
         # Add error feedback for retries
         if last_error:
-            prompt += f"\n\nPREVIOUS ATTEMPT FAILED: {last_error}\nPlease fix and try again."
+            prompt += (
+                f"\n\nPREVIOUS ATTEMPT FAILED: {last_error}\nPlease fix and try again."
+            )
 
         try:
             response = simple_call(
@@ -156,8 +158,6 @@ Output only the template string, no explanation."""
     raise PersonaTemplateError(
         f"Failed to generate persona template after {max_retries} attempts. Last error: {last_error}"
     )
-
-
 
 
 def validate_persona_template(template: str, sample_agent: dict) -> tuple[bool, str]:
@@ -235,7 +235,9 @@ Output only the refined template string, no explanation."""
         prompt = base_prompt
 
         if last_error:
-            prompt += f"\n\nPREVIOUS ATTEMPT FAILED: {last_error}\nPlease fix and try again."
+            prompt += (
+                f"\n\nPREVIOUS ATTEMPT FAILED: {last_error}\nPlease fix and try again."
+            )
 
         try:
             response = simple_call(

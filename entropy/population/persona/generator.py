@@ -33,6 +33,7 @@ from .stats import compute_population_stats
 
 class PersonaConfigError(Exception):
     """Raised when persona config generation fails."""
+
     pass
 
 
@@ -49,7 +50,7 @@ STRUCTURE_SCHEMA = {
     "properties": {
         "intro_template": {
             "type": "string",
-            "description": "First-person narrative intro (2-4 sentences) with {attribute_name} placeholders"
+            "description": "First-person narrative intro (2-4 sentences) with {attribute_name} placeholders",
         },
         "attribute_treatments": {
             "type": "array",
@@ -58,11 +59,11 @@ STRUCTURE_SCHEMA = {
                 "properties": {
                     "attribute": {"type": "string"},
                     "treatment": {"type": "string", "enum": ["concrete", "relative"]},
-                    "group": {"type": "string"}
+                    "group": {"type": "string"},
                 },
                 "required": ["attribute", "treatment", "group"],
-                "additionalProperties": False
-            }
+                "additionalProperties": False,
+            },
         },
         "groups": {
             "type": "array",
@@ -71,15 +72,15 @@ STRUCTURE_SCHEMA = {
                 "properties": {
                     "name": {"type": "string"},
                     "label": {"type": "string"},
-                    "order": {"type": "integer"}
+                    "order": {"type": "integer"},
                 },
                 "required": ["name", "label", "order"],
-                "additionalProperties": False
-            }
-        }
+                "additionalProperties": False,
+            },
+        },
     },
     "required": ["intro_template", "attribute_treatments", "groups"],
-    "additionalProperties": False
+    "additionalProperties": False,
 }
 
 
@@ -105,12 +106,12 @@ def generate_structure(
     on_progress: ProgressCallback | None = None,
 ) -> tuple[list[AttributeTreatment], list[AttributeGroup], str]:
     """Step 1: Generate attribute treatments, groups, and intro template."""
-    
+
     if on_progress:
         on_progress("1", "Classifying attributes and creating groups...")
-    
+
     attr_summary = _build_attribute_summary(spec.attributes)
-    
+
     prompt = f"""You are configuring how agent personas will be rendered.
 
 POPULATION: {spec.meta.description}
@@ -142,38 +143,45 @@ Generate:
         schema_name="persona_structure",
         log=True,
     )
-    
+
     if not response:
         raise PersonaConfigError("Empty response for structure generation")
-    
+
     # Parse treatments
     treatments = []
     for t in response.get("attribute_treatments", []):
-        treatments.append(AttributeTreatment(
-            attribute=t["attribute"],
-            treatment=TreatmentType(t["treatment"]),
-            group=t["group"]
-        ))
-    
+        treatments.append(
+            AttributeTreatment(
+                attribute=t["attribute"],
+                treatment=TreatmentType(t["treatment"]),
+                group=t["group"],
+            )
+        )
+
     # Parse groups
     group_data = sorted(response.get("groups", []), key=lambda g: g.get("order", 999))
     group_attrs: dict[str, list[str]] = {}
     for t in treatments:
         group_attrs.setdefault(t.group, []).append(t.attribute)
-    
+
     groups = []
     for g in group_data:
-        groups.append(AttributeGroup(
-            name=g["name"],
-            label=g["label"],
-            attributes=group_attrs.get(g["name"], [])
-        ))
-    
+        groups.append(
+            AttributeGroup(
+                name=g["name"],
+                label=g["label"],
+                attributes=group_attrs.get(g["name"], []),
+            )
+        )
+
     intro = response.get("intro_template", "")
-    
+
     if on_progress:
-        on_progress("1", f"Created {len(groups)} groups, classified {len(treatments)} attributes")
-    
+        on_progress(
+            "1",
+            f"Created {len(groups)} groups, classified {len(treatments)} attributes",
+        )
+
     return treatments, groups, intro
 
 
@@ -191,15 +199,15 @@ BOOLEAN_SCHEMA = {
                 "properties": {
                     "attribute": {"type": "string"},
                     "true_phrase": {"type": "string"},
-                    "false_phrase": {"type": "string"}
+                    "false_phrase": {"type": "string"},
                 },
                 "required": ["attribute", "true_phrase", "false_phrase"],
-                "additionalProperties": False
-            }
+                "additionalProperties": False,
+            },
         }
     },
     "required": ["phrasings"],
-    "additionalProperties": False
+    "additionalProperties": False,
 }
 
 
@@ -208,17 +216,19 @@ def generate_boolean_phrasings(
     on_progress: ProgressCallback | None = None,
 ) -> list[BooleanPhrasing]:
     """Step 2: Generate first-person phrases for boolean attributes."""
-    
+
     bool_attrs = [a for a in spec.attributes if a.type == "boolean"]
-    
+
     if not bool_attrs:
         return []
-    
+
     if on_progress:
-        on_progress("2", f"Generating phrases for {len(bool_attrs)} boolean attributes...")
-    
+        on_progress(
+            "2", f"Generating phrases for {len(bool_attrs)} boolean attributes..."
+        )
+
     attr_list = "\n".join(f"- {a.name}: {a.description}" for a in bool_attrs)
-    
+
     prompt = f"""Generate first-person phrases for these boolean attributes.
 
 POPULATION: {spec.meta.description}
@@ -238,21 +248,23 @@ All phrases must be first-person ("I", "my", "me")."""
         schema_name="boolean_phrasings",
         log=True,
     )
-    
+
     if not response:
         raise PersonaConfigError("Empty response for boolean phrasings")
-    
+
     phrasings = []
     for p in response.get("phrasings", []):
-        phrasings.append(BooleanPhrasing(
-            attribute=p["attribute"],
-            true_phrase=p["true_phrase"],
-            false_phrase=p["false_phrase"]
-        ))
-    
+        phrasings.append(
+            BooleanPhrasing(
+                attribute=p["attribute"],
+                true_phrase=p["true_phrase"],
+                false_phrase=p["false_phrase"],
+            )
+        )
+
     if on_progress:
         on_progress("2", f"Generated {len(phrasings)} boolean phrasings")
-    
+
     return phrasings
 
 
@@ -275,20 +287,20 @@ CATEGORICAL_SCHEMA = {
                             "type": "object",
                             "properties": {
                                 "option": {"type": "string"},
-                                "phrase": {"type": "string"}
+                                "phrase": {"type": "string"},
                             },
                             "required": ["option", "phrase"],
-                            "additionalProperties": False
-                        }
-                    }
+                            "additionalProperties": False,
+                        },
+                    },
                 },
                 "required": ["attribute", "option_phrases"],
-                "additionalProperties": False
-            }
+                "additionalProperties": False,
+            },
         }
     },
     "required": ["phrasings"],
-    "additionalProperties": False
+    "additionalProperties": False,
 }
 
 
@@ -297,27 +309,29 @@ def generate_categorical_phrasings(
     on_progress: ProgressCallback | None = None,
 ) -> list[CategoricalPhrasing]:
     """Step 3: Generate first-person phrases for categorical attributes."""
-    
+
     cat_attrs = []
     for a in spec.attributes:
         if a.type == "categorical" and a.sampling and a.sampling.distribution:
             dist = a.sampling.distribution
             if hasattr(dist, "options") and dist.options:
                 cat_attrs.append((a, dist.options))
-    
+
     if not cat_attrs:
         return []
-    
+
     if on_progress:
-        on_progress("3", f"Generating phrases for {len(cat_attrs)} categorical attributes...")
-    
+        on_progress(
+            "3", f"Generating phrases for {len(cat_attrs)} categorical attributes..."
+        )
+
     attr_lines = []
     for a, options in cat_attrs:
         opts_str = ", ".join(options[:8])
         if len(options) > 8:
             opts_str += f", ... ({len(options)} total)"
         attr_lines.append(f"- {a.name}: {a.description}\n  Options: {opts_str}")
-    
+
     prompt = f"""Generate first-person phrases for these categorical attributes.
 
 POPULATION: {spec.meta.description}
@@ -337,23 +351,22 @@ All phrases must be first-person ("I", "my", "me") and sound natural."""
         schema_name="categorical_phrasings",
         log=True,
     )
-    
+
     if not response:
         raise PersonaConfigError("Empty response for categorical phrasings")
-    
+
     phrasings = []
     for p in response.get("phrasings", []):
         phrases_dict = {}
         for op in p.get("option_phrases", []):
             phrases_dict[op["option"]] = op["phrase"]
-        phrasings.append(CategoricalPhrasing(
-            attribute=p["attribute"],
-            phrases=phrases_dict
-        ))
-    
+        phrasings.append(
+            CategoricalPhrasing(attribute=p["attribute"], phrases=phrases_dict)
+        )
+
     if on_progress:
         on_progress("3", f"Generated {len(phrasings)} categorical phrasings")
-    
+
     return phrasings
 
 
@@ -374,15 +387,22 @@ RELATIVE_SCHEMA = {
                     "below": {"type": "string"},
                     "average": {"type": "string"},
                     "above": {"type": "string"},
-                    "much_above": {"type": "string"}
+                    "much_above": {"type": "string"},
                 },
-                "required": ["attribute", "much_below", "below", "average", "above", "much_above"],
-                "additionalProperties": False
-            }
+                "required": [
+                    "attribute",
+                    "much_below",
+                    "below",
+                    "average",
+                    "above",
+                    "much_above",
+                ],
+                "additionalProperties": False,
+            },
         }
     },
     "required": ["phrasings"],
-    "additionalProperties": False
+    "additionalProperties": False,
 }
 
 
@@ -392,19 +412,23 @@ def generate_relative_phrasings(
     on_progress: ProgressCallback | None = None,
 ) -> list[RelativePhrasing]:
     """Step 4: Generate z-score bucket phrases for relative attributes."""
-    
-    relative_attrs = [t.attribute for t in treatments if t.treatment == TreatmentType.RELATIVE]
+
+    relative_attrs = [
+        t.attribute for t in treatments if t.treatment == TreatmentType.RELATIVE
+    ]
     attr_map = {a.name: a for a in spec.attributes}
     rel_specs = [attr_map[name] for name in relative_attrs if name in attr_map]
-    
+
     if not rel_specs:
         return []
-    
+
     if on_progress:
-        on_progress("4", f"Generating phrases for {len(rel_specs)} relative attributes...")
-    
+        on_progress(
+            "4", f"Generating phrases for {len(rel_specs)} relative attributes..."
+        )
+
     attr_list = "\n".join(f"- {a.name}: {a.description}" for a in rel_specs)
-    
+
     prompt = f"""Generate relative positioning phrases for these psychological/attitudinal attributes.
 
 POPULATION: {spec.meta.description}
@@ -434,26 +458,28 @@ All phrases must be first-person and compare to "most people" or "average"."""
         schema_name="relative_phrasings",
         log=True,
     )
-    
+
     if not response:
         raise PersonaConfigError("Empty response for relative phrasings")
-    
+
     phrasings = []
     for p in response.get("phrasings", []):
-        phrasings.append(RelativePhrasing(
-            attribute=p["attribute"],
-            labels=RelativeLabels(
-                much_below=p["much_below"],
-                below=p["below"],
-                average=p["average"],
-                above=p["above"],
-                much_above=p["much_above"]
+        phrasings.append(
+            RelativePhrasing(
+                attribute=p["attribute"],
+                labels=RelativeLabels(
+                    much_below=p["much_below"],
+                    below=p["below"],
+                    average=p["average"],
+                    above=p["above"],
+                    much_above=p["much_above"],
+                ),
             )
-        ))
-    
+        )
+
     if on_progress:
         on_progress("4", f"Generated {len(phrasings)} relative phrasings")
-    
+
     return phrasings
 
 
@@ -473,15 +499,21 @@ CONCRETE_SCHEMA = {
                     "template": {"type": "string"},
                     "format_spec": {"type": "string"},
                     "prefix": {"type": "string"},
-                    "suffix": {"type": "string"}
+                    "suffix": {"type": "string"},
                 },
-                "required": ["attribute", "template", "format_spec", "prefix", "suffix"],
-                "additionalProperties": False
-            }
+                "required": [
+                    "attribute",
+                    "template",
+                    "format_spec",
+                    "prefix",
+                    "suffix",
+                ],
+                "additionalProperties": False,
+            },
         }
     },
     "required": ["phrasings"],
-    "additionalProperties": False
+    "additionalProperties": False,
 }
 
 
@@ -491,10 +523,12 @@ def generate_concrete_phrasings(
     on_progress: ProgressCallback | None = None,
 ) -> list[ConcretePhrasing]:
     """Step 5: Generate templates for concrete (numeric) attributes."""
-    
-    concrete_attrs = [t.attribute for t in treatments if t.treatment == TreatmentType.CONCRETE]
+
+    concrete_attrs = [
+        t.attribute for t in treatments if t.treatment == TreatmentType.CONCRETE
+    ]
     attr_map = {a.name: a for a in spec.attributes}
-    
+
     # Only include int/float attributes that are concrete
     conc_specs = []
     for name in concrete_attrs:
@@ -502,15 +536,17 @@ def generate_concrete_phrasings(
             a = attr_map[name]
             if a.type in ("int", "float"):
                 conc_specs.append(a)
-    
+
     if not conc_specs:
         return []
-    
+
     if on_progress:
-        on_progress("5", f"Generating templates for {len(conc_specs)} concrete attributes...")
-    
+        on_progress(
+            "5", f"Generating templates for {len(conc_specs)} concrete attributes..."
+        )
+
     attr_list = "\n".join(f"- {a.name} ({a.type}): {a.description}" for a in conc_specs)
-    
+
     prompt = f"""Generate first-person templates for these numeric attributes.
 
 POPULATION: {spec.meta.description}
@@ -550,29 +586,32 @@ All templates must be first-person and read naturally with the number inserted."
         schema_name="concrete_phrasings",
         log=True,
     )
-    
+
     if not response:
         raise PersonaConfigError("Empty response for concrete phrasings")
-    
+
     phrasings = []
     for p in response.get("phrasings", []):
-        phrasings.append(ConcretePhrasing(
-            attribute=p["attribute"],
-            template=p["template"],
-            format_spec=p.get("format_spec"),
-            prefix=p.get("prefix", ""),
-            suffix=p.get("suffix", "")
-        ))
-    
+        phrasings.append(
+            ConcretePhrasing(
+                attribute=p["attribute"],
+                template=p["template"],
+                format_spec=p.get("format_spec"),
+                prefix=p.get("prefix", ""),
+                suffix=p.get("suffix", ""),
+            )
+        )
+
     if on_progress:
         on_progress("5", f"Generated {len(phrasings)} concrete phrasings")
-    
+
     return phrasings
 
 
 # =============================================================================
 # Main Orchestrator
 # =============================================================================
+
 
 def generate_persona_config(
     spec: PopulationSpec,
@@ -581,65 +620,66 @@ def generate_persona_config(
     on_progress: ProgressCallback | None = None,
 ) -> PersonaConfig:
     """Generate persona configuration for a population.
-    
+
     Orchestrates 5 steps:
     - Step 1: Classify attributes and create groups
     - Step 2: Generate boolean phrasings
     - Step 3: Generate categorical phrasings
     - Step 4: Generate relative phrasings
     - Step 5: Generate concrete phrasings
-    
+
     Args:
         spec: Population specification with attributes
         agents: Optional sampled agents for computing population stats
         log: Whether to log LLM calls
         on_progress: Optional callback (step, status) for progress updates
-    
+
     Returns:
         PersonaConfig ready for rendering
-    
+
     Raises:
         PersonaConfigError: If generation fails
     """
+
     def report(step: str, status: str):
         if on_progress:
             on_progress(step, status)
-    
+
     # Step 1: Structure
     treatments, groups, intro = generate_structure(spec, on_progress)
-    
+
     # Step 2: Boolean phrasings
     boolean_phrasings = generate_boolean_phrasings(spec, on_progress)
-    
+
     # Step 3: Categorical phrasings
     categorical_phrasings = generate_categorical_phrasings(spec, on_progress)
-    
+
     # Step 4: Relative phrasings
     relative_phrasings = generate_relative_phrasings(spec, treatments, on_progress)
-    
+
     # Step 5: Concrete phrasings
     concrete_phrasings = generate_concrete_phrasings(spec, treatments, on_progress)
-    
+
     # Combine all phrasings
     phrasings = AttributePhrasing(
         boolean=boolean_phrasings,
         categorical=categorical_phrasings,
         relative=relative_phrasings,
-        concrete=concrete_phrasings
+        concrete=concrete_phrasings,
     )
-    
+
     # Compute population stats if agents provided
     population_stats = PopulationStats()
     if agents:
         report("stats", "Computing population statistics...")
         population_stats = compute_population_stats(agents)
         report("stats", f"Computed stats for {len(population_stats.stats)} attributes")
-    
+
     return PersonaConfig(
         population_description=spec.meta.description,
         intro_template=intro,
         treatments=treatments,
         groups=groups,
         phrasings=phrasings,
-        population_stats=population_stats
+        population_stats=population_stats,
     )

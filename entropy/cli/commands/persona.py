@@ -10,24 +10,23 @@ from rich.live import Live
 from rich.spinner import Spinner
 
 from ...core.models import PopulationSpec
-from ..app import app, console, get_json_mode
+from ..app import app, console
 from ..utils import (
-    Output,
-    ExitCode,
     format_elapsed,
 )
 
 
 @app.command("persona")
 def persona_command(
-    spec_file: Path = typer.Argument(
-        ..., help="Population spec YAML file"
-    ),
+    spec_file: Path = typer.Argument(..., help="Population spec YAML file"),
     agents_file: Path = typer.Option(
         None, "--agents", "-a", help="Sampled agents JSON file (for population stats)"
     ),
     output: Path = typer.Option(
-        None, "--output", "-o", help="Output file for persona config (default: adds to spec)"
+        None,
+        "--output",
+        "-o",
+        help="Output file for persona config (default: adds to spec)",
     ),
     preview: bool = typer.Option(
         True, "--preview/--no-preview", help="Show a sample persona before saving"
@@ -37,7 +36,10 @@ def persona_command(
     ),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompts"),
     show: bool = typer.Option(
-        False, "--show", "-s", help="Preview existing persona config without regenerating"
+        False,
+        "--show",
+        "-s",
+        help="Preview existing persona config without regenerating",
     ),
 ):
     """
@@ -104,7 +106,7 @@ def persona_command(
             try:
                 with open(agents_file, "r") as f:
                     agents_data = json.load(f)
-                
+
                 # Handle both raw list and {meta, agents} format
                 if isinstance(agents_data, dict) and "agents" in agents_data:
                     agents = agents_data["agents"]
@@ -125,41 +127,41 @@ def persona_command(
     # Handle --show mode: preview existing config without regenerating
     if show:
         from ...population.persona import PersonaConfig
-        
+
         # Find existing config
         if output and output.exists():
             config_path = output
         else:
             config_path = spec_file.with_suffix(".persona.yaml")
-        
+
         if not config_path.exists():
             console.print(f"[red]✗[/red] No persona config found at {config_path}")
             console.print("[dim]Run without --show to generate one.[/dim]")
             raise typer.Exit(2)
-        
+
         try:
             config = PersonaConfig.from_file(str(config_path))
         except Exception as e:
             console.print(f"[red]✗[/red] Failed to load persona config: {e}")
             raise typer.Exit(1)
-        
+
         console.print(f"[green]✓[/green] Loaded persona config from {config_path}")
         console.print()
-        
+
         if not agents:
             console.print("[red]✗[/red] Need --agents to preview personas")
             raise typer.Exit(1)
-        
+
         if agent_index >= len(agents):
             agent_index = 0
         sample_agent = agents[agent_index]
         agent_id = sample_agent.get("_id", str(agent_index))
-        
+
         console.print(f"[bold]Persona for Agent {agent_id}:[/bold]")
         console.print()
-        
+
         persona_text = preview_persona(sample_agent, config, max_width=78)
-        
+
         for line in persona_text.split("\n"):
             if line.startswith("##"):
                 console.print(f"[bold cyan]{line}[/bold cyan]")
@@ -167,7 +169,7 @@ def persona_command(
                 console.print(line)
             else:
                 console.print()
-        
+
         raise typer.Exit(0)
 
     # Generate Config with spinner
@@ -227,8 +229,12 @@ def persona_command(
     console.print()
 
     # Treatment summary
-    concrete_count = sum(1 for t in config.treatments if t.treatment.value == "concrete")
-    relative_count = sum(1 for t in config.treatments if t.treatment.value == "relative")
+    concrete_count = sum(
+        1 for t in config.treatments if t.treatment.value == "concrete"
+    )
+    relative_count = sum(
+        1 for t in config.treatments if t.treatment.value == "relative"
+    )
     console.print(f"  Concrete (keep values): {concrete_count} attributes")
     console.print(f"  Relative (use positioning): {relative_count} attributes")
     console.print()
@@ -272,11 +278,15 @@ def persona_command(
 
     # Confirmation
     if not yes:
-        choice = typer.prompt(
-            "[Y] Save config  [r] Regenerate  [n] Cancel",
-            default="Y",
-            show_default=False,
-        ).strip().lower()
+        choice = (
+            typer.prompt(
+                "[Y] Save config  [r] Regenerate  [n] Cancel",
+                default="Y",
+                show_default=False,
+            )
+            .strip()
+            .lower()
+        )
 
         if choice == "n":
             console.print("[dim]Cancelled.[/dim]")
@@ -287,16 +297,20 @@ def persona_command(
             console.print()
             gen_start = time.time()
             gen_done.clear()
-            
+
             gen_thread = Thread(target=do_generation, daemon=True)
             gen_thread.start()
 
             spinner = Spinner("dots", text="Regenerating...", style="cyan")
-            with Live(spinner, console=console, refresh_per_second=12.5, transient=True):
+            with Live(
+                spinner, console=console, refresh_per_second=12.5, transient=True
+            ):
                 while not gen_done.is_set():
                     elapsed = time.time() - gen_start
                     step, status = current_step
-                    spinner.update(text=f"Step {step}: {status} ({format_elapsed(elapsed)})")
+                    spinner.update(
+                        text=f"Step {step}: {status} ({format_elapsed(elapsed)})"
+                    )
                     time.sleep(0.1)
 
             if gen_error:
@@ -323,6 +337,8 @@ def persona_command(
 
     console.print()
     console.print("═" * 60)
-    console.print(f"[green]✓[/green] Persona config saved to [bold]{config_path}[/bold]")
+    console.print(
+        f"[green]✓[/green] Persona config saved to [bold]{config_path}[/bold]"
+    )
     console.print(f"[dim]Total time: {format_elapsed(elapsed)}[/dim]")
     console.print("═" * 60)

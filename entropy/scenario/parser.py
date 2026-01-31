@@ -72,7 +72,7 @@ EVENT_PARSING_SCHEMA = {
 def parse_scenario(
     description: str,
     population_spec: PopulationSpec,
-    model: str = "gpt-5",
+    model: str | None = None,
     reasoning_effort: str = "low",
 ) -> Event:
     """

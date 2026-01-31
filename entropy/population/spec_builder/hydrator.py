@@ -43,7 +43,7 @@ def hydrate_attributes(
     description: str,
     geography: str | None = None,
     context: list[AttributeSpec] | None = None,
-    model: str = "gpt-5",
+    model: str | None = None,
     reasoning_effort: str = "low",
     on_progress: ProgressCallback | None = None,
 ) -> tuple[list[HydratedAttribute], list[str], list[str]]:
