@@ -18,8 +18,15 @@ VALID_KEYS = {
     "pipeline.model_research",
     "simulation.provider",
     "simulation.model",
+    "simulation.pivotal_model",
+    "simulation.routine_model",
     "simulation.max_concurrent",
+    "simulation.rate_tier",
+    "simulation.rpm_override",
+    "simulation.tpm_override",
 }
+
+INT_FIELDS = {"max_concurrent", "rate_tier", "rpm_override", "tpm_override"}
 
 
 @app.command("config")
@@ -94,7 +101,20 @@ def _show_config():
     console.print(
         f"  model           = {config.simulation.model or '[dim](provider default)[/dim]'}"
     )
+    console.print(
+        f"  pivotal_model   = {config.simulation.pivotal_model or '[dim](same as model)[/dim]'}"
+    )
+    console.print(
+        f"  routine_model   = {config.simulation.routine_model or '[dim](provider default)[/dim]'}"
+    )
     console.print(f"  max_concurrent  = {config.simulation.max_concurrent}")
+    console.print(
+        f"  rate_tier       = {config.simulation.rate_tier or '[dim](tier 1)[/dim]'}"
+    )
+    if config.simulation.rpm_override:
+        console.print(f"  rpm_override    = {config.simulation.rpm_override}")
+    if config.simulation.tpm_override:
+        console.print(f"  tpm_override    = {config.simulation.tpm_override}")
 
     # API keys status
     console.print()
@@ -144,7 +164,7 @@ def _set_config(key: str, value: str):
         raise typer.Exit(1)
 
     # Type coercion
-    if field == "max_concurrent":
+    if field in INT_FIELDS:
         setattr(target, field, int(value))
     else:
         setattr(target, field, value)
