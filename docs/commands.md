@@ -15,10 +15,10 @@ This is the kind of question Entropy was built for: a heterogeneous population w
 ## Pipeline Overview
 
 ```
-entropy spec ──> entropy extend ──> entropy sample ──> entropy network ──> entropy scenario ──> entropy simulate
-                                                                                                       │
-                                                                                                       ▼
-                                                                                                entropy results
+entropy spec ──> entropy extend ──> entropy sample ──> entropy network ──> entropy persona ──> entropy scenario ──> entropy simulate
+                                                                                                                            │
+                                                                                                                            ▼
+                                                                                                                     entropy results
 ```
 
 Each step produces a file that feeds into the next:
@@ -29,8 +29,9 @@ Each step produces a file that feeds into the next:
 | 2 | `entropy extend` | `base.yaml` + scenario description | `population.yaml` (merged spec) |
 | 3 | `entropy sample` | `population.yaml` | `agents.json` (concrete agents) |
 | 4 | `entropy network` | `agents.json` | `network.json` (social graph) |
-| 5 | `entropy scenario` | `population.yaml` + `agents.json` + `network.json` | `scenario.yaml` (executable spec) |
-| 6 | `entropy simulate` | `scenario.yaml` | `results/` (simulation output) |
+| 5 | `entropy persona` | `population.yaml` + `agents.json` | `population.persona.yaml` (persona config) |
+| 6 | `entropy scenario` | `population.yaml` + `agents.json` + `network.json` | `scenario.yaml` (executable spec) |
+| 7 | `entropy simulate` | `scenario.yaml` | `results/` (simulation output) |
 
 You can also run `entropy validate` at any point to check a spec file, and `entropy results` to inspect simulation output.
 
@@ -228,7 +229,75 @@ A JSON file (`network.json`) containing nodes (agent IDs) and weighted, typed ed
 
 ---
 
-## Step 5: Compile the Scenario
+## Step 5: Generate Persona Configuration
+
+```bash
+entropy persona austin/population.yaml \
+  --agents austin/agents.json \
+  -o austin/population.persona.yaml
+```
+
+This step generates a **persona configuration** — instructions for how to render each agent's attributes into a first-person narrative that the LLM reads during simulation.
+
+### Why this matters
+
+The persona is what the LLM sees when reasoning as an agent. A flat list of attributes like `age: 34, income: 62000, price_sensitivity: 0.78` doesn't help the LLM *embody* the agent. The persona system converts these into first-person statements that create genuine perspective-taking:
+
+> *"I'm 34 years old... I'm much more price-sensitive than most people..."*
+
+The difference between "puppetry" (the LLM referencing external data) and "embodiment" (the LLM internalizing a worldview) is critical for simulation accuracy.
+
+### The 5-step generation pipeline
+
+1. **Structure** — Classify each attribute as `concrete` (keep exact values) or `relative` (position against population), and group them thematically.
+
+2. **Boolean phrasings** — Generate true/false phrases: *"I own my home"* vs *"I rent my home"*.
+
+3. **Categorical phrasings** — Generate per-option phrases: *"I drive a pickup truck"*, *"I take the bus"*.
+
+4. **Relative phrasings** — Generate 5-tier positioning labels based on z-scores: *"I'm far more price-sensitive than most people"* (z > 1) vs *"I'm about average"* (|z| < 0.3).
+
+5. **Concrete phrasings** — Generate templates with format specs: *"I drive {value} miles to downtown"* with `.1f` formatting, or *"I start work around {value}"* with `time12` formatting (8.5 → "8:30 AM").
+
+### Scalability
+
+The persona config is generated **once per population** via LLM, then applied to all agents computationally. There are no per-agent LLM calls for persona rendering — just template substitution and z-score lookups.
+
+### Preview mode
+
+By default, the command shows a sample persona before saving:
+
+```bash
+entropy persona austin/population.yaml --agents austin/agents.json --agent 42
+```
+
+Use `--no-preview` to skip, or `--agent N` to preview a specific agent.
+
+### Arguments & options
+
+| | Name | Description |
+|---|---|---|
+| **Arg** | `spec_file` | Population spec YAML |
+| **Opt** | `--agents` / `-a` | Sampled agents JSON (for population statistics) |
+| **Opt** | `--output` / `-o` | Output path (default: `{spec_stem}.persona.yaml`) |
+| **Opt** | `--preview` / `--no-preview` | Show sample persona before saving (default: on) |
+| **Opt** | `--agent` | Which agent to preview (default: `0`) |
+| **Opt** | `--yes` / `-y` | Skip confirmation prompts |
+
+### Output
+
+A YAML file (`population.persona.yaml`) containing:
+- **Intro template** — Narrative opening paragraph template
+- **Treatments** — Per-attribute classification (concrete vs relative)
+- **Groups** — Thematic groupings with labels ("About Me", "My Commute", etc.)
+- **Phrasings** — Templates for boolean, categorical, relative, and concrete attributes
+- **Population stats** — Mean/std/min/max for relative positioning
+
+The simulation engine auto-detects this file when running — no need to pass it explicitly if it follows the naming convention `{population_stem}.persona.yaml`.
+
+---
+
+## Step 6: Compile the Scenario
 
 ```bash
 entropy scenario \
@@ -278,7 +347,7 @@ A YAML file (`scenario.yaml`) containing the complete scenario specification: ev
 
 ---
 
-## Step 6: Run the Simulation
+## Step 7: Run the Simulation
 
 ```bash
 entropy simulate austin/scenario.yaml \
@@ -433,6 +502,7 @@ entropy spec "500 Austin TX commuters who drive into downtown for work" -o austi
 entropy extend austin/base.yaml -s "Response to a $15/day downtown congestion tax" -o austin/population.yaml
 entropy sample austin/population.yaml -o austin/agents.json --seed 42
 entropy network austin/agents.json -o austin/network.json --seed 42
+entropy persona austin/population.yaml --agents austin/agents.json
 entropy scenario -p austin/population.yaml -a austin/agents.json -n austin/network.json -o austin/scenario.yaml
 entropy simulate austin/scenario.yaml -o austin/results/ --seed 42
 

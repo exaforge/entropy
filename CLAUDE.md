@@ -24,12 +24,12 @@ ruff format .                # Format
 
 CLI entry point: `entropy` (defined in `pyproject.toml` → `entropy.cli:app`). Python >=3.11.
 
-## Pipeline (6 sequential commands)
+## Pipeline (7 sequential commands)
 
 ```
-entropy spec → entropy extend → entropy sample → entropy network → entropy scenario → entropy simulate
-                                                                                            │
-                                                                                     entropy results
+entropy spec → entropy extend → entropy sample → entropy network → entropy persona → entropy scenario → entropy simulate
+ │
+ entropy results
 ```
 
 Each command produces a file consumed by the next. `entropy validate` is a utility runnable at any point. `entropy results` is a viewer for simulation output.
@@ -77,7 +77,7 @@ Three phases, each mapping to a package under `entropy/`:
 5. Update state (`state.py`) — SQLite-backed with indexed tables for agent_states, exposures, timeline
 6. Check stopping conditions (`stopping.py`) — Compound conditions like `"exposure_rate > 0.95 and no_state_changes_for > 10"`, convergence detection via position distribution variance
 
-**Persona system** (`persona.py` + `spec_builder/persona_template.py`): Hybrid narrative template intro (Jinja2-like, LLM-generated) + structured characteristics list grouped by category with personality/attitudes first.
+**Persona system** (`population/persona/` + `simulation/persona.py`): The `entropy persona` command generates a `PersonaConfig` via 5-step LLM pipeline (structure → boolean → categorical → relative → concrete phrasings). At simulation time, agents are rendered computationally using this config — no per-agent LLM calls. Relative attributes (personality, attitudes) are positioned against population stats via z-scores ("I'm much more price-sensitive than most people"). Concrete attributes use format specs for proper number/time rendering.
 
 ## LLM Integration (`entropy/core/llm.py`)
 
@@ -119,7 +119,8 @@ Scenario validation (`entropy/scenario/validator.py`): attribute reference valid
 - Network edges are bidirectional (stored as source/target, traversed both ways)
 - Exposure credibility: `event_credibility * channel_credibility` for seed, fixed 0.85 for peer
 - "Position" = first required categorical outcome (used for aggregation and peer influence display)
-- The `extend` command (not `overlay` — recently renamed) is where persona templates are generated, not `spec`
+- The `persona` command generates detailed persona configs; `extend` still generates a simpler `persona_template` for backwards compatibility
+- Simulation auto-detects `{population_stem}.persona.yaml` and uses the new rendering if present
 - Network config defaults in `network/config.py` are currently hardcoded for the German surgeons example and need generalization
 
 ## Tests
