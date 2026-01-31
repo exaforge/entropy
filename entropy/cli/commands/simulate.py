@@ -41,7 +41,10 @@ def simulate_command(
     scenario_file: Path = typer.Argument(..., help="Scenario spec YAML file"),
     output: Path = typer.Option(..., "--output", "-o", help="Output results directory"),
     model: str = typer.Option(
-        "gpt-5-mini", "--model", "-m", help="LLM model for agent reasoning"
+        "",
+        "--model",
+        "-m",
+        help="LLM model for agent reasoning (empty = use config default)",
     ),
     threshold: int = typer.Option(
         3, "--threshold", "-t", help="Multi-touch threshold for re-reasoning"
@@ -50,11 +53,16 @@ def simulate_command(
         None, "--seed", help="Random seed for reproducibility"
     ),
     persona_config: Path | None = typer.Option(
-        None, "--persona", "-p", help="PersonaConfig YAML for embodied personas (auto-detected if not specified)"
+        None,
+        "--persona",
+        "-p",
+        help="PersonaConfig YAML for embodied personas (auto-detected if not specified)",
     ),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress progress output"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed logs"),
-    debug: bool = typer.Option(False, "--debug", help="Show debug-level logs (very verbose)"),
+    debug: bool = typer.Option(
+        False, "--debug", help="Show debug-level logs (very verbose)"
+    ),
 ):
     """
     Run a simulation from a scenario spec.
@@ -83,9 +91,19 @@ def simulate_command(
         console.print(f"[red]✗[/red] Scenario file not found: {scenario_file}")
         raise typer.Exit(1)
 
+    from ...config import get_config
+
+    config = get_config()
+    display_model = (
+        model or config.simulation.model or f"({config.simulation.provider} default)"
+    )
+    display_provider = config.simulation.provider
+
     console.print(f"Simulating: [bold]{scenario_file}[/bold]")
     console.print(f"Output: {output}")
-    console.print(f"Model: {model} | Threshold: {threshold}")
+    console.print(
+        f"Provider: {display_provider} | Model: {display_model} | Threshold: {threshold}"
+    )
     if seed:
         console.print(f"Seed: {seed}")
     if verbose or debug:
@@ -146,7 +164,9 @@ def simulate_command(
 
         if not quiet:
             spinner = Spinner("dots", text="Starting...", style="cyan")
-            with Live(spinner, console=console, refresh_per_second=12.5, transient=True):
+            with Live(
+                spinner, console=console, refresh_per_second=12.5, transient=True
+            ):
                 while not simulation_done.is_set():
                     elapsed = time.time() - start_time
                     timestep, max_ts, status = current_progress

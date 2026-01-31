@@ -10,6 +10,7 @@ from . import (
     scenario,
     simulate,
     results,
+    config_cmd,
 )
 
 __all__ = [
@@ -22,4 +23,5 @@ __all__ = [
     "scenario",
     "simulate",
     "results",
+    "config_cmd",
 ]

@@ -51,4 +51,5 @@ from .commands import (  # noqa: E402, F401
     scenario,
     simulate,
     results,
+    config_cmd,
 )

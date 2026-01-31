@@ -37,6 +37,51 @@ You can also run `entropy validate` at any point to check a spec file, and `entr
 
 ---
 
+## Configuration
+
+Before starting, configure your providers and models. You can mix and match providers for different phases of the pipeline.
+
+```bash
+# Set pipeline (steps 1-6) to use Claude
+entropy config set pipeline.provider claude
+
+# Set simulation (step 7) to use OpenAI
+entropy config set simulation.provider openai
+
+# Optionally override the simulation model
+entropy config set simulation.model gpt-5-mini
+
+# View current config
+entropy config show
+```
+
+### API Keys
+
+Set your API keys as environment variables (or in a `.env` file):
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...       # For Claude (API key)
+# OR for OAuth:
+export ANTHROPIC_ACCESS_TOKEN=...         # For Claude (OAuth token)
+
+export OPENAI_API_KEY=sk-...              # For OpenAI
+```
+
+### Programmatic Configuration (Package Use)
+
+When using entropy as a library, configure programmatically — no files needed:
+
+```python
+from entropy.config import configure, EntropyConfig, PipelineConfig, SimulationConfig
+
+configure(EntropyConfig(
+    pipeline=PipelineConfig(provider="claude"),
+    simulation=SimulationConfig(provider="openai", model="gpt-5-mini"),
+))
+```
+
+---
+
 ## Step 1: Define the Base Population
 
 ```bash
@@ -385,7 +430,7 @@ These aren't scripted responses. They emerge from each agent's unique combinatio
 |---|---|---|
 | **Arg** | `scenario_file` | Scenario spec YAML |
 | **Opt** | `--output` / `-o` | Output results directory **(required)** |
-| **Opt** | `--model` / `-m` | LLM model for reasoning (default: `gpt-5-mini`) |
+| **Opt** | `--model` / `-m` | LLM model for reasoning (default: from `entropy config`) |
 | **Opt** | `--threshold` / `-t` | Multi-touch threshold for re-reasoning (default: `3`) |
 | **Opt** | `--seed` | Random seed for reproducibility |
 | **Opt** | `--quiet` / `-q` | Suppress progress output |
@@ -477,6 +522,64 @@ Checks for:
 |---|---|---|
 | **Arg** | `spec_file` | Spec file to validate (`.yaml` or `.scenario.yaml`) |
 | **Opt** | `--strict` | Treat warnings as errors (population specs only) |
+
+---
+
+## Managing Configuration
+
+```bash
+entropy config show
+entropy config set pipeline.provider claude
+entropy config set simulation.model gpt-5-mini
+entropy config reset
+```
+
+Entropy uses a **two-zone configuration** system. The **pipeline** zone controls which provider and models are used for population and scenario building (steps 1-6). The **simulation** zone controls agent reasoning (step 7). This lets you use a powerful model for building (e.g., Claude) and a fast/cheap model for simulation (e.g., GPT-5-mini).
+
+Config is stored at `~/.config/entropy/config.json` and managed exclusively through this command.
+
+### Actions
+
+| Action | Description |
+|--------|-------------|
+| `show` | Display current resolved configuration, API key status, and config file location |
+| `set <key> <value>` | Set a config value and persist to disk |
+| `reset` | Delete config file and return to defaults |
+
+### Available Keys
+
+| Key | Description | Default |
+|-----|-------------|---------|
+| `pipeline.provider` | LLM provider for steps 1-6 (`openai` or `claude`) | `openai` |
+| `pipeline.model_simple` | Model override for simple calls (sufficiency checks) | provider default |
+| `pipeline.model_reasoning` | Model override for reasoning calls (attribute selection, hydration) | provider default |
+| `pipeline.model_research` | Model override for research calls (web search + reasoning) | provider default |
+| `simulation.provider` | LLM provider for step 7 (`openai` or `claude`) | `openai` |
+| `simulation.model` | Model for agent reasoning | provider default |
+| `simulation.max_concurrent` | Max concurrent LLM calls during simulation | `50` |
+
+### Resolution Order
+
+Config values are resolved in this order (first wins):
+
+1. CLI flag (e.g., `--model gpt-5-mini` on `entropy simulate`)
+2. Environment variable (e.g., `SIMULATION_MODEL`, `PIPELINE_PROVIDER`)
+3. Config file (`~/.config/entropy/config.json`)
+4. Provider default
+
+### Environment Variables
+
+API keys are always read from environment variables (never stored in config):
+
+| Variable | Purpose |
+|----------|---------|
+| `OPENAI_API_KEY` | OpenAI API key |
+| `ANTHROPIC_API_KEY` | Anthropic API key |
+| `ANTHROPIC_ACCESS_TOKEN` | Anthropic OAuth token (alternative to API key) |
+| `LLM_PROVIDER` | Legacy: sets both pipeline and simulation provider |
+| `PIPELINE_PROVIDER` | Override pipeline provider |
+| `SIMULATION_PROVIDER` | Override simulation provider |
+| `SIMULATION_MODEL` | Override simulation model |
 
 ---
 

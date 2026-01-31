@@ -1,32 +1,144 @@
-"""Configuration management for Entropy."""
+"""Configuration management for Entropy.
 
-from pathlib import Path
+Two-zone config system:
+- pipeline: provider + models for phases 1-2 (spec, extend, sample, network, persona, scenario)
+- simulation: provider + model for phase 3 (agent reasoning)
+
+Config resolution order:
+1. Programmatic (EntropyConfig constructed in code)
+2. Config file (~/.config/entropy/config.json, managed by `entropy config`)
+3. Environment variables (OPENAI_API_KEY, ANTHROPIC_API_KEY, etc.)
+4. Hardcoded defaults
+
+API keys are ALWAYS from env vars — never stored in config file.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+from dataclasses import dataclass, field, asdict
 from functools import lru_cache
+from pathlib import Path
+from typing import Any
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Settings(BaseSettings):
-    """Application settings loaded from environment variables."""
+# ---------------------------------------------------------------------------
+# Config file location
+# ---------------------------------------------------------------------------
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
+CONFIG_DIR = Path.home() / ".config" / "entropy"
+CONFIG_FILE = CONFIG_DIR / "config.json"
 
-    # OpenAI
-    openai_api_key: str = ""
 
-    # LM Studio (Phase 3)
-    lmstudio_base_url: str = "http://localhost:1234/v1"
-    lmstudio_model: str = "llama-3.2-3b"
+# ---------------------------------------------------------------------------
+# Two-zone config dataclasses
+# ---------------------------------------------------------------------------
 
-    # Database
+
+@dataclass
+class PipelineConfig:
+    """Config for phases 1-2: spec, extend, sample, network, persona, scenario."""
+
+    provider: str = "openai"
+    model_simple: str = ""  # empty = provider default
+    model_reasoning: str = ""  # empty = provider default
+    model_research: str = ""  # empty = provider default
+
+
+@dataclass
+class SimulationConfig:
+    """Config for phase 3: agent reasoning during simulation."""
+
+    provider: str = "openai"
+    model: str = ""  # empty = provider default
+    max_concurrent: int = 50
+
+
+@dataclass
+class EntropyConfig:
+    """Top-level entropy configuration.
+
+    Construct programmatically for package use, or load from config file for CLI use.
+
+    Examples:
+        # Package use — no files needed
+        config = EntropyConfig(
+            pipeline=PipelineConfig(provider="claude"),
+            simulation=SimulationConfig(provider="openai", model="gpt-5-mini"),
+        )
+
+        # CLI use — loads from ~/.config/entropy/config.json
+        config = EntropyConfig.load()
+
+        # Override just simulation
+        config = EntropyConfig.load()
+        config.simulation.model = "gpt-5-nano"
+    """
+
+    pipeline: PipelineConfig = field(default_factory=PipelineConfig)
+    simulation: SimulationConfig = field(default_factory=SimulationConfig)
+
+    # Non-zone settings
     db_path: str = "./storage/entropy.db"
-
-    # Defaults
     default_population_size: int = 1000
+
+    @classmethod
+    def load(cls) -> EntropyConfig:
+        """Load config from file + env vars.
+
+        Priority: config.json values > env var values > defaults.
+        """
+        config = cls()
+
+        # Layer 1: Load from config file if it exists
+        if CONFIG_FILE.exists():
+            try:
+                with open(CONFIG_FILE) as f:
+                    data = json.load(f)
+                _apply_dict(config, data)
+            except (json.JSONDecodeError, OSError):
+                pass  # Silently fall back to defaults on corrupt file
+
+        # Layer 2: Env var overrides (backwards compat with old .env setup)
+        if provider := os.environ.get("LLM_PROVIDER"):
+            # Legacy: single provider applied to both zones
+            config.pipeline.provider = provider
+            config.simulation.provider = provider
+        if val := os.environ.get("PIPELINE_PROVIDER"):
+            config.pipeline.provider = val
+        if val := os.environ.get("SIMULATION_PROVIDER"):
+            config.simulation.provider = val
+        if val := os.environ.get("MODEL_SIMPLE"):
+            config.pipeline.model_simple = val
+        if val := os.environ.get("MODEL_REASONING"):
+            config.pipeline.model_reasoning = val
+        if val := os.environ.get("MODEL_RESEARCH"):
+            config.pipeline.model_research = val
+        if val := os.environ.get("SIMULATION_MODEL"):
+            config.simulation.model = val
+        if val := os.environ.get("DB_PATH"):
+            config.db_path = val
+        if val := os.environ.get("DEFAULT_POPULATION_SIZE"):
+            config.default_population_size = int(val)
+
+        return config
+
+    def save(self) -> None:
+        """Save config to ~/.config/entropy/config.json."""
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        data = asdict(self)
+        # Don't persist non-zone settings that are better as env vars
+        data.pop("db_path", None)
+        data.pop("default_population_size", None)
+        with open(CONFIG_FILE, "w") as f:
+            json.dump(data, f, indent=2)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dict for display."""
+        return asdict(self)
 
     @property
     def db_path_resolved(self) -> Path:
@@ -43,7 +155,124 @@ class Settings(BaseSettings):
         return path
 
 
+def _apply_dict(config: EntropyConfig, data: dict) -> None:
+    """Apply a dict of values onto an EntropyConfig."""
+    if "pipeline" in data and isinstance(data["pipeline"], dict):
+        for k, v in data["pipeline"].items():
+            if hasattr(config.pipeline, k):
+                setattr(config.pipeline, k, v)
+    if "simulation" in data and isinstance(data["simulation"], dict):
+        for k, v in data["simulation"].items():
+            if hasattr(config.simulation, k):
+                setattr(config.simulation, k, v)
+    if "db_path" in data:
+        config.db_path = data["db_path"]
+    if "default_population_size" in data:
+        config.default_population_size = int(data["default_population_size"])
+
+
+# ---------------------------------------------------------------------------
+# API key resolution (always from env vars)
+# ---------------------------------------------------------------------------
+
+
+def get_api_key(provider: str) -> str:
+    """Get API key for a provider from environment variables.
+
+    Supports:
+        - openai: OPENAI_API_KEY
+        - claude: ANTHROPIC_API_KEY or ANTHROPIC_ACCESS_TOKEN (OAuth)
+
+    Returns empty string if not found (providers will raise on missing keys).
+    """
+    if provider == "openai":
+        return os.environ.get("OPENAI_API_KEY", "")
+    elif provider == "claude":
+        # API key takes precedence, fall back to OAuth access token
+        return os.environ.get("ANTHROPIC_API_KEY", "") or os.environ.get(
+            "ANTHROPIC_ACCESS_TOKEN", ""
+        )
+    return ""
+
+
+# ---------------------------------------------------------------------------
+# Global config singleton (for backwards compat and convenience)
+# ---------------------------------------------------------------------------
+
+_config: EntropyConfig | None = None
+
+
+def get_config() -> EntropyConfig:
+    """Get the global EntropyConfig instance.
+
+    First call loads from file + env vars. Subsequent calls return cached instance.
+    Use configure() to replace the global config programmatically.
+    """
+    global _config
+    if _config is None:
+        _config = EntropyConfig.load()
+    return _config
+
+
+def configure(config: EntropyConfig) -> None:
+    """Set the global EntropyConfig programmatically.
+
+    Use this when entropy is used as a package:
+        from entropy.config import configure, EntropyConfig, PipelineConfig
+        configure(EntropyConfig(pipeline=PipelineConfig(provider="claude")))
+    """
+    global _config
+    _config = config
+
+
+def reset_config() -> None:
+    """Reset the global config (forces reload on next get_config())."""
+    global _config
+    _config = None
+
+
+# ---------------------------------------------------------------------------
+# Backwards compatibility — old Settings / get_settings interface
+# ---------------------------------------------------------------------------
+
+
+class Settings(BaseSettings):
+    """DEPRECATED: Use EntropyConfig instead.
+
+    Kept for backwards compatibility. Loads from .env file.
+    """
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    llm_provider: str = "openai"
+    openai_api_key: str = ""
+    anthropic_api_key: str = ""
+    model_simple: str = ""
+    model_reasoning: str = ""
+    model_research: str = ""
+    lmstudio_base_url: str = "http://localhost:1234/v1"
+    lmstudio_model: str = "llama-3.2-3b"
+    db_path: str = "./storage/entropy.db"
+    default_population_size: int = 1000
+
+    @property
+    def db_path_resolved(self) -> Path:
+        path = Path(self.db_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        return path
+
+    @property
+    def cache_dir(self) -> Path:
+        path = Path("./data/cache")
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+
 @lru_cache
 def get_settings() -> Settings:
-    """Get cached settings instance."""
+    """DEPRECATED: Use get_config() instead. Kept for backwards compatibility."""
     return Settings()

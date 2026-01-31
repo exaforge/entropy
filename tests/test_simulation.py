@@ -144,7 +144,7 @@ class TestSimulationModels:
             scenario_path="scenario.yaml",
             output_dir="results/",
         )
-        assert config.model == "gpt-5-mini"
+        assert config.model == ""  # Empty = resolved from entropy config at runtime
         assert config.reasoning_effort == "low"
         assert config.multi_touch_threshold == 3
 

@@ -148,9 +148,7 @@ class SimulationEngine:
         for i, agent in enumerate(agents):
             agent_id = agent.get("_id", str(i))
             self._personas[agent_id] = generate_persona(
-                agent, 
-                population_spec, 
-                persona_config=persona_config
+                agent, population_spec, persona_config=persona_config
             )
 
         # Tracking variables
@@ -237,7 +235,7 @@ class SimulationEngine:
         Returns:
             TimestepSummary for this timestep
         """
-        timestep_start = time.time()
+        time.time()
         logger.info(f"[TIMESTEP {timestep}] ========== STARTING ==========")
 
         # 1. Apply seed exposures
@@ -288,8 +286,9 @@ class SimulationEngine:
 
         logger.info(
             f"[TIMESTEP {timestep}] Reasoning complete: {len(results)} agents in {reasoning_elapsed:.2f}s "
-            f"({reasoning_elapsed/len(results):.2f}s/agent avg)" if results else
-            f"[TIMESTEP {timestep}] No agents reasoned"
+            f"({reasoning_elapsed / len(results):.2f}s/agent avg)"
+            if results
+            else f"[TIMESTEP {timestep}] No agents reasoned"
         )
 
         # 6. Process results and update states
@@ -546,7 +545,7 @@ class SimulationEngine:
 def run_simulation(
     scenario_path: str | Path,
     output_dir: str | Path,
-    model: str = "gpt-5-mini",
+    model: str = "",
     multi_touch_threshold: int = 3,
     random_seed: int | None = None,
     on_progress: Callable[[int, int, str], None] | None = None,

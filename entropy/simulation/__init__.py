@@ -6,11 +6,10 @@ with agent reasoning, network propagation, and state evolution.
 Usage:
     from entropy.simulation import run_simulation, SimulationEngine
 
-    # Simple API
+    # Simple API (model resolved from entropy config)
     summary = run_simulation(
         scenario_path="scenario.yaml",
         output_dir="results/",
-        model="gpt-5-mini",
     )
 
     # Or manual control

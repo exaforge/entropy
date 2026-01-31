@@ -167,7 +167,8 @@ class SimulationRunConfig(BaseModel):
     scenario_path: str = Field(description="Path to scenario YAML")
     output_dir: str = Field(description="Directory for results output")
     model: str = Field(
-        default="gpt-5-mini", description="LLM model for agent reasoning"
+        default="",
+        description="LLM model for agent reasoning (empty = use config default)",
     )
     reasoning_effort: str = Field(default="low", description="Reasoning effort level")
     multi_touch_threshold: int = Field(

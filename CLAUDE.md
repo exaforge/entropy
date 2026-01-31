@@ -12,7 +12,16 @@ Competitor reference: [Aaru](https://aaru.com) operates in the same space (multi
 
 ```bash
 pip install -e ".[dev]"      # Install with dev deps
-cp .env.example .env         # Set OPENAI_API_KEY
+
+# Set API keys (secrets only — in .env or env vars)
+export ANTHROPIC_API_KEY=sk-ant-...
+export OPENAI_API_KEY=sk-...
+
+# Configure providers and models
+entropy config set pipeline.provider claude        # Use Claude for population/scenario building
+entropy config set simulation.provider openai      # Use OpenAI for agent reasoning
+entropy config set simulation.model gpt-5-mini     # Override simulation model
+entropy config show                                # View current config
 
 pytest                       # Run all tests
 pytest tests/test_sampler.py # Single test file
@@ -81,14 +90,25 @@ Three phases, each mapping to a package under `entropy/`:
 
 ## LLM Integration (`entropy/core/llm.py`)
 
-All LLM calls go through this file — never call OpenAI directly elsewhere. Three tiers:
+All LLM calls go through this file — never call providers directly elsewhere. Two-zone routing:
 
-| Function | Model | Tools | Use |
-|----------|-------|-------|-----|
-| `simple_call()` | gpt-5-mini | none | Sufficiency checks, simple extractions |
-| `reasoning_call()` | gpt-5 | none | Attribute selection, hydration, scenario compilation. Supports validator callback + retry |
-| `agentic_research()` | gpt-5 | web_search | Distribution hydration with real-world data. Extracts source URLs |
-| `simple_call_async()` | configurable | none | Batch simulation reasoning (async) |
+**Pipeline zone** (phases 1-2: spec, extend, persona, scenario) — configured via `entropy config set pipeline.*`:
+
+| Function | Default Model | Tools | Use |
+|----------|--------------|-------|-----|
+| `simple_call()` | provider default (haiku/gpt-5-mini) | none | Sufficiency checks, simple extractions |
+| `reasoning_call()` | provider default (sonnet/gpt-5) | none | Attribute selection, hydration, scenario compilation. Supports validator callback + retry |
+| `agentic_research()` | provider default (sonnet/gpt-5) | web_search | Distribution hydration with real-world data. Extracts source URLs |
+
+**Simulation zone** (phase 3: agent reasoning) — configured via `entropy config set simulation.*`:
+
+| Function | Default Model | Tools | Use |
+|----------|--------------|-------|-----|
+| `simple_call_async()` | provider default | none | Batch simulation reasoning (async) |
+
+**Provider abstraction** (`entropy/core/providers/`): `LLMProvider` base class with `OpenAIProvider` and `ClaudeProvider` implementations. Factory functions `get_pipeline_provider()` and `get_simulation_provider()` read from `EntropyConfig`.
+
+**Config** (`entropy/config.py`): `EntropyConfig` with `PipelineConfig` and `SimulationConfig` zones. Loaded from `~/.config/entropy/config.json` (managed by `entropy config`), with env var fallback. API keys always from env vars (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `ANTHROPIC_ACCESS_TOKEN`). For package use: `from entropy.config import configure, EntropyConfig`.
 
 All calls use structured output (`response_format: json_schema`). Failed validations are fed back as "PREVIOUS ATTEMPT FAILED" prompts for self-correction.
 
