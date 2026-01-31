@@ -165,7 +165,7 @@ Scenario validation (`entropy/scenario/validator.py`): attribute reference valid
 
 `EntropyConfig` with `PipelineConfig` and `SimZoneConfig` zones. Resolution order: CLI flags > env vars > config file (`~/.config/entropy/config.json`) > defaults.
 
-API keys always from env vars (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `ANTHROPIC_ACCESS_TOKEN`).
+API keys always from env vars (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`).
 
 `SimZoneConfig` fields: `provider`, `model`, `pivotal_model`, `routine_model`, `max_concurrent`, `rate_tier`, `rpm_override`, `tpm_override`.
 

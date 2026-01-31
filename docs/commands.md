@@ -60,10 +60,7 @@ entropy config show
 Set your API keys as environment variables (or in a `.env` file):
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...       # For Claude (API key)
-# OR for OAuth:
-export ANTHROPIC_ACCESS_TOKEN=...         # For Claude (OAuth token)
-
+export ANTHROPIC_API_KEY=sk-ant-...       # For Claude
 export OPENAI_API_KEY=sk-...              # For OpenAI
 ```
 
@@ -535,7 +532,6 @@ API keys are always read from environment variables (never stored in config):
 |----------|---------|
 | `OPENAI_API_KEY` | OpenAI API key |
 | `ANTHROPIC_API_KEY` | Anthropic API key |
-| `ANTHROPIC_ACCESS_TOKEN` | Anthropic OAuth token (alternative to API key) |
 | `PIPELINE_PROVIDER` | Override pipeline provider |
 | `SIMULATION_PROVIDER` | Override simulation provider |
 | `SIMULATION_MODEL` | Override simulation model |
