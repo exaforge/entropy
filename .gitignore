@@ -64,3 +64,7 @@ __pypackages__/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
+
+# Private (competitive intel, internal planning, todos)
+private/
+todo/
