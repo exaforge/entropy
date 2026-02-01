@@ -15,6 +15,7 @@ import time
 from typing import Any
 
 from ..core.llm import simple_call, simple_call_async
+from ..core.providers import close_simulation_provider
 from ..core.models import (
     ExposureRecord,
     MemoryEntry,
@@ -783,7 +784,14 @@ def batch_reason_agents(
                 # naturally gates as tasks complete and new ones enter
                 await asyncio.sleep(stagger_interval)
 
-        return await asyncio.gather(*tasks)
+        results = await asyncio.gather(*tasks)
+
+        # Close the async HTTP client before the event loop shuts down.
+        # Without this, orphaned httpx connections produce "Event loop is
+        # closed" errors during garbage collection.
+        await close_simulation_provider()
+
+        return results
 
     batch_start = time.time()
     results = asyncio.run(run_all())

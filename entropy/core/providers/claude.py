@@ -93,7 +93,9 @@ class ClaudeProvider(LLMProvider):
         return anthropic.Anthropic(api_key=self._api_key)
 
     def _get_async_client(self) -> anthropic.AsyncAnthropic:
-        return anthropic.AsyncAnthropic(api_key=self._api_key)
+        if self._cached_async_client is None:
+            self._cached_async_client = anthropic.AsyncAnthropic(api_key=self._api_key)
+        return self._cached_async_client
 
     def simple_call(
         self,

@@ -40,7 +40,9 @@ class OpenAIProvider(LLMProvider):
         return OpenAI(api_key=self._api_key)
 
     def _get_async_client(self) -> AsyncOpenAI:
-        return AsyncOpenAI(api_key=self._api_key)
+        if self._cached_async_client is None:
+            self._cached_async_client = AsyncOpenAI(api_key=self._api_key)
+        return self._cached_async_client
 
     def simple_call(
         self,

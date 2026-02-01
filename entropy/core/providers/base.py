@@ -23,6 +23,17 @@ class LLMProvider(ABC):
 
     def __init__(self, api_key: str) -> None:
         self._api_key = api_key
+        self._cached_async_client = None
+
+    async def close_async(self) -> None:
+        """Close the cached async client to release connections cleanly.
+
+        Must be called before the event loop shuts down to avoid
+        'Event loop is closed' errors from orphaned httpx connections.
+        """
+        if self._cached_async_client is not None:
+            await self._cached_async_client.close()
+            self._cached_async_client = None
 
     @property
     @abstractmethod
