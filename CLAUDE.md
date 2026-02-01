@@ -41,9 +41,10 @@ CLI entry point: `entropy` (defined in `pyproject.toml` → `entropy.cli:app`). 
 entropy spec → entropy extend → entropy sample → entropy network → entropy persona → entropy scenario → entropy simulate
  │
  entropy results
+ entropy estimate
 ```
 
-Each command produces a file consumed by the next. `entropy validate` is a utility runnable at any point. `entropy results` is a viewer for simulation output.
+Each command produces a file consumed by the next. `entropy validate` is a utility runnable at any point. `entropy results` is a viewer for simulation output. `entropy estimate` predicts simulation cost (LLM calls, tokens, USD) without requiring API keys.
 
 ## Architecture
 
@@ -80,21 +81,25 @@ Three phases, each mapping to a package under `entropy/`:
 
 ### Phase 3: Simulation (`entropy/simulation/`)
 
-**Engine** (`engine.py`) runs per-timestep loop:
-1. Apply seed exposures from scenario rules (`propagation.py`)
-2. Propagate through network — conviction-gated sharing (very_uncertain agents don't share)
-3. Select agents to reason — first exposure OR multi-touch threshold exceeded (default: 3 new exposures since last reasoning)
-4. **Two-pass async LLM reasoning** (`reasoning.py`) — Rate-limiter-controlled (token bucket per provider/model):
-   - **Pass 1 (role-play)**: Agent reasons in first person with no categorical enums. Produces reasoning, public_statement, sentiment, conviction level, will_share. Memory trace (last 3 reasoning summaries) is fed back for re-reasoning agents.
+**Engine** (`engine.py`) runs per-timestep loop, decomposed into sub-functions:
+1. **`_apply_exposures(timestep)`** — Apply seed exposures from scenario rules (`propagation.py`), then propagate through network via conviction-gated sharing (very_uncertain agents don't share). Uses pre-built adjacency list for O(1) neighbor lookups.
+2. **`_reason_agents(timestep)`** — Select agents to reason (first exposure OR multi-touch threshold exceeded, default: 3 new exposures since last reasoning), build reasoning contexts, run two-pass async LLM reasoning (`reasoning.py`, rate-limiter-controlled):
+   - **Pass 1 (role-play)**: Agent reasons in first person with no categorical enums. Produces reasoning, public_statement, sentiment, conviction (0-100 integer, bucketed post-hoc), will_share. Memory trace (last 3 reasoning summaries) is fed back for re-reasoning agents.
    - **Pass 2 (classification)**: A cheap model classifies the free-text reasoning into scenario-defined categorical/boolean/float outcomes. Position is extracted here — it is output-only, never used in peer influence.
-5. **Conviction-based flip resistance**: Firm+ conviction agents reject position flips unless new conviction is moderate+
-6. **Semantic peer influence**: Agents see peers' public_statement + sentiment tone, NOT position labels
-7. Update state (`state.py`) — SQLite-backed with indexed tables for agent_states, exposures, memory_traces, timeline
-8. Check stopping conditions (`stopping.py`) — Compound conditions like `"exposure_rate > 0.95 and no_state_changes_for > 10"`, convergence detection via sentiment variance
+3. **`_apply_state_updates(timestep, results, old_states)`** — Process reasoning results: conviction-based flip resistance (firm+ agents reject flips unless new conviction is moderate+), conviction-gated sharing, state persistence. State updates are batched via `batch_update_states()`.
+4. Compute timestep summary, check stopping conditions (`stopping.py`) — Compound conditions like `"exposure_rate > 0.95 and no_state_changes_for > 10"`, convergence detection via sentiment variance.
+
+**Semantic peer influence**: Agents see peers' `public_statement` + sentiment tone, NOT position labels.
+
+**Adjacency list**: Built at engine init from network edges (both directions). Stored as `dict[str, list[tuple[str, dict]]]`. Passed to `propagate_through_network()` and used in `_get_peer_opinions()` for O(1) neighbor lookups instead of O(E) scans.
 
 **Two-pass reasoning rationale**: Single-pass reasoning caused 83% of agents to pick safe middle options (central tendency bias). Splitting role-play from classification fixes this — agents reason naturally in Pass 1, then a cheap model maps to categories in Pass 2.
 
-**Conviction system**: Agents pick from categorical levels (`very_uncertain` / `leaning` / `moderate` / `firm` / `absolute`), mapped to floats (0.1/0.3/0.5/0.7/0.9) only for storage and threshold math. Agents never see numeric values.
+**Transaction batching** (`state.py`): All writes within a timestep are wrapped in a single SQLite transaction via `state_manager.transaction()` context manager. Commits on success, rolls back on exception. Individual state methods (`record_exposure`, `update_agent_state`, `save_memory_entry`, `log_event`, `save_timestep_summary`) no longer commit individually — they rely on the transaction boundary. Setup methods (`_create_schema`, `initialize_agents`) retain their own commits.
+
+**Conviction system**: Agents output a 0-100 integer score on a free scale (with descriptive anchors: 0=no idea, 25=leaning, 50=clear opinion, 75=quite sure, 100=certain). `score_to_conviction_float()` buckets it immediately: 0-15→0.1 (very_uncertain), 16-35→0.3 (leaning), 36-60→0.5 (moderate), 61-85→0.7 (firm), 86-100→0.9 (absolute). Agents never see categorical labels or float values — only the 0-100 scale. On re-reasoning, memory traces show the bucketed label (e.g. "you felt *moderate* about this") via `float_to_conviction()`. Engine conviction thresholds reference `CONVICTION_MAP[ConvictionLevel.*]` constants, not hardcoded floats.
+
+**Cost estimation** (`simulation/estimator.py`): `entropy estimate` runs a simplified SIR-like propagation model to predict LLM calls per timestep without making any API calls. Token counts estimated from persona size + scenario content. Pricing from `core/pricing.py` model database. Supports `--verbose` for per-timestep breakdown.
 
 **Rate limiter** (`core/rate_limiter.py`): Token bucket with dual RPM + TPM buckets. Provider-aware defaults from `core/rate_limits.py` (Anthropic/OpenAI, tiers 1-4). Replaces the old hardcoded `Semaphore(50)`. CLI flags: `--rate-tier`, config: `simulation.rate_tier`, `simulation.rpm_override`, `simulation.tpm_override`.
 
@@ -120,7 +125,7 @@ All LLM calls go through this file — never call providers directly elsewhere. 
 
 Two-pass model routing: Pass 1 uses `simulation.model` (pivotal reasoning). Pass 2 uses `simulation.routine_model` (cheap classification). Both default to provider default if not set. CLI: `--model`, `--pivotal-model`, `--routine-model`. Standard inference only — no thinking/extended models (no o1, o3, extended thinking).
 
-**Provider abstraction** (`entropy/core/providers/`): `LLMProvider` base class with `OpenAIProvider` and `ClaudeProvider` implementations. Factory functions `get_pipeline_provider()` and `get_simulation_provider()` read from `EntropyConfig`.
+**Provider abstraction** (`entropy/core/providers/`): `LLMProvider` base class with `OpenAIProvider` and `ClaudeProvider` implementations. Factory functions `get_pipeline_provider()` and `get_simulation_provider()` read from `EntropyConfig`. Base class provides `_retry_with_validation()` — shared validation-retry loop used by both providers' `reasoning_call()` and `agentic_research()`. Both providers implement `_with_retry()` / `_with_retry_async()` for transient API errors (APIConnectionError, InternalServerError, RateLimitError) with exponential backoff (`2^attempt + random(0,1)` seconds, max 3 retries).
 
 **Config** (`entropy/config.py`): `EntropyConfig` with `PipelineConfig` and `SimZoneConfig` zones. Resolution order: env vars > config file (`~/.config/entropy/config.json`) > defaults. API keys always from env vars (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`). For package use: `from entropy.config import configure, EntropyConfig`.
 
@@ -156,15 +161,26 @@ Scenario validation (`entropy/scenario/validator.py`): attribute reference valid
 - Exposure credibility: `event_credibility * channel_credibility` for seed, fixed 0.85 for peer
 - "Position" = first required categorical outcome (extracted in Pass 2, used for aggregation/output only — never used in peer influence)
 - Peer influence is semantic: agents see neighbors' `public_statement` + sentiment tone, not position labels
-- Conviction is categorical for agents (`very_uncertain`/`leaning`/`moderate`/`firm`/`absolute`), mapped to floats (0.1–0.9) only for storage/thresholds
+- Conviction: agents output 0-100 integer, bucketed to 5 float levels (0.1/0.3/0.5/0.7/0.9) via `score_to_conviction_float()`. Agents see only the 0-100 scale; memory traces show categorical labels. Engine thresholds reference `CONVICTION_MAP[ConvictionLevel.*]`
 - Memory traces: 3-entry sliding window per agent, fed back into reasoning prompts for re-reasoning
+- Progress callbacks use typed `Protocol` classes from `entropy/utils/callbacks.py` (`StepProgressCallback`, `TimestepProgressCallback`, `ItemProgressCallback`, `HydrationProgressCallback`, `NetworkProgressCallback`) — structurally compatible with plain callables via duck typing
 - The `persona` command generates detailed persona configs; `extend` still generates a simpler `persona_template` for backwards compatibility
 - Simulation auto-detects `{population_stem}.persona.yaml` and uses the new rendering if present
 - Network config defaults in `network/config.py` are currently hardcoded for the German surgeons example and need generalization
 
 ## Tests
 
-pytest + pytest-asyncio. Fixtures in `tests/conftest.py` include seeded RNG (`Random(42)`), minimal/complex population specs, and sample agents. Six test files covering models, network, sampler, scenario, simulation, validator.
+pytest + pytest-asyncio. Fixtures in `tests/conftest.py` include seeded RNG (`Random(42)`), minimal/complex population specs, and sample agents. Twelve test files:
+
+- `test_models.py`, `test_network.py`, `test_sampler.py`, `test_scenario.py`, `test_simulation.py`, `test_validator.py` — core logic
+- `test_engine.py` — mock-based engine integration (seed exposure, flip resistance, conviction-gated sharing, sub-function decomposition)
+- `test_compiler.py` — scenario compiler pipeline with mocked LLM calls, auto-configuration
+- `test_providers.py` — provider response extraction, transient error retry, validation-retry exhaustion, source URL extraction (mocked HTTP)
+- `test_rate_limiter.py` — token bucket, dual-bucket rate limiter, `for_provider` factory
+- `test_cli.py` — CLI smoke tests (`config show/set`, `validate`, `--version`)
+- `test_estimator.py` — cost estimation, pricing lookup, token estimation
+
+CI: `.github/workflows/test.yml` — lint (ruff check + format) and test (pytest, matrix: Python 3.11/3.12/3.13) via `astral-sh/setup-uv@v4`.
 
 ## File Formats
 

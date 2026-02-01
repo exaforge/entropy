@@ -78,6 +78,60 @@ class LLMProvider(ABC):
         """Async version of simple_call for concurrent API requests."""
         ...
 
+    def _retry_with_validation(
+        self,
+        call_fn,
+        prompt: str,
+        validator: ValidatorCallback | None,
+        max_retries: int,
+        on_retry: RetryCallback | None,
+        extract_error_summary_fn,
+        initial_prompt: str | None = None,
+    ) -> dict:
+        """Shared validation-retry loop for reasoning_call and agentic_research.
+
+        Args:
+            call_fn: Callable(effective_prompt) -> result_dict.
+                     Called each attempt with the (possibly error-prepended) prompt.
+            prompt: Base prompt text used as the suffix on validation retries.
+            validator: Optional validator callback.
+            max_retries: Max validation retries.
+            on_retry: Optional retry notification callback.
+            extract_error_summary_fn: Function to shorten error messages.
+            initial_prompt: If provided, used for the first call instead of prompt.
+                This allows previous_errors to be included on the first attempt
+                without persisting them across validation retries.
+
+        Returns:
+            Validated result dict (or last attempt if retries exhausted).
+        """
+        effective_prompt = initial_prompt if initial_prompt is not None else prompt
+        attempts = 0
+        last_error_summary = ""
+        result = {}
+
+        while attempts <= max_retries:
+            result = call_fn(effective_prompt)
+
+            if validator is None:
+                return result
+
+            is_valid, error_msg = validator(result)
+            if is_valid:
+                return result
+
+            attempts += 1
+            last_error_summary = extract_error_summary_fn(error_msg)
+
+            if attempts <= max_retries:
+                if on_retry:
+                    on_retry(attempts, max_retries, last_error_summary)
+                effective_prompt = f"{error_msg}\n\n---\n\n{prompt}"
+
+        if on_retry:
+            on_retry(max_retries + 1, max_retries, f"EXHAUSTED: {last_error_summary}")
+        return result
+
     @abstractmethod
     def reasoning_call(
         self,

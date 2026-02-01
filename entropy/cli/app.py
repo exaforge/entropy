@@ -22,6 +22,14 @@ def get_json_mode() -> bool:
     return _json_mode
 
 
+def _version_callback(value: bool) -> None:
+    if value:
+        from .. import __version__
+
+        print(f"entropy {__version__}")
+        raise typer.Exit()
+
+
 @app.callback()
 def main_callback(
     json_output: Annotated[
@@ -29,6 +37,15 @@ def main_callback(
         typer.Option(
             "--json",
             help="Output machine-readable JSON instead of human-friendly text",
+            is_eager=True,
+        ),
+    ] = False,
+    version: Annotated[
+        bool,
+        typer.Option(
+            "--version",
+            help="Show version and exit",
+            callback=_version_callback,
             is_eager=True,
         ),
     ] = False,
@@ -50,6 +67,7 @@ from .commands import (  # noqa: E402, F401
     network,
     scenario,
     simulate,
+    estimate,
     results,
     config_cmd,
 )

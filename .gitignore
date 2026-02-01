@@ -53,3 +53,14 @@ Thumbs.db
 
 austin/
 examples/
+
+# Simulation artifacts
+*.sqlite
+*.db
+*.jsonl
+
+# Tool caches
+__pypackages__/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/

@@ -14,14 +14,13 @@ error feedback if syntax errors are detected. This catches issues like
 unterminated strings, invalid formulas, etc. before proceeding.
 """
 
-from typing import Callable
-
 from ...core.llm import RetryCallback
 from ...core.models import (
     AttributeSpec,
     DiscoveredAttribute,
     HydratedAttribute,
 )
+from ...utils.callbacks import HydrationProgressCallback
 from .hydrators import (
     hydrate_independent,
     hydrate_derived,
@@ -34,8 +33,7 @@ from .hydrators import (
 # Main Orchestrator
 # =============================================================================
 
-# Type alias for progress callback: (step: str, status: str, count: int | None) -> None
-ProgressCallback = Callable[[str, str, int | None], None]
+ProgressCallback = HydrationProgressCallback
 
 
 def hydrate_attributes(

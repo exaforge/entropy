@@ -7,9 +7,10 @@ import json
 import random
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from ...core.models import Edge, NetworkResult
+from ...utils.callbacks import NetworkProgressCallback
 from .config import NetworkConfig, SENIORITY_LEVELS
 from .similarity import (
     compute_similarity,
@@ -168,7 +169,7 @@ def _calibrate_base_rate(
 def generate_network(
     agents: list[dict[str, Any]],
     config: NetworkConfig | None = None,
-    on_progress: Callable[[str, int, int], None] | None = None,
+    on_progress: NetworkProgressCallback | None = None,
 ) -> NetworkResult:
     """Generate a social network from sampled agents.
 
@@ -356,7 +357,7 @@ def generate_network(
 def generate_network_with_metrics(
     agents: list[dict[str, Any]],
     config: NetworkConfig | None = None,
-    on_progress: Callable[[str, int, int], None] | None = None,
+    on_progress: NetworkProgressCallback | None = None,
 ) -> NetworkResult:
     """Generate network and compute all metrics.
 
