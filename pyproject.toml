@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "entropy-predict"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Predictive intelligence through agent-based population simulation"
 readme = "README.md"
 license = "MIT"
@@ -53,6 +53,9 @@ Issues = "https://github.com/exaforge/entropy/issues"
 
 [project.scripts]
 entropy = "entropy.cli:app"
+
+[tool.hatch.version]
+path = "entropy/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["entropy"]
