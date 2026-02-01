@@ -160,7 +160,7 @@ def build_pass1_schema() -> dict[str, Any]:
         "properties": {
             "reasoning": {
                 "type": "string",
-                "description": "Your internal thought process — what goes through your mind. 2-4 sentences.",
+                "description": "What goes through your mind — your gut reaction in 2-4 sentences.",
             },
             "public_statement": {
                 "type": "string",
