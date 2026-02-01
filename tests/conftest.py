@@ -341,6 +341,42 @@ def complex_population_spec() -> PopulationSpec:
 
 
 @pytest.fixture
+def ten_agents() -> list[dict]:
+    """Ten agents with varied attributes for propagation/integration tests."""
+    roles = ["junior", "mid", "senior"]
+    return [
+        {"_id": f"a{i}", "age": 25 + i * 5, "role": roles[i % 3]}
+        for i in range(10)
+    ]
+
+
+@pytest.fixture
+def linear_network() -> dict:
+    """Chain network: a0-a1-a2-...-a9."""
+    return {
+        "meta": {"node_count": 10},
+        "nodes": [{"id": f"a{i}"} for i in range(10)],
+        "edges": [
+            {"source": f"a{i}", "target": f"a{i + 1}", "type": "colleague"}
+            for i in range(9)
+        ],
+    }
+
+
+@pytest.fixture
+def star_network() -> dict:
+    """Star network: a0 is hub, a1-a9 are spokes."""
+    return {
+        "meta": {"node_count": 10},
+        "nodes": [{"id": f"a{i}"} for i in range(10)],
+        "edges": [
+            {"source": "a0", "target": f"a{i}", "type": "colleague"}
+            for i in range(1, 10)
+        ],
+    }
+
+
+@pytest.fixture
 def sample_agents() -> list[dict]:
     """Sample agent data for network tests."""
     return [
