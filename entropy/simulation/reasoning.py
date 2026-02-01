@@ -736,9 +736,16 @@ def batch_reason_agents(
         # When rate limiter is available, size it from max_safe_concurrent.
         if rate_limiter:
             concurrency = rate_limiter.max_safe_concurrent
-            logger.info(f"[BATCH] Concurrency cap from rate limiter: {concurrency}")
+            # Stagger interval: spread launches across the RPM window
+            # e.g. 500 RPM → 8.3 req/s → 120ms between launches
+            stagger_interval = 60.0 / rate_limiter.pivotal.rpm
+            logger.info(
+                f"[BATCH] Concurrency cap: {concurrency}, "
+                f"stagger: {stagger_interval*1000:.0f}ms between launches"
+            )
         else:
             concurrency = max_concurrency
+            stagger_interval = 0.0
         semaphore = asyncio.Semaphore(concurrency)
         completed = [0]
 
@@ -765,7 +772,17 @@ def batch_reason_agents(
 
                 return (ctx.agent_id, result)
 
-        tasks = [reason_with_pacing(ctx) for ctx in contexts]
+        # Stagger task launches to avoid burst of requests hitting API at once.
+        # Each task is created with a small delay so they don't all enter
+        # the semaphore simultaneously.
+        tasks = []
+        for i, ctx in enumerate(contexts):
+            tasks.append(asyncio.create_task(reason_with_pacing(ctx)))
+            if stagger_interval > 0 and i < concurrency - 1:
+                # Only stagger the first batch — after that the semaphore
+                # naturally gates as tasks complete and new ones enter
+                await asyncio.sleep(stagger_interval)
+
         return await asyncio.gather(*tasks)
 
     batch_start = time.time()
