@@ -33,7 +33,7 @@ from ..core.models import (
     TimestepSummary,
     float_to_conviction,
 )
-from ..core.rate_limiter import RateLimiter
+from ..core.rate_limiter import DualRateLimiter
 from ..population.network import load_agents_json
 from ..population.persona import PersonaConfig
 from .state import StateManager
@@ -120,7 +120,7 @@ class SimulationEngine:
         network: dict[str, Any],
         config: SimulationRunConfig,
         persona_config: PersonaConfig | None = None,
-        rate_limiter: RateLimiter | None = None,
+        rate_limiter: DualRateLimiter | None = None,
     ):
         """Initialize simulation engine.
 
@@ -131,7 +131,7 @@ class SimulationEngine:
             network: Network data
             config: Simulation run configuration
             persona_config: Optional PersonaConfig for embodied persona rendering
-            rate_limiter: Optional rate limiter for API pacing
+            rate_limiter: Optional DualRateLimiter for API pacing (pivotal + routine)
         """
         self.scenario = scenario
         self.population_spec = population_spec
@@ -734,16 +734,19 @@ def run_simulation(
         random_seed=random_seed,
     )
 
-    # Create rate limiter
+    # Create dual rate limiter (separate limiters for pivotal and routine models)
     from ..config import get_config
 
     entropy_config = get_config()
     provider = entropy_config.simulation.provider
     effective_model = model or entropy_config.simulation.model or ""
+    effective_pivotal = pivotal_model or effective_model
+    effective_routine = routine_model or entropy_config.simulation.routine_model or ""
 
-    rate_limiter = RateLimiter.for_provider(
+    rate_limiter = DualRateLimiter.create(
         provider=provider,
-        model=effective_model,
+        pivotal_model=effective_pivotal,
+        routine_model=effective_routine,
         tier=rate_tier,
         rpm_override=rpm_override,
         tpm_override=tpm_override,

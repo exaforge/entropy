@@ -431,7 +431,8 @@ async def _reason_agent_two_pass_async(
         context: Reasoning context
         scenario: Scenario specification
         config: Simulation run configuration
-        rate_limiter: Optional rate limiter for API pacing
+        rate_limiter: Optional DualRateLimiter for API pacing
+            (uses .pivotal for Pass 1, .routine for Pass 2)
 
     Returns:
         ReasoningResponse with both passes merged, or None if failed
@@ -448,7 +449,13 @@ async def _reason_agent_two_pass_async(
     for attempt in range(config.max_retries):
         try:
             if rate_limiter:
-                await rate_limiter.acquire(estimated_tokens=800)
+                # Dynamic token estimate from prompt length (4 chars ≈ 1 token)
+                estimated_input = len(pass1_prompt) // 4
+                estimated_output = 300  # structured response
+                await rate_limiter.pivotal.acquire(
+                    estimated_input_tokens=estimated_input,
+                    estimated_output_tokens=estimated_output,
+                )
 
             call_start = time.time()
             pass1_response = await simple_call_async(
@@ -496,7 +503,13 @@ async def _reason_agent_two_pass_async(
         for attempt in range(config.max_retries):
             try:
                 if rate_limiter:
-                    await rate_limiter.acquire(estimated_tokens=200)
+                    # Dynamic token estimate from prompt length
+                    estimated_input = len(pass2_prompt) // 4
+                    estimated_output = 80  # classification is small
+                    await rate_limiter.routine.acquire(
+                        estimated_input_tokens=estimated_input,
+                        estimated_output_tokens=estimated_output,
+                    )
 
                 call_start = time.time()
                 pass2_response = await simple_call_async(
@@ -704,8 +717,8 @@ def batch_reason_agents(
         contexts: List of reasoning contexts
         scenario: Scenario specification
         config: Simulation run configuration
-        max_concurrency: Max concurrent API calls (default 50, used as fallback if no rate limiter)
-        rate_limiter: Optional RateLimiter instance for API pacing
+        max_concurrency: Max concurrent API calls (default 50, fallback if no rate limiter)
+        rate_limiter: Optional DualRateLimiter instance for API pacing
 
     Returns:
         List of (agent_id, response) tuples in original order
@@ -719,35 +732,20 @@ def batch_reason_agents(
     logger.info(f"[BATCH] Starting two-pass async reasoning for {total} agents")
 
     async def run_all():
-        # If no rate limiter, fall back to semaphore
-        semaphore = asyncio.Semaphore(max_concurrency) if not rate_limiter else None
+        # Always use a semaphore to cap concurrent tasks.
+        # When rate limiter is available, size it from max_safe_concurrent.
+        if rate_limiter:
+            concurrency = rate_limiter.max_safe_concurrent
+            logger.info(f"[BATCH] Concurrency cap from rate limiter: {concurrency}")
+        else:
+            concurrency = max_concurrency
+        semaphore = asyncio.Semaphore(concurrency)
         completed = [0]
 
         async def reason_with_pacing(
             ctx: ReasoningContext,
         ) -> tuple[str, ReasoningResponse | None]:
-            if semaphore:
-                async with semaphore:
-                    start = time.time()
-                    result = await _reason_agent_two_pass_async(
-                        ctx, scenario, config, rate_limiter
-                    )
-                    elapsed = time.time() - start
-                    completed[0] += 1
-
-                    if result:
-                        logger.info(
-                            f"[BATCH] {completed[0]}/{total}: {ctx.agent_id} done in {elapsed:.2f}s "
-                            f"(sentiment={result.sentiment}, conviction={float_to_conviction(result.conviction)})"
-                        )
-                    else:
-                        logger.warning(
-                            f"[BATCH] {completed[0]}/{total}: {ctx.agent_id} FAILED"
-                        )
-
-                    return (ctx.agent_id, result)
-            else:
-                # Rate limiter handles pacing internally
+            async with semaphore:
                 start = time.time()
                 result = await _reason_agent_two_pass_async(
                     ctx, scenario, config, rate_limiter
