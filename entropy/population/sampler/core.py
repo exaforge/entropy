@@ -10,7 +10,7 @@ import random
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from ...core.models import (
     PopulationSpec,
@@ -18,6 +18,7 @@ from ...core.models import (
     SamplingStats,
     SamplingResult,
 )
+from ...utils.callbacks import ItemProgressCallback
 from .distributions import sample_distribution, coerce_to_type
 from .modifiers import apply_modifiers_and_sample
 from ...utils.eval_safe import eval_formula, FormulaError
@@ -35,7 +36,7 @@ def sample_population(
     spec: PopulationSpec,
     count: int | None = None,
     seed: int | None = None,
-    on_progress: Callable[[int, int], None] | None = None,
+    on_progress: ItemProgressCallback | None = None,
 ) -> SamplingResult:
     """
     Generate agents from a PopulationSpec.

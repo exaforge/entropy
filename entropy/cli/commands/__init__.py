@@ -9,6 +9,7 @@ from . import (
     persona,
     scenario,
     simulate,
+    estimate,
     results,
     config_cmd,
 )
@@ -22,6 +23,7 @@ __all__ = [
     "persona",
     "scenario",
     "simulate",
+    "estimate",
     "results",
     "config_cmd",
 ]

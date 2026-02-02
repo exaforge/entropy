@@ -18,12 +18,14 @@ import random
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from ..core.models import (
     PopulationSpec,
     ScenarioSpec,
     AgentState,
+    ConvictionLevel,
+    CONVICTION_MAP,
     MemoryEntry,
     PeerOpinion,
     ReasoningContext,
@@ -33,15 +35,16 @@ from ..core.models import (
     TimestepSummary,
     float_to_conviction,
 )
-from ..core.rate_limiter import RateLimiter
+from ..core.rate_limiter import DualRateLimiter
 from ..population.network import load_agents_json
 from ..population.persona import PersonaConfig
 from .state import StateManager
 from .persona import generate_persona
 from .reasoning import batch_reason_agents, create_reasoning_context
-from .propagation import apply_seed_exposures, propagate_through_network, get_neighbors
+from .propagation import apply_seed_exposures, propagate_through_network
 from .stopping import evaluate_stopping_conditions
 from .timeline import TimelineManager
+from ..utils.callbacks import TimestepProgressCallback
 from .aggregation import (
     compute_timestep_summary,
     compute_final_aggregates,
@@ -51,12 +54,10 @@ from .aggregation import (
 
 logger = logging.getLogger(__name__)
 
-# Conviction threshold for flip resistance:
-# If old conviction >= FIRM and new position differs, reject unless new conviction >= MODERATE
-_FIRM_CONVICTION = 0.7  # ConvictionLevel.FIRM
-_MODERATE_CONVICTION = 0.5  # ConvictionLevel.MODERATE
-# Agents with conviction <= this don't share
-_SHARING_CONVICTION_THRESHOLD = 0.1  # ConvictionLevel.VERY_UNCERTAIN
+# Conviction thresholds derived from the canonical model
+_FIRM_CONVICTION = CONVICTION_MAP[ConvictionLevel.FIRM]
+_MODERATE_CONVICTION = CONVICTION_MAP[ConvictionLevel.MODERATE]
+_SHARING_CONVICTION_THRESHOLD = CONVICTION_MAP[ConvictionLevel.VERY_UNCERTAIN]
 
 
 class SimulationSummary:
@@ -120,7 +121,7 @@ class SimulationEngine:
         network: dict[str, Any],
         config: SimulationRunConfig,
         persona_config: PersonaConfig | None = None,
-        rate_limiter: RateLimiter | None = None,
+        rate_limiter: DualRateLimiter | None = None,
     ):
         """Initialize simulation engine.
 
@@ -131,7 +132,7 @@ class SimulationEngine:
             network: Network data
             config: Simulation run configuration
             persona_config: Optional PersonaConfig for embodied persona rendering
-            rate_limiter: Optional rate limiter for API pacing
+            rate_limiter: Optional DualRateLimiter for API pacing (pivotal + routine)
         """
         self.scenario = scenario
         self.population_spec = population_spec
@@ -143,6 +144,15 @@ class SimulationEngine:
 
         # Build agent map for quick lookup
         self.agent_map = {a.get("_id", str(i)): a for i, a in enumerate(agents)}
+
+        # Build adjacency list for O(1) neighbor lookups (both directions)
+        self.adjacency: dict[str, list[tuple[str, dict]]] = {}
+        for edge in network.get("edges", []):
+            src = edge.get("source")
+            tgt = edge.get("target")
+            if src is not None and tgt is not None:
+                self.adjacency.setdefault(src, []).append((tgt, edge))
+                self.adjacency.setdefault(tgt, []).append((src, edge))
 
         # Initialize RNG
         seed = config.random_seed
@@ -187,9 +197,9 @@ class SimulationEngine:
         self.total_exposures = 0
 
         # Progress callback
-        self._on_progress: Callable[[int, int, str], None] | None = None
+        self._on_progress: TimestepProgressCallback | None = None
 
-    def set_progress_callback(self, callback: Callable[[int, int, str], None]) -> None:
+    def set_progress_callback(self, callback: TimestepProgressCallback) -> None:
         """Set progress callback.
 
         Args:
@@ -267,38 +277,96 @@ class SimulationEngine:
         """
         logger.info(f"[TIMESTEP {timestep}] ========== STARTING ==========")
 
-        # 1. Apply seed exposures
-        new_seed_exposures = apply_seed_exposures(
+        return self._run_timestep_inner(timestep)
+
+    def _run_timestep_inner(self, timestep: int) -> TimestepSummary:
+        """Inner timestep logic wrapped in a transaction."""
+        with self.state_manager.transaction():
+            return self._execute_timestep(timestep)
+
+    def _execute_timestep(self, timestep: int) -> TimestepSummary:
+        """Execute the actual timestep logic — orchestrates sub-steps.
+
+        Args:
+            timestep: Current timestep number
+
+        Returns:
+            TimestepSummary for this timestep
+        """
+        # 1. Exposures (seed + network)
+        total_new_exposures = self._apply_exposures(timestep)
+        self.total_exposures += total_new_exposures
+
+        # 2. Identify agents and run reasoning
+        results, old_states = self._reason_agents(timestep)
+
+        # 3. Apply state updates
+        agents_reasoned, state_changes, shares_occurred = self._apply_state_updates(
+            timestep, results, old_states
+        )
+
+        # 4. Compute and save timestep summary
+        summary = compute_timestep_summary(
+            timestep,
+            self.state_manager,
+            self.recent_summaries[-1] if self.recent_summaries else None,
+        )
+        summary.new_exposures = total_new_exposures
+        summary.agents_reasoned = agents_reasoned
+        summary.state_changes = state_changes
+        summary.shares_occurred = shares_occurred
+
+        self.state_manager.save_timestep_summary(summary)
+
+        # Flush timeline periodically
+        if timestep % 10 == 0:
+            self.timeline.flush()
+
+        return summary
+
+    def _apply_exposures(self, timestep: int) -> int:
+        """Apply seed and network exposures for this timestep.
+
+        Returns:
+            Total new exposures this timestep.
+        """
+        new_seed = apply_seed_exposures(
             timestep,
             self.scenario,
             self.agents,
             self.state_manager,
             self.rng,
         )
-        logger.info(f"[TIMESTEP {timestep}] Seed exposures: {new_seed_exposures}")
+        logger.info(f"[TIMESTEP {timestep}] Seed exposures: {new_seed}")
 
-        # 2. Network propagation from previous sharers
-        new_network_exposures = propagate_through_network(
+        new_network = propagate_through_network(
             timestep,
             self.scenario,
             self.agents,
             self.network,
             self.state_manager,
             self.rng,
+            adjacency=self.adjacency,
+            agent_map=self.agent_map,
         )
-        logger.info(f"[TIMESTEP {timestep}] Network exposures: {new_network_exposures}")
+        logger.info(f"[TIMESTEP {timestep}] Network exposures: {new_network}")
 
-        total_new_exposures = new_seed_exposures + new_network_exposures
-        self.total_exposures += total_new_exposures
+        return new_seed + new_network
 
-        # 3. Identify agents who need to reason
+    def _reason_agents(
+        self, timestep: int
+    ) -> tuple[list[tuple[str, Any]], dict[str, AgentState]]:
+        """Identify agents needing reasoning and run two-pass LLM calls.
+
+        Returns:
+            Tuple of (reasoning results, old_states dict).
+        """
         agents_to_reason = self.state_manager.get_agents_to_reason(
             timestep,
             self.config.multi_touch_threshold,
         )
         logger.info(f"[TIMESTEP {timestep}] Agents to reason: {len(agents_to_reason)}")
 
-        # 4. Build reasoning contexts (snapshot of current state)
         contexts = []
         old_states: dict[str, AgentState] = {}
         for agent_id in agents_to_reason:
@@ -307,7 +375,6 @@ class SimulationEngine:
             context = self._build_reasoning_context(agent_id, old_state)
             contexts.append(context)
 
-        # 5. Run two-pass reasoning
         reasoning_start = time.time()
         results = batch_reason_agents(
             contexts,
@@ -325,10 +392,23 @@ class SimulationEngine:
             else f"[TIMESTEP {timestep}] No agents reasoned"
         )
 
-        # 6. Process results and update states
+        return results, old_states
+
+    def _apply_state_updates(
+        self,
+        timestep: int,
+        results: list[tuple[str, Any]],
+        old_states: dict[str, AgentState],
+    ) -> tuple[int, int, int]:
+        """Process reasoning results and update agent states.
+
+        Returns:
+            Tuple of (agents_reasoned, state_changes, shares_occurred).
+        """
         agents_reasoned = 0
         state_changes = 0
         shares_occurred = 0
+        state_updates: list[tuple[str, AgentState]] = []
 
         for agent_id, response in results:
             if response is None:
@@ -352,7 +432,6 @@ class SimulationEngine:
                 ):
                     new_conviction = response.conviction or 0.0
                     if new_conviction < _MODERATE_CONVICTION:
-                        # Reject the flip — keep old position
                         logger.info(
                             f"[CONVICTION] Agent {agent_id}: flip from {old_state.position} "
                             f"to {response.position} rejected (old conviction={float_to_conviction(old_state.conviction)}, "
@@ -367,7 +446,6 @@ class SimulationEngine:
             ):
                 effective_will_share = False
 
-            # Create new state from response
             new_state = AgentState(
                 agent_id=agent_id,
                 aware=True,
@@ -385,19 +463,15 @@ class SimulationEngine:
                 updated_at=timestep,
             )
 
-            # Check for state change
             if self._state_changed(old_state, new_state):
                 state_changes += 1
 
-            # Track shares
             if new_state.will_share and not old_state.will_share:
                 shares_occurred += 1
 
-            # Update state
-            self.state_manager.update_agent_state(agent_id, new_state, timestep)
+            state_updates.append((agent_id, new_state))
             agents_reasoned += 1
 
-            # Save memory entry
             if response.reasoning_summary:
                 memory_entry = MemoryEntry(
                     timestep=timestep,
@@ -407,7 +481,6 @@ class SimulationEngine:
                 )
                 self.state_manager.save_memory_entry(agent_id, memory_entry)
 
-            # Log event
             self.timeline.log_event(
                 SimulationEvent(
                     timestep=timestep,
@@ -422,24 +495,10 @@ class SimulationEngine:
                 )
             )
 
-        # 7. Compute and save timestep summary
-        summary = compute_timestep_summary(
-            timestep,
-            self.state_manager,
-            self.recent_summaries[-1] if self.recent_summaries else None,
-        )
-        summary.new_exposures = total_new_exposures
-        summary.agents_reasoned = agents_reasoned
-        summary.state_changes = state_changes
-        summary.shares_occurred = shares_occurred
+        if state_updates:
+            self.state_manager.batch_update_states(state_updates, timestep)
 
-        self.state_manager.save_timestep_summary(summary)
-
-        # Flush timeline periodically
-        if timestep % 10 == 0:
-            self.timeline.flush()
-
-        return summary
+        return agents_reasoned, state_changes, shares_occurred
 
     def _build_reasoning_context(
         self, agent_id: str, state: AgentState
@@ -485,7 +544,7 @@ class SimulationEngine:
         Returns:
             List of peer opinions
         """
-        neighbors = get_neighbors(self.network, agent_id)
+        neighbors = self.adjacency.get(agent_id, [])
         opinions = []
 
         for neighbor_id, edge_data in neighbors[:5]:  # Limit to 5 peers
@@ -657,7 +716,7 @@ def run_simulation(
     routine_model: str = "",
     multi_touch_threshold: int = 3,
     random_seed: int | None = None,
-    on_progress: Callable[[int, int, str], None] | None = None,
+    on_progress: TimestepProgressCallback | None = None,
     persona_config_path: str | Path | None = None,
     rate_tier: int | None = None,
     rpm_override: int | None = None,
@@ -734,16 +793,19 @@ def run_simulation(
         random_seed=random_seed,
     )
 
-    # Create rate limiter
+    # Create dual rate limiter (separate limiters for pivotal and routine models)
     from ..config import get_config
 
     entropy_config = get_config()
     provider = entropy_config.simulation.provider
     effective_model = model or entropy_config.simulation.model or ""
+    effective_pivotal = pivotal_model or effective_model
+    effective_routine = routine_model or entropy_config.simulation.routine_model or ""
 
-    rate_limiter = RateLimiter.for_provider(
+    rate_limiter = DualRateLimiter.create(
         provider=provider,
-        model=effective_model,
+        pivotal_model=effective_pivotal,
+        routine_model=effective_routine,
         tier=rate_tier,
         rpm_override=rpm_override,
         tpm_override=tpm_override,

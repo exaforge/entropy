@@ -62,6 +62,12 @@ def simulate_command(
     rate_tier: int | None = typer.Option(
         None, "--rate-tier", help="Rate limit tier (1-4, higher = more generous limits)"
     ),
+    rpm_override: int | None = typer.Option(
+        None, "--rpm-override", help="Override requests per minute limit"
+    ),
+    tpm_override: int | None = typer.Option(
+        None, "--tpm-override", help="Override tokens per minute limit"
+    ),
     seed: int | None = typer.Option(
         None, "--seed", help="Random seed for reproducibility"
     ),
@@ -113,8 +119,8 @@ def simulate_command(
     effective_pivotal = pivotal_model or config.simulation.pivotal_model
     effective_routine = routine_model or config.simulation.routine_model
     effective_tier = rate_tier or config.simulation.rate_tier
-    effective_rpm = config.simulation.rpm_override
-    effective_tpm = config.simulation.tpm_override
+    effective_rpm = rpm_override or config.simulation.rpm_override
+    effective_tpm = tpm_override or config.simulation.tpm_override
 
     display_model = effective_model or f"({config.simulation.provider} default)"
     display_provider = config.simulation.provider
@@ -133,6 +139,13 @@ def simulate_command(
         console.print(" | ".join(parts))
     if effective_tier:
         console.print(f"Rate tier: {effective_tier}")
+    if effective_rpm or effective_tpm:
+        parts = []
+        if effective_rpm:
+            parts.append(f"RPM: {effective_rpm}")
+        if effective_tpm:
+            parts.append(f"TPM: {effective_tpm}")
+        console.print(f"Rate overrides: {' | '.join(parts)}")
     if seed:
         console.print(f"Seed: {seed}")
     if verbose or debug:

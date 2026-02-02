@@ -15,8 +15,8 @@ import time
 from typing import Any
 
 from ..core.llm import simple_call, simple_call_async
+from ..core.providers import close_simulation_provider
 from ..core.models import (
-    ConvictionLevel,
     ExposureRecord,
     MemoryEntry,
     OutcomeConfig,
@@ -26,8 +26,8 @@ from ..core.models import (
     ReasoningResponse,
     ScenarioSpec,
     SimulationRunConfig,
-    conviction_to_float,
     float_to_conviction,
+    score_to_conviction_float,
 )
 
 logger = logging.getLogger(__name__)
@@ -55,9 +55,10 @@ def build_pass1_prompt(
         Complete prompt string for LLM
     """
     prompt_parts = [
-        "You ARE the person described below. Respond as yourself - not as an observer or simulator.",
-        "Your background, attitudes, and circumstances shape how you interpret and react to information.",
-        "People with different characteristics respond very differently to the same news.",
+        "You ARE the person described below. Think and respond as yourself — first person, authentic, decisive.",
+        "IMPORTANT: Do NOT hedge, equivocate, or give a 'balanced' take. Real people have clear reactions.",
+        "Some people love this. Some are indifferent. Some are annoyed. Be honest about YOUR reaction.",
+        "Your background and circumstances determine your response — not politeness or caution.",
         "",
         context.persona,
         "",
@@ -120,30 +121,28 @@ def build_pass1_prompt(
         prompt_parts.extend(
             [
                 "",
-                "## Your Authentic Response",
+                "## Your Honest Reaction",
                 "",
                 "Given YOUR background, YOUR previous thinking, and what you're hearing:",
-                "1. How has your thinking EVOLVED from before?",
-                "2. What is your current genuine stance and how firmly do you hold it?",
-                "3. What would you tell a colleague about this?",
+                "- Has your view changed? If so, own it. If not, say so plainly.",
+                "- What are you actually going to DO about this now?",
+                "- What would you bluntly tell a friend?",
                 "",
-                "Be true to your characteristics. Your view may have shifted, strengthened, or stayed the same.",
+                "Commit to where you stand now. Don't hedge just because your opinion changed.",
             ]
         )
     else:
         prompt_parts.extend(
             [
                 "",
-                "## Your Authentic Response",
+                "## Your Honest Reaction",
                 "",
-                "Given YOUR specific background, attitudes, constraints, and priorities:",
-                "- What is your genuine, gut reaction?",
-                "- How does this actually affect YOUR situation?",
-                "- What will YOU realistically do (or not do)?",
-                "- What would you tell a colleague about this?",
+                "React as YOU — given your background, priorities, and constraints:",
+                "- What is your immediate, honest reaction? Don't overthink it.",
+                "- What are you actually going to DO about this? Decide now.",
+                "- What would you bluntly tell a friend?",
                 "",
-                "Be true to your characteristics. Not everyone reacts the same way.",
-                "Someone with your profile might be enthusiastic, skeptical, cautious, opposed, or indifferent.",
+                "Commit to a clear position. Saying 'I'll wait and see' is only valid if you genuinely don't care.",
             ]
         )
 
@@ -160,11 +159,11 @@ def build_pass1_schema() -> dict[str, Any]:
         "properties": {
             "reasoning": {
                 "type": "string",
-                "description": "Your internal thought process — what goes through your mind. 2-4 sentences.",
+                "description": "Your honest first reaction in 2-4 sentences. Be direct — state what you think, not both sides.",
             },
             "public_statement": {
                 "type": "string",
-                "description": "A 1-2 sentence statement you'd make to colleagues about this. What's your argument or take?",
+                "description": "What would you bluntly tell a friend about this? One strong sentence.",
             },
             "reasoning_summary": {
                 "type": "string",
@@ -177,9 +176,10 @@ def build_pass1_schema() -> dict[str, Any]:
                 "description": "Your emotional reaction: -1 = very negative, 0 = neutral, 1 = very positive.",
             },
             "conviction": {
-                "type": "string",
-                "enum": [level.value for level in ConvictionLevel],
-                "description": "How firmly do you hold this view?",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100,
+                "description": "How sure are you? 0 = genuinely no idea what to think, 25 = starting to lean one way, 50 = clear opinion, 75 = quite sure and hard to change your mind, 100 = absolutely certain.",
             },
             "will_share": {
                 "type": "boolean",
@@ -431,7 +431,8 @@ async def _reason_agent_two_pass_async(
         context: Reasoning context
         scenario: Scenario specification
         config: Simulation run configuration
-        rate_limiter: Optional rate limiter for API pacing
+        rate_limiter: Optional DualRateLimiter for API pacing
+            (uses .pivotal for Pass 1, .routine for Pass 2)
 
     Returns:
         ReasoningResponse with both passes merged, or None if failed
@@ -448,7 +449,13 @@ async def _reason_agent_two_pass_async(
     for attempt in range(config.max_retries):
         try:
             if rate_limiter:
-                await rate_limiter.acquire(estimated_tokens=800)
+                # Dynamic token estimate from prompt length (4 chars ≈ 1 token)
+                estimated_input = len(pass1_prompt) // 4
+                estimated_output = 300  # structured response
+                await rate_limiter.pivotal.acquire(
+                    estimated_input_tokens=estimated_input,
+                    estimated_output_tokens=estimated_output,
+                )
 
             call_start = time.time()
             pass1_response = await simple_call_async(
@@ -479,11 +486,11 @@ async def _reason_agent_two_pass_async(
     public_statement = pass1_response.get("public_statement", "")
     reasoning_summary = pass1_response.get("reasoning_summary", "")
     sentiment = pass1_response.get("sentiment")
-    conviction_label = pass1_response.get("conviction")
+    conviction_score = pass1_response.get("conviction")
     will_share = pass1_response.get("will_share", False)
 
-    # Map conviction categorical to float
-    conviction_float = conviction_to_float(conviction_label)
+    # Map conviction score (0-100) to float via bucketing
+    conviction_float = score_to_conviction_float(conviction_score)
 
     # === Pass 2: Classification (if needed) ===
     pass2_schema = build_pass2_schema(scenario.outcomes)
@@ -496,7 +503,13 @@ async def _reason_agent_two_pass_async(
         for attempt in range(config.max_retries):
             try:
                 if rate_limiter:
-                    await rate_limiter.acquire(estimated_tokens=200)
+                    # Dynamic token estimate from prompt length
+                    estimated_input = len(pass2_prompt) // 4
+                    estimated_output = 80  # classification is small
+                    await rate_limiter.routine.acquire(
+                        estimated_input_tokens=estimated_input,
+                        estimated_output_tokens=estimated_output,
+                    )
 
                 call_start = time.time()
                 pass2_response = await simple_call_async(
@@ -622,9 +635,9 @@ def reason_agent(
     public_statement = pass1_response.get("public_statement", "")
     reasoning_summary = pass1_response.get("reasoning_summary", "")
     sentiment = pass1_response.get("sentiment")
-    conviction_label = pass1_response.get("conviction")
+    conviction_score = pass1_response.get("conviction")
     will_share = pass1_response.get("will_share", False)
-    conviction_float = conviction_to_float(conviction_label)
+    conviction_float = score_to_conviction_float(conviction_score)
 
     # === Pass 2: Classification ===
     pass2_schema = build_pass2_schema(scenario.outcomes)
@@ -670,7 +683,7 @@ def reason_agent(
 
     logger.info(
         f"[REASON] Agent {context.agent_id} - SUCCESS: position={position}, "
-        f"sentiment={sentiment}, conviction={conviction_label}, will_share={will_share}"
+        f"sentiment={sentiment}, conviction={conviction_score}→{float_to_conviction(conviction_float)}, will_share={will_share}"
     )
 
     return ReasoningResponse(
@@ -704,8 +717,8 @@ def batch_reason_agents(
         contexts: List of reasoning contexts
         scenario: Scenario specification
         config: Simulation run configuration
-        max_concurrency: Max concurrent API calls (default 50, used as fallback if no rate limiter)
-        rate_limiter: Optional RateLimiter instance for API pacing
+        max_concurrency: Max concurrent API calls (default 50, fallback if no rate limiter)
+        rate_limiter: Optional DualRateLimiter instance for API pacing
 
     Returns:
         List of (agent_id, response) tuples in original order
@@ -719,35 +732,27 @@ def batch_reason_agents(
     logger.info(f"[BATCH] Starting two-pass async reasoning for {total} agents")
 
     async def run_all():
-        # If no rate limiter, fall back to semaphore
-        semaphore = asyncio.Semaphore(max_concurrency) if not rate_limiter else None
+        # Always use a semaphore to cap concurrent tasks.
+        # When rate limiter is available, size it from max_safe_concurrent.
+        if rate_limiter:
+            concurrency = rate_limiter.max_safe_concurrent
+            # Stagger interval: spread launches across the RPM window
+            # e.g. 500 RPM → 8.3 req/s → 120ms between launches
+            stagger_interval = 60.0 / rate_limiter.pivotal.rpm
+            logger.info(
+                f"[BATCH] Concurrency cap: {concurrency}, "
+                f"stagger: {stagger_interval * 1000:.0f}ms between launches"
+            )
+        else:
+            concurrency = max_concurrency
+            stagger_interval = 0.0
+        semaphore = asyncio.Semaphore(concurrency)
         completed = [0]
 
         async def reason_with_pacing(
             ctx: ReasoningContext,
         ) -> tuple[str, ReasoningResponse | None]:
-            if semaphore:
-                async with semaphore:
-                    start = time.time()
-                    result = await _reason_agent_two_pass_async(
-                        ctx, scenario, config, rate_limiter
-                    )
-                    elapsed = time.time() - start
-                    completed[0] += 1
-
-                    if result:
-                        logger.info(
-                            f"[BATCH] {completed[0]}/{total}: {ctx.agent_id} done in {elapsed:.2f}s "
-                            f"(sentiment={result.sentiment}, conviction={float_to_conviction(result.conviction)})"
-                        )
-                    else:
-                        logger.warning(
-                            f"[BATCH] {completed[0]}/{total}: {ctx.agent_id} FAILED"
-                        )
-
-                    return (ctx.agent_id, result)
-            else:
-                # Rate limiter handles pacing internally
+            async with semaphore:
                 start = time.time()
                 result = await _reason_agent_two_pass_async(
                     ctx, scenario, config, rate_limiter
@@ -767,8 +772,25 @@ def batch_reason_agents(
 
                 return (ctx.agent_id, result)
 
-        tasks = [reason_with_pacing(ctx) for ctx in contexts]
-        return await asyncio.gather(*tasks)
+        # Stagger task launches to avoid burst of requests hitting API at once.
+        # Each task is created with a small delay so they don't all enter
+        # the semaphore simultaneously.
+        tasks = []
+        for i, ctx in enumerate(contexts):
+            tasks.append(asyncio.create_task(reason_with_pacing(ctx)))
+            if stagger_interval > 0 and i < concurrency - 1:
+                # Only stagger the first batch — after that the semaphore
+                # naturally gates as tasks complete and new ones enter
+                await asyncio.sleep(stagger_interval)
+
+        results = await asyncio.gather(*tasks)
+
+        # Close the async HTTP client before the event loop shuts down.
+        # Without this, orphaned httpx connections produce "Event loop is
+        # closed" errors during garbage collection.
+        await close_simulation_provider()
+
+        return results
 
     batch_start = time.time()
     results = asyncio.run(run_all())
@@ -780,9 +802,17 @@ def batch_reason_agents(
 
     if rate_limiter:
         stats = rate_limiter.stats()
+        pivotal_stats = stats.get("pivotal", stats)
+        routine_stats = stats.get("routine", pivotal_stats)
+        total_acquired = pivotal_stats.get("total_acquired", 0) + routine_stats.get(
+            "total_acquired", 0
+        )
+        total_wait = pivotal_stats.get(
+            "total_wait_time_seconds", 0
+        ) + routine_stats.get("total_wait_time_seconds", 0)
         logger.info(
-            f"[BATCH] Rate limiter: {stats['total_acquired']} acquired, "
-            f"{stats['total_wait_time_seconds']}s total wait"
+            f"[BATCH] Rate limiter: {total_acquired} acquired, "
+            f"{total_wait:.2f}s total wait"
         )
 
     return list(results)

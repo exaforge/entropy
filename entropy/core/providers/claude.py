@@ -7,11 +7,20 @@ data guaranteed to match the schema.
 """
 
 import logging
+import random
+import time
 
 import anthropic
 
 from .base import LLMProvider, ValidatorCallback, RetryCallback
 from .logging import log_request_response, extract_error_summary
+
+_TRANSIENT_ANTHROPIC_ERRORS = (
+    anthropic.APIConnectionError,
+    anthropic.InternalServerError,
+    anthropic.RateLimitError,
+)
+_MAX_API_RETRIES = 3
 
 
 logger = logging.getLogger(__name__)
@@ -68,6 +77,8 @@ class ClaudeProvider(LLMProvider):
 
     """
 
+    provider_name = "anthropic"
+
     def __init__(self, api_key: str = "") -> None:
         if not api_key:
             raise ValueError(
@@ -76,6 +87,38 @@ class ClaudeProvider(LLMProvider):
                 "Get your key from: https://console.anthropic.com/settings/keys"
             )
         super().__init__(api_key)
+
+    def _with_retry(self, fn, max_retries: int = _MAX_API_RETRIES):
+        """Retry a sync API call on transient errors with exponential backoff."""
+        for attempt in range(max_retries + 1):
+            try:
+                return fn()
+            except _TRANSIENT_ANTHROPIC_ERRORS as e:
+                if attempt == max_retries:
+                    raise
+                wait = (2**attempt) + random.random()
+                logger.warning(
+                    f"[Claude] Transient error (attempt {attempt + 1}/{max_retries + 1}): "
+                    f"{type(e).__name__}: {e}. Retrying in {wait:.1f}s"
+                )
+                time.sleep(wait)
+
+    async def _with_retry_async(self, fn, max_retries: int = _MAX_API_RETRIES):
+        """Retry an async API call on transient errors with exponential backoff."""
+        import asyncio
+
+        for attempt in range(max_retries + 1):
+            try:
+                return await fn()
+            except _TRANSIENT_ANTHROPIC_ERRORS as e:
+                if attempt == max_retries:
+                    raise
+                wait = (2**attempt) + random.random()
+                logger.warning(
+                    f"[Claude] Transient error (attempt {attempt + 1}/{max_retries + 1}): "
+                    f"{type(e).__name__}: {e}. Retrying in {wait:.1f}s"
+                )
+                await asyncio.sleep(wait)
 
     @property
     def default_simple_model(self) -> str:
@@ -93,7 +136,9 @@ class ClaudeProvider(LLMProvider):
         return anthropic.Anthropic(api_key=self._api_key)
 
     def _get_async_client(self) -> anthropic.AsyncAnthropic:
-        return anthropic.AsyncAnthropic(api_key=self._api_key)
+        if self._cached_async_client is None:
+            self._cached_async_client = anthropic.AsyncAnthropic(api_key=self._api_key)
+        return self._cached_async_client
 
     def simple_call(
         self,
@@ -108,16 +153,21 @@ class ClaudeProvider(LLMProvider):
         client = self._get_client()
         tool = _make_structured_tool(schema_name, response_schema)
 
+        # Acquire rate limit capacity before making the call
+        self._acquire_rate_limit(prompt, model, max_output=max_tokens or 4096)
+
         logger.info(
             f"[Claude] simple_call starting - model={model}, schema={schema_name}"
         )
 
-        response = client.messages.create(
-            model=model,
-            max_tokens=max_tokens or 4096,
-            tools=[tool],
-            tool_choice={"type": "tool", "name": schema_name},
-            messages=[{"role": "user", "content": prompt}],
+        response = self._with_retry(
+            lambda: client.messages.create(
+                model=model,
+                max_tokens=max_tokens or 4096,
+                tools=[tool],
+                tool_choice={"type": "tool", "name": schema_name},
+                messages=[{"role": "user", "content": prompt}],
+            )
         )
 
         structured_data = _extract_tool_input(response)
@@ -144,12 +194,14 @@ class ClaudeProvider(LLMProvider):
         client = self._get_async_client()
         tool = _make_structured_tool(schema_name, response_schema)
 
-        response = await client.messages.create(
-            model=model,
-            max_tokens=max_tokens or 4096,
-            tools=[tool],
-            tool_choice={"type": "tool", "name": schema_name},
-            messages=[{"role": "user", "content": prompt}],
+        response = await self._with_retry_async(
+            lambda: client.messages.create(
+                model=model,
+                max_tokens=max_tokens or 4096,
+                tools=[tool],
+                tool_choice={"type": "tool", "name": schema_name},
+                messages=[{"role": "user", "content": prompt}],
+            )
         )
 
         return _extract_tool_input(response) or {}
@@ -176,48 +228,38 @@ class ClaudeProvider(LLMProvider):
         if previous_errors:
             effective_prompt = f"{previous_errors}\n\n---\n\n{prompt}"
 
-        attempts = 0
-        last_error_summary = ""
+        def _call(ep: str) -> dict:
+            # Acquire rate limit capacity before each API call
+            self._acquire_rate_limit(ep, model, max_output=16384)
 
-        while attempts <= max_retries:
-            response = client.messages.create(
-                model=model,
-                max_tokens=16384,
-                tools=[tool],
-                tool_choice={"type": "tool", "name": schema_name},
-                messages=[{"role": "user", "content": effective_prompt}],
+            response = self._with_retry(
+                lambda: client.messages.create(
+                    model=model,
+                    max_tokens=16384,
+                    tools=[tool],
+                    tool_choice={"type": "tool", "name": schema_name},
+                    messages=[{"role": "user", "content": ep}],
+                )
             )
-
             structured_data = _extract_tool_input(response)
-
             if log:
                 log_request_response(
                     function_name="reasoning_call",
-                    request={"model": model, "prompt_length": len(effective_prompt)},
+                    request={"model": model, "prompt_length": len(ep)},
                     response=response,
                     provider="claude",
                 )
+            return structured_data or {}
 
-            result = structured_data or {}
-
-            if validator is None:
-                return result
-
-            is_valid, error_msg = validator(result)
-            if is_valid:
-                return result
-
-            attempts += 1
-            last_error_summary = extract_error_summary(error_msg)
-
-            if attempts <= max_retries:
-                if on_retry:
-                    on_retry(attempts, max_retries, last_error_summary)
-                effective_prompt = f"{error_msg}\n\n---\n\n{prompt}"
-
-        if on_retry:
-            on_retry(max_retries + 1, max_retries, f"EXHAUSTED: {last_error_summary}")
-        return result
+        return self._retry_with_validation(
+            call_fn=_call,
+            prompt=prompt,
+            validator=validator,
+            max_retries=max_retries,
+            on_retry=on_retry,
+            extract_error_summary_fn=extract_error_summary,
+            initial_prompt=effective_prompt if previous_errors else None,
+        )
 
     def agentic_research(
         self,
@@ -245,42 +287,44 @@ class ClaudeProvider(LLMProvider):
         if previous_errors:
             effective_prompt = f"{previous_errors}\n\n---\n\n{prompt}"
 
-        attempts = 0
-        last_error_summary = ""
         all_sources: list[str] = []
 
-        while attempts <= max_retries:
+        def _call(ep: str) -> dict:
             research_prompt = (
-                f"{effective_prompt}\n\n"
+                f"{ep}\n\n"
                 f"After researching, call the '{schema_name}' tool with your structured findings."
             )
 
+            # Acquire rate limit capacity before each API call
+            self._acquire_rate_limit(research_prompt, model, max_output=16384)
+
             logger.info(f"[Claude] agentic_research - model={model}")
 
-            response = client.messages.create(
-                model=model,
-                max_tokens=16384,
-                tools=[
-                    {
-                        "type": "web_search_20250305",
-                        "name": "web_search",
-                        "max_uses": 5,
-                    },
-                    output_tool,
-                ],
-                messages=[{"role": "user", "content": research_prompt}],
+            response = self._with_retry(
+                lambda: client.messages.create(
+                    model=model,
+                    max_tokens=16384,
+                    tools=[
+                        {
+                            "type": "web_search_20250305",
+                            "name": "web_search",
+                            "max_uses": 5,
+                        },
+                        output_tool,
+                    ],
+                    messages=[{"role": "user", "content": research_prompt}],
+                )
             )
 
-            # Extract structured data and sources
             structured_data = None
             sources: list[str] = []
 
             for block in response.content:
                 if block.type == "web_search_tool_result":
                     if hasattr(block, "content") and block.content:
-                        for result in block.content:
-                            if hasattr(result, "url"):
-                                sources.append(result.url)
+                        for res in block.content:
+                            if hasattr(res, "url"):
+                                sources.append(res.url)
 
                 if block.type == "tool_use" and block.name == schema_name:
                     structured_data = block.input
@@ -292,7 +336,6 @@ class ClaudeProvider(LLMProvider):
                                 sources.append(citation.url)
 
             all_sources.extend(sources)
-
             logger.info(f"[Claude] Web search completed, found {len(sources)} sources")
 
             if log:
@@ -304,23 +347,16 @@ class ClaudeProvider(LLMProvider):
                     sources=list(set(sources)),
                 )
 
-            result = structured_data or {}
+            return structured_data or {}
 
-            if validator is None:
-                return result, list(set(all_sources))
+        result = self._retry_with_validation(
+            call_fn=_call,
+            prompt=prompt,
+            validator=validator,
+            max_retries=max_retries,
+            on_retry=on_retry,
+            extract_error_summary_fn=extract_error_summary,
+            initial_prompt=effective_prompt if previous_errors else None,
+        )
 
-            is_valid, error_msg = validator(result)
-            if is_valid:
-                return result, list(set(all_sources))
-
-            attempts += 1
-            last_error_summary = extract_error_summary(error_msg)
-
-            if attempts <= max_retries:
-                if on_retry:
-                    on_retry(attempts, max_retries, last_error_summary)
-                effective_prompt = f"{error_msg}\n\n---\n\n{prompt}"
-
-        if on_retry:
-            on_retry(max_retries + 1, max_retries, f"EXHAUSTED: {last_error_summary}")
         return result, list(set(all_sources))

@@ -204,6 +204,8 @@ def propagate_through_network(
     network: dict[str, Any],
     state_manager: StateManager,
     rng: random.Random,
+    adjacency: dict[str, list[tuple[str, dict]]] | None = None,
+    agent_map: dict[str, dict[str, Any]] | None = None,
 ) -> int:
     """Propagate information through network from sharing agents.
 
@@ -216,12 +218,15 @@ def propagate_through_network(
         network: Network data
         state_manager: State manager
         rng: Random number generator
+        adjacency: Pre-built adjacency list (optional, avoids O(E) scan per agent)
+        agent_map: Pre-built agent lookup dict (optional, avoids rebuild)
 
     Returns:
         Count of new exposures via network
     """
     new_exposures = 0
-    agent_map = {a.get("_id", str(i)): a for i, a in enumerate(agents)}
+    if agent_map is None:
+        agent_map = {a.get("_id", str(i)): a for i, a in enumerate(agents)}
 
     # Get agents who will share
     sharers = state_manager.get_sharers()
@@ -231,8 +236,11 @@ def propagate_through_network(
         if not sharer_agent:
             continue
 
-        # Get neighbors from network
-        neighbors = get_neighbors(network, sharer_id)
+        # Get neighbors from network (use adjacency list if available)
+        if adjacency is not None:
+            neighbors = adjacency.get(sharer_id, [])
+        else:
+            neighbors = get_neighbors(network, sharer_id)
 
         for neighbor_id, edge_data in neighbors:
             neighbor_agent = agent_map.get(neighbor_id)

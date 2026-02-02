@@ -165,7 +165,11 @@ def _set_config(key: str, value: str):
 
     # Type coercion
     if field in INT_FIELDS:
-        setattr(target, field, int(value))
+        try:
+            setattr(target, field, int(value))
+        except ValueError:
+            console.print(f"[red]Invalid integer value:[/red] {value}")
+            raise typer.Exit(1)
     else:
         setattr(target, field, value)
 

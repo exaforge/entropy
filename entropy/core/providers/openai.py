@@ -2,12 +2,21 @@
 
 import json
 import logging
+import random
 import time
 
+import openai
 from openai import OpenAI, AsyncOpenAI
 
 from .base import LLMProvider, ValidatorCallback, RetryCallback
 from .logging import log_request_response, extract_error_summary
+
+_TRANSIENT_OPENAI_ERRORS = (
+    openai.APIConnectionError,
+    openai.InternalServerError,
+    openai.RateLimitError,
+)
+_MAX_API_RETRIES = 3
 
 
 logger = logging.getLogger(__name__)
@@ -16,6 +25,8 @@ logger = logging.getLogger(__name__)
 class OpenAIProvider(LLMProvider):
     """OpenAI LLM provider using the Responses API."""
 
+    provider_name = "openai"
+
     def __init__(self, api_key: str = "") -> None:
         if not api_key:
             raise ValueError(
@@ -23,6 +34,58 @@ class OpenAIProvider(LLMProvider):
                 "  export OPENAI_API_KEY=sk-..."
             )
         super().__init__(api_key)
+
+    @staticmethod
+    def _extract_output_text(response) -> str | None:
+        """Extract the output text content from an OpenAI Responses API response.
+
+        Traverses response.output looking for a message with output_text content.
+
+        Returns:
+            Raw text string, or None if not found.
+        """
+        for item in response.output:
+            if hasattr(item, "type") and item.type == "message":
+                for content_item in item.content:
+                    if (
+                        hasattr(content_item, "type")
+                        and content_item.type == "output_text"
+                    ):
+                        if hasattr(content_item, "text"):
+                            return content_item.text
+        return None
+
+    def _with_retry(self, fn, max_retries: int = _MAX_API_RETRIES):
+        """Retry a sync API call on transient errors with exponential backoff."""
+        for attempt in range(max_retries + 1):
+            try:
+                return fn()
+            except _TRANSIENT_OPENAI_ERRORS as e:
+                if attempt == max_retries:
+                    raise
+                wait = (2**attempt) + random.random()
+                logger.warning(
+                    f"[OpenAI] Transient error (attempt {attempt + 1}/{max_retries + 1}): "
+                    f"{type(e).__name__}: {e}. Retrying in {wait:.1f}s"
+                )
+                time.sleep(wait)
+
+    async def _with_retry_async(self, fn, max_retries: int = _MAX_API_RETRIES):
+        """Retry an async API call on transient errors with exponential backoff."""
+        import asyncio
+
+        for attempt in range(max_retries + 1):
+            try:
+                return await fn()
+            except _TRANSIENT_OPENAI_ERRORS as e:
+                if attempt == max_retries:
+                    raise
+                wait = (2**attempt) + random.random()
+                logger.warning(
+                    f"[OpenAI] Transient error (attempt {attempt + 1}/{max_retries + 1}): "
+                    f"{type(e).__name__}: {e}. Retrying in {wait:.1f}s"
+                )
+                await asyncio.sleep(wait)
 
     @property
     def default_simple_model(self) -> str:
@@ -40,7 +103,9 @@ class OpenAIProvider(LLMProvider):
         return OpenAI(api_key=self._api_key)
 
     def _get_async_client(self) -> AsyncOpenAI:
-        return AsyncOpenAI(api_key=self._api_key)
+        if self._cached_async_client is None:
+            self._cached_async_client = AsyncOpenAI(api_key=self._api_key)
+        return self._cached_async_client
 
     def simple_call(
         self,
@@ -53,6 +118,9 @@ class OpenAIProvider(LLMProvider):
     ) -> dict:
         model = model or self.default_simple_model
         client = self._get_client()
+
+        # Acquire rate limit capacity before making the call
+        self._acquire_rate_limit(prompt, model, max_output=max_tokens or 4096)
 
         request_params = {
             "model": model,
@@ -74,22 +142,14 @@ class OpenAIProvider(LLMProvider):
         logger.info(f"[LLM] prompt length: {len(prompt)} chars")
 
         api_start = time.time()
-        response = client.responses.create(**request_params)
+        response = self._with_retry(lambda: client.responses.create(**request_params))
         api_elapsed = time.time() - api_start
 
         logger.info(f"[LLM] API response received in {api_elapsed:.2f}s")
 
         # Extract structured data
-        structured_data = None
-        for item in response.output:
-            if hasattr(item, "type") and item.type == "message":
-                for content_item in item.content:
-                    if (
-                        hasattr(content_item, "type")
-                        and content_item.type == "output_text"
-                    ):
-                        if hasattr(content_item, "text"):
-                            structured_data = json.loads(content_item.text)
+        raw_text = self._extract_output_text(response)
+        structured_data = json.loads(raw_text) if raw_text else None
 
         if log:
             log_request_response(
@@ -128,19 +188,13 @@ class OpenAIProvider(LLMProvider):
         if max_tokens is not None:
             request_params["max_output_tokens"] = max_tokens
 
-        response = await client.responses.create(**request_params)
+        response = await self._with_retry_async(
+            lambda: client.responses.create(**request_params)
+        )
 
         # Extract structured data
-        structured_data = None
-        for item in response.output:
-            if hasattr(item, "type") and item.type == "message":
-                for content_item in item.content:
-                    if (
-                        hasattr(content_item, "type")
-                        and content_item.type == "output_text"
-                    ):
-                        if hasattr(content_item, "text"):
-                            structured_data = json.loads(content_item.text)
+        raw_text = self._extract_output_text(response)
+        structured_data = json.loads(raw_text) if raw_text else None
 
         return structured_data or {}
 
@@ -160,19 +214,18 @@ class OpenAIProvider(LLMProvider):
         model = model or self.default_reasoning_model
         client = self._get_client()
 
-        # Prepend previous errors if provided
         effective_prompt = prompt
         if previous_errors:
             effective_prompt = f"{previous_errors}\n\n---\n\n{prompt}"
 
-        attempts = 0
-        last_error_summary = ""
+        def _call(ep: str) -> dict:
+            # Acquire rate limit capacity before each API call
+            self._acquire_rate_limit(ep, model, max_output=16384)
 
-        while attempts <= max_retries:
             request_params = {
                 "model": model,
                 "reasoning": {"effort": reasoning_effort},
-                "input": [{"role": "user", "content": effective_prompt}],
+                "input": [{"role": "user", "content": ep}],
                 "text": {
                     "format": {
                         "type": "json_schema",
@@ -182,21 +235,11 @@ class OpenAIProvider(LLMProvider):
                     }
                 },
             }
-
-            response = client.responses.create(**request_params)
-
-            # Extract structured data
-            structured_data = None
-            for item in response.output:
-                if hasattr(item, "type") and item.type == "message":
-                    for content_item in item.content:
-                        if (
-                            hasattr(content_item, "type")
-                            and content_item.type == "output_text"
-                        ):
-                            if hasattr(content_item, "text"):
-                                structured_data = json.loads(content_item.text)
-
+            response = self._with_retry(
+                lambda: client.responses.create(**request_params)
+            )
+            raw_text = self._extract_output_text(response)
+            structured_data = json.loads(raw_text) if raw_text else None
             if log:
                 log_request_response(
                     function_name="reasoning_call",
@@ -204,27 +247,17 @@ class OpenAIProvider(LLMProvider):
                     response=response,
                     provider="openai",
                 )
+            return structured_data or {}
 
-            result = structured_data or {}
-
-            if validator is None:
-                return result
-
-            is_valid, error_msg = validator(result)
-            if is_valid:
-                return result
-
-            attempts += 1
-            last_error_summary = extract_error_summary(error_msg)
-
-            if attempts <= max_retries:
-                if on_retry:
-                    on_retry(attempts, max_retries, last_error_summary)
-                effective_prompt = f"{error_msg}\n\n---\n\n{prompt}"
-
-        if on_retry:
-            on_retry(max_retries + 1, max_retries, f"EXHAUSTED: {last_error_summary}")
-        return result
+        return self._retry_with_validation(
+            call_fn=_call,
+            prompt=prompt,
+            validator=validator,
+            max_retries=max_retries,
+            on_retry=on_retry,
+            extract_error_summary_fn=extract_error_summary,
+            initial_prompt=effective_prompt if previous_errors else None,
+        )
 
     def agentic_research(
         self,
@@ -246,14 +279,15 @@ class OpenAIProvider(LLMProvider):
         if previous_errors:
             effective_prompt = f"{previous_errors}\n\n---\n\n{prompt}"
 
-        attempts = 0
-        last_error_summary = ""
         all_sources: list[str] = []
 
-        while attempts <= max_retries:
+        def _call(ep: str) -> dict:
+            # Acquire rate limit capacity before each API call
+            self._acquire_rate_limit(ep, model, max_output=16384)
+
             request_params = {
                 "model": model,
-                "input": effective_prompt,
+                "input": ep,
                 "tools": [{"type": "web_search"}],
                 "reasoning": {"effort": reasoning_effort},
                 "text": {
@@ -267,10 +301,12 @@ class OpenAIProvider(LLMProvider):
                 "include": ["web_search_call.action.sources"],
             }
 
-            response = client.responses.create(**request_params)
+            response = self._with_retry(
+                lambda: client.responses.create(**request_params)
+            )
 
-            # Extract structured data and sources
-            structured_data = None
+            raw_text = self._extract_output_text(response)
+            structured_data = json.loads(raw_text) if raw_text else None
             sources: list[str] = []
 
             for item in response.output:
@@ -287,22 +323,16 @@ class OpenAIProvider(LLMProvider):
                 if hasattr(item, "type") and item.type == "message":
                     for content_item in item.content:
                         if (
-                            hasattr(content_item, "type")
-                            and content_item.type == "output_text"
+                            hasattr(content_item, "annotations")
+                            and content_item.annotations
                         ):
-                            if hasattr(content_item, "text"):
-                                structured_data = json.loads(content_item.text)
-                            if (
-                                hasattr(content_item, "annotations")
-                                and content_item.annotations
-                            ):
-                                for annotation in content_item.annotations:
-                                    if (
-                                        hasattr(annotation, "type")
-                                        and annotation.type == "url_citation"
-                                    ):
-                                        if hasattr(annotation, "url"):
-                                            sources.append(annotation.url)
+                            for annotation in content_item.annotations:
+                                if (
+                                    hasattr(annotation, "type")
+                                    and annotation.type == "url_citation"
+                                ):
+                                    if hasattr(annotation, "url"):
+                                        sources.append(annotation.url)
 
             all_sources.extend(sources)
 
@@ -315,23 +345,16 @@ class OpenAIProvider(LLMProvider):
                     sources=list(set(sources)),
                 )
 
-            result = structured_data or {}
+            return structured_data or {}
 
-            if validator is None:
-                return result, list(set(all_sources))
+        result = self._retry_with_validation(
+            call_fn=_call,
+            prompt=prompt,
+            validator=validator,
+            max_retries=max_retries,
+            on_retry=on_retry,
+            extract_error_summary_fn=extract_error_summary,
+            initial_prompt=effective_prompt if previous_errors else None,
+        )
 
-            is_valid, error_msg = validator(result)
-            if is_valid:
-                return result, list(set(all_sources))
-
-            attempts += 1
-            last_error_summary = extract_error_summary(error_msg)
-
-            if attempts <= max_retries:
-                if on_retry:
-                    on_retry(attempts, max_retries, last_error_summary)
-                effective_prompt = f"{error_msg}\n\n---\n\n{prompt}"
-
-        if on_retry:
-            on_retry(max_retries + 1, max_retries, f"EXHAUSTED: {last_error_summary}")
         return result, list(set(all_sources))

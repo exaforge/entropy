@@ -11,10 +11,11 @@ Pipeline:
     Step 5: generate_concrete_phrasings() - Templates for numeric values
 """
 
-from typing import Any, Callable
+from typing import Any
 
 from ...core.llm import reasoning_call
 from ...core.models import PopulationSpec, AttributeSpec
+from ...utils.callbacks import StepProgressCallback
 from .config import (
     PersonaConfig,
     AttributeTreatment,
@@ -37,8 +38,7 @@ class PersonaConfigError(Exception):
     pass
 
 
-# Type alias for progress callback
-ProgressCallback = Callable[[str, str], None]
+ProgressCallback = StepProgressCallback
 
 
 # =============================================================================

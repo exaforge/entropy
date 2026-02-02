@@ -12,7 +12,6 @@ import json
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Callable
 
 from ..core.models import (
     PopulationSpec,
@@ -26,6 +25,7 @@ from .parser import parse_scenario
 from .exposure import generate_seed_exposure
 from .interaction import determine_interaction_model
 from .outcomes import define_outcomes
+from ..utils.callbacks import StepProgressCallback
 from .validator import validate_scenario, get_agent_count
 
 
@@ -95,7 +95,7 @@ def create_scenario(
     agents_path: str | Path,
     network_path: str | Path,
     output_path: str | Path | None = None,
-    on_progress: Callable[[str, str], None] | None = None,
+    on_progress: StepProgressCallback | None = None,
 ) -> tuple[ScenarioSpec, ValidationResult]:
     """
     Create a complete scenario spec from a description.

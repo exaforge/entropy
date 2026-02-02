@@ -3,10 +3,18 @@
 Provides two-zone provider routing:
 - Pipeline provider: used for phases 1-2 (spec, extend, persona, scenario)
 - Simulation provider: used for phase 3 (agent reasoning)
+
+The simulation provider is cached so its async client can be reused
+across batch calls and closed cleanly before the event loop shuts down.
 """
 
 from .base import LLMProvider
 from ...config import get_config, get_api_key
+
+
+# Cached simulation provider — reused across batch calls so the async
+# client isn't re-created per request, and can be closed cleanly.
+_simulation_provider: LLMProvider | None = None
 
 
 def _create_provider(provider_name: str) -> LLMProvider:
@@ -34,13 +42,36 @@ def get_pipeline_provider() -> LLMProvider:
 
 
 def get_simulation_provider() -> LLMProvider:
-    """Get the provider for simulation phase (agent reasoning)."""
+    """Get the cached provider for simulation phase (agent reasoning).
+
+    Caches the provider so the underlying async HTTP client is reused
+    across all calls in a batch, avoiding orphaned connections.
+    """
+    global _simulation_provider
     config = get_config()
-    return _create_provider(config.simulation.provider)
+    provider_name = config.simulation.provider
+
+    if _simulation_provider is None:
+        _simulation_provider = _create_provider(provider_name)
+
+    return _simulation_provider
+
+
+async def close_simulation_provider() -> None:
+    """Close the cached simulation provider's async client.
+
+    Call this before the event loop shuts down to cleanly release
+    HTTP connections and avoid 'Event loop is closed' errors.
+    """
+    global _simulation_provider
+    if _simulation_provider is not None:
+        await _simulation_provider.close_async()
+        _simulation_provider = None
 
 
 __all__ = [
     "LLMProvider",
     "get_pipeline_provider",
     "get_simulation_provider",
+    "close_simulation_provider",
 ]

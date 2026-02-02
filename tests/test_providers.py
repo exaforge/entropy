@@ -1,0 +1,639 @@
+"""Provider tests with mocked HTTP clients.
+
+Tests response extraction, retry on transient errors,
+validation-retry exhaustion, and source URL extraction.
+"""
+
+from unittest.mock import patch, MagicMock
+
+import pytest
+
+from entropy.core.providers.base import LLMProvider
+from entropy.core.providers.openai import OpenAIProvider
+from entropy.core.providers.claude import ClaudeProvider
+
+
+# Disable rate limiting for all provider tests (avoid waits with mocked clients)
+OpenAIProvider._disable_rate_limiting = True
+ClaudeProvider._disable_rate_limiting = True
+
+
+# =============================================================================
+# Mock response factories
+# =============================================================================
+
+
+def _make_openai_response(text: str = '{"key": "value"}'):
+    """Create a mock OpenAI Responses API response."""
+    content_item = MagicMock()
+    content_item.type = "output_text"
+    content_item.text = text
+    content_item.annotations = []
+
+    message = MagicMock()
+    message.type = "message"
+    message.content = [content_item]
+
+    response = MagicMock()
+    response.output = [message]
+
+    return response
+
+
+def _make_claude_response(tool_input: dict | None = None):
+    """Create a mock Claude Messages API response with tool_use block."""
+    blocks = []
+
+    if tool_input is not None:
+        tool_block = MagicMock()
+        tool_block.type = "tool_use"
+        tool_block.name = "response"
+        tool_block.input = tool_input
+        blocks.append(tool_block)
+
+    response = MagicMock()
+    response.content = blocks
+
+    return response
+
+
+# =============================================================================
+# OpenAI Provider Tests
+# =============================================================================
+
+
+class TestOpenAIExtractOutputText:
+    """Test the _extract_output_text helper."""
+
+    def test_extracts_text(self):
+        provider = OpenAIProvider.__new__(OpenAIProvider)
+        response = _make_openai_response('{"hello": "world"}')
+        text = provider._extract_output_text(response)
+        assert text == '{"hello": "world"}'
+
+    def test_returns_none_on_empty(self):
+        provider = OpenAIProvider.__new__(OpenAIProvider)
+        response = MagicMock()
+        response.output = []
+        text = provider._extract_output_text(response)
+        assert text is None
+
+
+class TestOpenAISimpleCall:
+    """Test OpenAI simple_call with mocked client."""
+
+    @patch.object(OpenAIProvider, "_get_client")
+    def test_returns_parsed_json(self, mock_get_client):
+        provider = OpenAIProvider.__new__(OpenAIProvider)
+        provider._api_key = "test-key"
+
+        mock_client = MagicMock()
+        mock_client.responses.create.return_value = _make_openai_response(
+            '{"result": "ok"}'
+        )
+        mock_get_client.return_value = mock_client
+
+        result = provider.simple_call(
+            prompt="test prompt",
+            response_schema={"type": "object", "properties": {}},
+            log=False,
+        )
+
+        assert result == {"result": "ok"}
+
+    @patch.object(OpenAIProvider, "_get_client")
+    def test_returns_empty_dict_on_no_output(self, mock_get_client):
+        provider = OpenAIProvider.__new__(OpenAIProvider)
+        provider._api_key = "test-key"
+
+        empty_response = MagicMock()
+        empty_response.output = []
+        mock_client = MagicMock()
+        mock_client.responses.create.return_value = empty_response
+        mock_get_client.return_value = mock_client
+
+        result = provider.simple_call(
+            prompt="test",
+            response_schema={"type": "object", "properties": {}},
+            log=False,
+        )
+        assert result == {}
+
+
+class TestOpenAIRetry:
+    """Test OpenAI transient error retry."""
+
+    def test_with_retry_succeeds_after_failure(self):
+        import openai
+
+        provider = OpenAIProvider.__new__(OpenAIProvider)
+        provider._api_key = "test-key"
+
+        call_count = 0
+
+        def flaky_fn():
+            nonlocal call_count
+            call_count += 1
+            if call_count < 3:
+                raise openai.APIConnectionError(request=MagicMock())
+            return "success"
+
+        with patch("time.sleep"):  # don't actually wait
+            result = provider._with_retry(flaky_fn, max_retries=3)
+
+        assert result == "success"
+        assert call_count == 3
+
+    def test_with_retry_exhausted(self):
+        import openai
+
+        provider = OpenAIProvider.__new__(OpenAIProvider)
+        provider._api_key = "test-key"
+
+        def always_fails():
+            raise openai.InternalServerError(
+                message="server error",
+                response=MagicMock(status_code=500, headers={}),
+                body=None,
+            )
+
+        with patch("time.sleep"):
+            with pytest.raises(openai.InternalServerError):
+                provider._with_retry(always_fails, max_retries=2)
+
+
+class TestOpenAIValidationRetry:
+    """Test validation-retry loop for OpenAI reasoning_call."""
+
+    @patch.object(OpenAIProvider, "_get_client")
+    def test_validation_retry_succeeds(self, mock_get_client):
+        """Test that a failing validation retries and eventually succeeds."""
+        provider = OpenAIProvider.__new__(OpenAIProvider)
+        provider._api_key = "test-key"
+
+        call_count = 0
+
+        def create_side_effect(**kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return _make_openai_response('{"status": "bad"}')
+            return _make_openai_response('{"status": "good"}')
+
+        mock_client = MagicMock()
+        mock_client.responses.create.side_effect = create_side_effect
+        mock_get_client.return_value = mock_client
+
+        def validator(data):
+            if data.get("status") == "good":
+                return True, ""
+            return False, "PREVIOUS ATTEMPT FAILED: status was bad"
+
+        result = provider.reasoning_call(
+            prompt="test",
+            response_schema={"type": "object", "properties": {}},
+            validator=validator,
+            max_retries=2,
+            log=False,
+        )
+
+        assert result["status"] == "good"
+
+    @patch.object(OpenAIProvider, "_get_client")
+    def test_validation_retry_exhausted(self, mock_get_client):
+        """Test that exhausting retries returns the last result."""
+        provider = OpenAIProvider.__new__(OpenAIProvider)
+        provider._api_key = "test-key"
+
+        mock_client = MagicMock()
+        mock_client.responses.create.return_value = _make_openai_response(
+            '{"status": "always_bad"}'
+        )
+        mock_get_client.return_value = mock_client
+
+        retry_calls = []
+
+        def on_retry(attempt, max_retries, summary):
+            retry_calls.append((attempt, summary))
+
+        def validator(data):
+            return False, "Still bad"
+
+        result = provider.reasoning_call(
+            prompt="test",
+            response_schema={"type": "object", "properties": {}},
+            validator=validator,
+            max_retries=1,
+            on_retry=on_retry,
+            log=False,
+        )
+
+        assert result["status"] == "always_bad"
+        # on_retry should have been called for attempt 1 and exhaustion
+        assert len(retry_calls) == 2
+        assert "EXHAUSTED" in retry_calls[-1][1]
+
+
+# =============================================================================
+# Claude Provider Tests
+# =============================================================================
+
+
+class TestClaudeSimpleCall:
+    """Test Claude simple_call with mocked client."""
+
+    @patch.object(ClaudeProvider, "_get_client")
+    def test_returns_tool_input(self, mock_get_client):
+        provider = ClaudeProvider.__new__(ClaudeProvider)
+        provider._api_key = "test-key"
+
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = _make_claude_response(
+            {"result": "ok"}
+        )
+        mock_get_client.return_value = mock_client
+
+        result = provider.simple_call(
+            prompt="test",
+            response_schema={"type": "object", "properties": {}},
+            log=False,
+        )
+
+        assert result == {"result": "ok"}
+
+
+class TestClaudeRetry:
+    """Test Claude transient error retry."""
+
+    def test_with_retry_succeeds_after_failure(self):
+        import anthropic
+
+        provider = ClaudeProvider.__new__(ClaudeProvider)
+        provider._api_key = "test-key"
+
+        call_count = 0
+
+        def flaky_fn():
+            nonlocal call_count
+            call_count += 1
+            if call_count < 2:
+                raise anthropic.APIConnectionError(request=MagicMock())
+            return "success"
+
+        with patch("time.sleep"):
+            result = provider._with_retry(flaky_fn, max_retries=3)
+
+        assert result == "success"
+        assert call_count == 2
+
+
+class TestClaudeAgenticResearch:
+    """Test Claude agentic_research source extraction."""
+
+    @patch.object(ClaudeProvider, "_get_client")
+    def test_extracts_sources(self, mock_get_client):
+        provider = ClaudeProvider.__new__(ClaudeProvider)
+        provider._api_key = "test-key"
+
+        # Build response with web search results and tool_use
+        search_result = MagicMock()
+        search_result.url = "https://example.com/source1"
+
+        search_block = MagicMock()
+        search_block.type = "web_search_tool_result"
+        search_block.content = [search_result]
+
+        tool_block = MagicMock()
+        tool_block.type = "tool_use"
+        tool_block.name = "research_data"
+        tool_block.input = {"finding": "something"}
+
+        text_block = MagicMock()
+        text_block.type = "text"
+        text_block.citations = []
+
+        response = MagicMock()
+        response.content = [search_block, tool_block, text_block]
+
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = response
+        mock_get_client.return_value = mock_client
+
+        result, sources = provider.agentic_research(
+            prompt="research something",
+            response_schema={"type": "object", "properties": {}},
+            log=False,
+        )
+
+        assert result == {"finding": "something"}
+        assert "https://example.com/source1" in sources
+
+
+# =============================================================================
+# Base Provider validation-retry Tests
+# =============================================================================
+
+
+class TestBaseRetryWithValidation:
+    """Test the shared _retry_with_validation method on the base class."""
+
+    def test_no_validator_returns_immediately(self):
+        """With no validator, first result is returned."""
+
+        class ConcreteProvider(LLMProvider):
+            default_simple_model = "test"
+            default_reasoning_model = "test"
+            default_research_model = "test"
+
+            def simple_call(self, *a, **kw):
+                return {}
+
+            async def simple_call_async(self, *a, **kw):
+                return {}
+
+            def reasoning_call(self, *a, **kw):
+                return {}
+
+            def agentic_research(self, *a, **kw):
+                return {}, []
+
+        provider = ConcreteProvider.__new__(ConcreteProvider)
+
+        call_count = 0
+
+        def call_fn(prompt):
+            nonlocal call_count
+            call_count += 1
+            return {"data": call_count}
+
+        result = provider._retry_with_validation(
+            call_fn=call_fn,
+            prompt="test",
+            validator=None,
+            max_retries=3,
+            on_retry=None,
+            extract_error_summary_fn=lambda x: x[:50],
+        )
+
+        assert result == {"data": 1}
+        assert call_count == 1
+
+    def test_initial_prompt_used_on_first_call(self):
+        """When initial_prompt is provided, it should be used for the first call."""
+
+        class ConcreteProvider(LLMProvider):
+            default_simple_model = "test"
+            default_reasoning_model = "test"
+            default_research_model = "test"
+
+            def simple_call(self, *a, **kw):
+                return {}
+
+            async def simple_call_async(self, *a, **kw):
+                return {}
+
+            def reasoning_call(self, *a, **kw):
+                return {}
+
+            def agentic_research(self, *a, **kw):
+                return {}, []
+
+        provider = ConcreteProvider.__new__(ConcreteProvider)
+
+        prompts_received = []
+
+        def call_fn(prompt):
+            prompts_received.append(prompt)
+            return {"data": "ok"}
+
+        result = provider._retry_with_validation(
+            call_fn=call_fn,
+            prompt="base prompt",
+            initial_prompt="PREVIOUS ERRORS: failed\n\n---\n\nbase prompt",
+            validator=None,
+            max_retries=3,
+            on_retry=None,
+            extract_error_summary_fn=lambda x: x[:50],
+        )
+
+        assert result == {"data": "ok"}
+        assert len(prompts_received) == 1
+        assert prompts_received[0] == "PREVIOUS ERRORS: failed\n\n---\n\nbase prompt"
+
+    def test_validation_retries_use_base_prompt_not_initial(self):
+        """Validation retries should use prompt, not initial_prompt."""
+
+        class ConcreteProvider(LLMProvider):
+            default_simple_model = "test"
+            default_reasoning_model = "test"
+            default_research_model = "test"
+
+            def simple_call(self, *a, **kw):
+                return {}
+
+            async def simple_call_async(self, *a, **kw):
+                return {}
+
+            def reasoning_call(self, *a, **kw):
+                return {}
+
+            def agentic_research(self, *a, **kw):
+                return {}, []
+
+        provider = ConcreteProvider.__new__(ConcreteProvider)
+
+        call_count = 0
+        prompts_received = []
+
+        def call_fn(prompt):
+            nonlocal call_count
+            call_count += 1
+            prompts_received.append(prompt)
+            return {"status": f"attempt_{call_count}"}
+
+        def validator(data):
+            # Fail on first two attempts, succeed on third
+            if "attempt_3" in data.get("status", ""):
+                return True, ""
+            return False, "VALIDATION FAILED: bad status"
+
+        result = provider._retry_with_validation(
+            call_fn=call_fn,
+            prompt="base prompt",
+            initial_prompt="PREVIOUS: error\n\n---\n\nbase prompt",
+            validator=validator,
+            max_retries=3,
+            on_retry=None,
+            extract_error_summary_fn=lambda x: x[:50],
+        )
+
+        # Should have made 3 calls
+        assert call_count == 3
+        assert result == {"status": "attempt_3"}
+
+        # First call uses initial_prompt
+        assert prompts_received[0] == "PREVIOUS: error\n\n---\n\nbase prompt"
+
+        # Retry calls should use base prompt with new validation errors
+        # (NOT initial_prompt)
+        assert "VALIDATION FAILED" in prompts_received[1]
+        assert "base prompt" in prompts_received[1]
+        # Should NOT contain the original "PREVIOUS: error"
+        assert "PREVIOUS: error" not in prompts_received[1]
+
+        assert "VALIDATION FAILED" in prompts_received[2]
+        assert "base prompt" in prompts_received[2]
+        assert "PREVIOUS: error" not in prompts_received[2]
+
+    def test_validator_succeeds_on_first_attempt_with_initial_prompt(self):
+        """When validator passes on first try with initial_prompt, no retries occur."""
+
+        class ConcreteProvider(LLMProvider):
+            default_simple_model = "test"
+            default_reasoning_model = "test"
+            default_research_model = "test"
+
+            def simple_call(self, *a, **kw):
+                return {}
+
+            async def simple_call_async(self, *a, **kw):
+                return {}
+
+            def reasoning_call(self, *a, **kw):
+                return {}
+
+            def agentic_research(self, *a, **kw):
+                return {}, []
+
+        provider = ConcreteProvider.__new__(ConcreteProvider)
+
+        call_count = 0
+
+        def call_fn(prompt):
+            nonlocal call_count
+            call_count += 1
+            return {"status": "good"}
+
+        def validator(data):
+            return data.get("status") == "good", ""
+
+        result = provider._retry_with_validation(
+            call_fn=call_fn,
+            prompt="base prompt",
+            initial_prompt="WITH CONTEXT: base prompt",
+            validator=validator,
+            max_retries=3,
+            on_retry=None,
+            extract_error_summary_fn=lambda x: x[:50],
+        )
+
+        # Should only have called once
+        assert call_count == 1
+        assert result == {"status": "good"}
+
+    def test_on_retry_callback_invoked_correctly(self):
+        """Test that on_retry callback is invoked with correct parameters."""
+
+        class ConcreteProvider(LLMProvider):
+            default_simple_model = "test"
+            default_reasoning_model = "test"
+            default_research_model = "test"
+
+            def simple_call(self, *a, **kw):
+                return {}
+
+            async def simple_call_async(self, *a, **kw):
+                return {}
+
+            def reasoning_call(self, *a, **kw):
+                return {}
+
+            def agentic_research(self, *a, **kw):
+                return {}, []
+
+        provider = ConcreteProvider.__new__(ConcreteProvider)
+
+        call_count = 0
+        retry_invocations = []
+
+        def call_fn(prompt):
+            nonlocal call_count
+            call_count += 1
+            return {"attempt": call_count}
+
+        def validator(data):
+            # Always fail
+            return False, f"Error on attempt {data['attempt']}"
+
+        def on_retry(attempt, max_retries, summary):
+            retry_invocations.append((attempt, max_retries, summary))
+
+        provider._retry_with_validation(
+            call_fn=call_fn,
+            prompt="base prompt",
+            validator=validator,
+            max_retries=2,
+            on_retry=on_retry,
+            extract_error_summary_fn=lambda x: x[:50],
+        )
+
+        # Should have tried 3 times (initial + 2 retries)
+        assert call_count == 3
+
+        # on_retry should have been called for each retry + exhaustion
+        assert len(retry_invocations) == 3
+
+        # Check first retry
+        assert retry_invocations[0][0] == 1  # attempt 1
+        assert retry_invocations[0][1] == 2  # max_retries
+        assert "Error on attempt 1" in retry_invocations[0][2]
+
+        # Check second retry
+        assert retry_invocations[1][0] == 2
+        assert retry_invocations[1][1] == 2
+
+        # Check exhaustion notification
+        assert retry_invocations[2][0] == 3  # max_retries + 1
+        assert retry_invocations[2][1] == 2
+        assert "EXHAUSTED" in retry_invocations[2][2]
+
+    def test_no_initial_prompt_defaults_to_prompt(self):
+        """When initial_prompt is None, prompt is used for first call."""
+
+        class ConcreteProvider(LLMProvider):
+            default_simple_model = "test"
+            default_reasoning_model = "test"
+            default_research_model = "test"
+
+            def simple_call(self, *a, **kw):
+                return {}
+
+            async def simple_call_async(self, *a, **kw):
+                return {}
+
+            def reasoning_call(self, *a, **kw):
+                return {}
+
+            def agentic_research(self, *a, **kw):
+                return {}, []
+
+        provider = ConcreteProvider.__new__(ConcreteProvider)
+
+        prompts_received = []
+
+        def call_fn(prompt):
+            prompts_received.append(prompt)
+            return {"data": "ok"}
+
+        provider._retry_with_validation(
+            call_fn=call_fn,
+            prompt="base prompt",
+            initial_prompt=None,
+            validator=None,
+            max_retries=3,
+            on_retry=None,
+            extract_error_summary_fn=lambda x: x[:50],
+        )
+
+        assert len(prompts_received) == 1
+        assert prompts_received[0] == "base prompt"

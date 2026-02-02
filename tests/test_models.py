@@ -507,3 +507,182 @@ class TestIntermediateTypes:
         )
         assert result.sufficient is False
         assert len(result.clarifications_needed) == 2
+
+
+class TestConvictionFunctions:
+    """Tests for conviction score/float/label conversion functions."""
+
+    def test_score_to_conviction_float_very_uncertain(self):
+        """Test score_to_conviction_float for very_uncertain range (0-15)."""
+        from entropy.core.models.simulation import score_to_conviction_float
+
+        assert score_to_conviction_float(0) == 0.1
+        assert score_to_conviction_float(7) == 0.1
+        assert score_to_conviction_float(15) == 0.1
+
+    def test_score_to_conviction_float_leaning(self):
+        """Test score_to_conviction_float for leaning range (16-35)."""
+        from entropy.core.models.simulation import score_to_conviction_float
+
+        assert score_to_conviction_float(16) == 0.3
+        assert score_to_conviction_float(25) == 0.3
+        assert score_to_conviction_float(35) == 0.3
+
+    def test_score_to_conviction_float_moderate(self):
+        """Test score_to_conviction_float for moderate range (36-60)."""
+        from entropy.core.models.simulation import score_to_conviction_float
+
+        assert score_to_conviction_float(36) == 0.5
+        assert score_to_conviction_float(50) == 0.5
+        assert score_to_conviction_float(60) == 0.5
+
+    def test_score_to_conviction_float_firm(self):
+        """Test score_to_conviction_float for firm range (61-85)."""
+        from entropy.core.models.simulation import score_to_conviction_float
+
+        assert score_to_conviction_float(61) == 0.7
+        assert score_to_conviction_float(75) == 0.7
+        assert score_to_conviction_float(85) == 0.7
+
+    def test_score_to_conviction_float_absolute(self):
+        """Test score_to_conviction_float for absolute range (86-100)."""
+        from entropy.core.models.simulation import score_to_conviction_float
+
+        assert score_to_conviction_float(86) == 0.9
+        assert score_to_conviction_float(95) == 0.9
+        assert score_to_conviction_float(100) == 0.9
+
+    def test_score_to_conviction_float_boundaries(self):
+        """Test score_to_conviction_float at bucket boundaries."""
+        from entropy.core.models.simulation import score_to_conviction_float
+
+        # Test all critical boundaries
+        assert score_to_conviction_float(15) == 0.1  # very_uncertain upper
+        assert score_to_conviction_float(16) == 0.3  # leaning lower
+        assert score_to_conviction_float(35) == 0.3  # leaning upper
+        assert score_to_conviction_float(36) == 0.5  # moderate lower
+        assert score_to_conviction_float(60) == 0.5  # moderate upper
+        assert score_to_conviction_float(61) == 0.7  # firm lower
+        assert score_to_conviction_float(85) == 0.7  # firm upper
+        assert score_to_conviction_float(86) == 0.9  # absolute lower
+
+    def test_score_to_conviction_float_none(self):
+        """Test score_to_conviction_float with None returns None."""
+        from entropy.core.models.simulation import score_to_conviction_float
+
+        assert score_to_conviction_float(None) is None
+
+    def test_score_to_conviction_float_accepts_float(self):
+        """Test score_to_conviction_float accepts float inputs."""
+        from entropy.core.models.simulation import score_to_conviction_float
+
+        # Floats should be cast to int
+        assert score_to_conviction_float(15.9) == 0.1
+        assert score_to_conviction_float(16.1) == 0.3
+        assert score_to_conviction_float(50.5) == 0.5
+
+    def test_float_to_conviction_exact_matches(self):
+        """Test float_to_conviction for exact conviction map values."""
+        from entropy.core.models.simulation import (
+            float_to_conviction,
+            ConvictionLevel,
+        )
+
+        assert float_to_conviction(0.1) == ConvictionLevel.VERY_UNCERTAIN
+        assert float_to_conviction(0.3) == ConvictionLevel.LEANING
+        assert float_to_conviction(0.5) == ConvictionLevel.MODERATE
+        assert float_to_conviction(0.7) == ConvictionLevel.FIRM
+        assert float_to_conviction(0.9) == ConvictionLevel.ABSOLUTE
+
+    def test_float_to_conviction_nearest_rounding(self):
+        """Test float_to_conviction rounds to nearest level."""
+        from entropy.core.models.simulation import (
+            float_to_conviction,
+            ConvictionLevel,
+        )
+
+        # Test values between levels round to nearest
+        # Levels: 0.1, 0.3, 0.5, 0.7, 0.9
+        assert (
+            float_to_conviction(0.15) == ConvictionLevel.VERY_UNCERTAIN
+        )  # closer to 0.1 than 0.3
+        assert (
+            float_to_conviction(0.19) == ConvictionLevel.VERY_UNCERTAIN
+        )  # closer to 0.1 than 0.3
+        assert (
+            float_to_conviction(0.21) == ConvictionLevel.LEANING
+        )  # closer to 0.3 than 0.1
+        assert (
+            float_to_conviction(0.25) == ConvictionLevel.LEANING
+        )  # closer to 0.3 than 0.1/0.5
+
+        assert (
+            float_to_conviction(0.35) == ConvictionLevel.LEANING
+        )  # closer to 0.3 than 0.5
+        assert (
+            float_to_conviction(0.45) == ConvictionLevel.MODERATE
+        )  # closer to 0.5 than 0.3
+
+        assert (
+            float_to_conviction(0.55) == ConvictionLevel.MODERATE
+        )  # closer to 0.5 than 0.7
+        assert (
+            float_to_conviction(0.65) == ConvictionLevel.FIRM
+        )  # closer to 0.7 than 0.5
+
+        assert (
+            float_to_conviction(0.75) == ConvictionLevel.FIRM
+        )  # closer to 0.7 than 0.9
+        assert (
+            float_to_conviction(0.85) == ConvictionLevel.ABSOLUTE
+        )  # closer to 0.9 than 0.7
+
+    def test_float_to_conviction_extreme_values(self):
+        """Test float_to_conviction with values outside normal range."""
+        from entropy.core.models.simulation import (
+            float_to_conviction,
+            ConvictionLevel,
+        )
+
+        # Very low values should round to very_uncertain
+        assert float_to_conviction(0.0) == ConvictionLevel.VERY_UNCERTAIN
+        assert float_to_conviction(0.05) == ConvictionLevel.VERY_UNCERTAIN
+
+        # Very high values should round to absolute
+        assert float_to_conviction(1.0) == ConvictionLevel.ABSOLUTE
+        assert float_to_conviction(0.95) == ConvictionLevel.ABSOLUTE
+
+    def test_float_to_conviction_none(self):
+        """Test float_to_conviction with None returns None."""
+        from entropy.core.models.simulation import float_to_conviction
+
+        assert float_to_conviction(None) is None
+
+    def test_conviction_round_trip_via_score(self):
+        """Test round-trip conversion score -> float -> label."""
+        from entropy.core.models.simulation import (
+            score_to_conviction_float,
+            float_to_conviction,
+            ConvictionLevel,
+        )
+
+        # Test that converting a score to float and back to label works
+        assert (
+            float_to_conviction(score_to_conviction_float(10))
+            == ConvictionLevel.VERY_UNCERTAIN
+        )
+        assert (
+            float_to_conviction(score_to_conviction_float(25))
+            == ConvictionLevel.LEANING
+        )
+        assert (
+            float_to_conviction(score_to_conviction_float(50))
+            == ConvictionLevel.MODERATE
+        )
+        assert (
+            float_to_conviction(score_to_conviction_float(75)) == ConvictionLevel.FIRM
+        )
+        assert (
+            float_to_conviction(score_to_conviction_float(95))
+            == ConvictionLevel.ABSOLUTE
+        )

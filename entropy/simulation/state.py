@@ -7,6 +7,7 @@ public statements, and memory traces.
 
 import json
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -191,6 +192,19 @@ class StateManager:
                 pass
 
         self.conn.commit()
+
+    @contextmanager
+    def transaction(self):
+        """Context manager for batching writes into a single SQLite transaction.
+
+        Commits on success, rolls back on exception.
+        """
+        try:
+            yield
+            self.conn.commit()
+        except Exception:
+            self.conn.rollback()
+            raise
 
     def initialize_agents(self, agents: list[dict[str, Any]]) -> None:
         """Initialize state rows for all agents.
@@ -397,8 +411,6 @@ class StateManager:
             (exposure.timestep, agent_id),
         )
 
-        self.conn.commit()
-
     def update_agent_state(
         self, agent_id: str, state: AgentState, timestep: int
     ) -> None:
@@ -442,8 +454,6 @@ class StateManager:
                 agent_id,
             ),
         )
-
-        self.conn.commit()
 
     def batch_update_states(
         self, updates: list[tuple[str, AgentState]], timestep: int
@@ -489,8 +499,6 @@ class StateManager:
                 ),
             )
 
-        self.conn.commit()
-
     def save_memory_entry(self, agent_id: str, entry: MemoryEntry) -> None:
         """Save a memory trace entry for an agent.
 
@@ -531,8 +539,6 @@ class StateManager:
         """,
             (agent_id, agent_id),
         )
-
-        self.conn.commit()
 
     def get_memory_traces(self, agent_id: str) -> list[MemoryEntry]:
         """Get memory trace entries for an agent (max 3, oldest first).
@@ -584,8 +590,6 @@ class StateManager:
                 event.timestamp.isoformat(),
             ),
         )
-
-        self.conn.commit()
 
     def get_exposure_rate(self) -> float:
         """Get fraction of population that is aware."""
@@ -704,8 +708,6 @@ class StateManager:
                 summary.sentiment_variance,
             ),
         )
-
-        self.conn.commit()
 
     def get_timestep_summaries(self) -> list[TimestepSummary]:
         """Get all timestep summaries."""

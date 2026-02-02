@@ -16,9 +16,8 @@ This is the kind of question Entropy was built for: a heterogeneous population w
 
 ```
 entropy spec ──> entropy extend ──> entropy sample ──> entropy network ──> entropy persona ──> entropy scenario ──> entropy simulate
-                                                                                                                            │
-                                                                                                                            ▼
-                                                                                                                     entropy results
+                                                                                                                     │              │
+                                                                                                              entropy estimate    entropy results
 ```
 
 Each step produces a file that feeds into the next:
@@ -33,7 +32,7 @@ Each step produces a file that feeds into the next:
 | 6 | `entropy scenario` | `population.yaml` + `agents.json` + `network.json` | `scenario.yaml` (executable spec) |
 | 7 | `entropy simulate` | `scenario.yaml` | `results/` (simulation output) |
 
-You can also run `entropy validate` at any point to check a spec file, and `entropy results` to inspect simulation output.
+You can also run `entropy validate` at any point to check a spec file, `entropy estimate` to preview simulation cost, and `entropy results` to inspect simulation output.
 
 ---
 
@@ -69,11 +68,11 @@ export OPENAI_API_KEY=sk-...              # For OpenAI
 When using entropy as a library, configure programmatically — no files needed:
 
 ```python
-from entropy.config import configure, EntropyConfig, PipelineConfig, SimulationConfig
+from entropy.config import configure, EntropyConfig, PipelineConfig, SimZoneConfig
 
 configure(EntropyConfig(
     pipeline=PipelineConfig(provider="claude"),
-    simulation=SimulationConfig(provider="openai", model="gpt-5-mini"),
+    simulation=SimZoneConfig(provider="openai", model="gpt-5-mini"),
 ))
 ```
 
@@ -224,26 +223,44 @@ A JSON file (`agents.json`) or SQLite database (`agents.db`) containing all samp
 ```bash
 entropy network austin/agents.json \
   -o austin/network.json \
-  --avg-degree 15 \
+  -p austin/population.yaml \
   --seed 42
 ```
 
 Agents don't exist in isolation. This step creates a **social network graph** connecting agents based on attribute similarity — people who live in the same neighborhood, work in similar industries, or share commute patterns are more likely to be connected.
 
+### Network configuration
+
+The network's social structure is driven by a `NetworkConfig` that defines which attributes create connections, what types of relationships exist, and who influences whom. Three ways to provide it:
+
+1. **LLM-generated** (`-p population.yaml`) — The LLM reads the population spec and generates attribute weights, edge type rules, influence factors, and degree multipliers tailored to that population.
+2. **Manual YAML** (`-c config.yaml`) — Load a hand-crafted or previously saved config file.
+3. **No config** — Produces a flat network with no similarity structure (all edges are "peer" type).
+
+Auto-detection: if `{population_stem}.network-config.yaml` exists alongside the population file, it's loaded automatically.
+
+Save a generated config for inspection/editing with `--save-config`:
+
+```bash
+entropy network austin/agents.json -o austin/network.json \
+  -p austin/population.yaml --save-config austin/network-config.yaml
+```
+
 ### How connections form
 
 The network uses a **Watts-Strogatz small-world model** with attribute-based similarity weighting:
 
-- **Neighbors** — Agents with similar `zip_code`, `occupation`, or `commute_method` get higher connection probability.
+- **Homophily** — Agents with matching attributes (defined by `attribute_weights` in the config) get higher connection probability. The LLM picks which attributes matter for each population.
 - **Weak ties** — Random rewiring (controlled by `--rewire-prob`) creates cross-cluster bridges, modeling how information spreads beyond tight-knit groups.
-- **Edge types** — Connections are typed: `colleague`, `neighbor`, `weak_tie`, etc. These matter during simulation because information spreads differently through close colleagues vs. acquaintances.
+- **Edge types** — Connections are typed via priority-ordered rules (e.g., same workplace → `colleague`, same neighborhood → `neighbor`). These matter during simulation because information spreads differently through close colleagues vs. acquaintances.
+- **Influence asymmetry** — Influence factors define who sways whom (e.g., senior employees influence junior ones more). Supports ordinal, boolean, and numeric factor types.
 
 ### The `--validate` flag
 
 Add `-v` to print network quality metrics:
 
 ```bash
-entropy network austin/agents.json -o austin/network.json --validate
+entropy network austin/agents.json -o austin/network.json -p austin/population.yaml --validate
 ```
 
 This shows clustering coefficient, average path length, modularity, and flags anything outside expected ranges for a realistic social network.
@@ -254,6 +271,9 @@ This shows clustering coefficient, average path length, modularity, and flags an
 |---|---|---|
 | **Arg** | `agents_file` | Agents JSON file |
 | **Opt** | `--output` / `-o` | Output network JSON file **(required)** |
+| **Opt** | `--population` / `-p` | Population spec YAML — generates network config via LLM |
+| **Opt** | `--network-config` / `-c` | Custom network config YAML file |
+| **Opt** | `--save-config` | Save the generated/loaded config to YAML |
 | **Opt** | `--avg-degree` | Target average connections per agent (default: `20`) |
 | **Opt** | `--rewire-prob` | Watts-Strogatz rewiring probability (default: `0.05`) |
 | **Opt** | `--seed` | Random seed for reproducibility |
@@ -404,12 +424,15 @@ These aren't scripted responses. They emerge from each agent's unique combinatio
 |---|---|---|
 | **Arg** | `scenario_file` | Scenario spec YAML |
 | **Opt** | `--output` / `-o` | Output results directory **(required)** |
-| **Opt** | `--model` / `-m` | LLM model for reasoning (default: from `entropy config`) |
-| **Opt** | `--pivotal-model` | Model for Pass 1 reasoning (default: provider default) |
-| **Opt** | `--routine-model` | Model for Pass 2 classification (default: provider default) |
+| **Opt** | `--model` / `-m` | LLM model for both passes (default: from `entropy config`) |
+| **Opt** | `--pivotal-model` | Model override for Pass 1 reasoning |
+| **Opt** | `--routine-model` | Model override for Pass 2 classification |
 | **Opt** | `--threshold` / `-t` | Multi-touch threshold for re-reasoning (default: `3`) |
-| **Opt** | `--rate-tier` | Provider rate limit tier (default: auto-detect) |
+| **Opt** | `--rate-tier` | Provider rate limit tier 1-4 (default: from config) |
+| **Opt** | `--rpm-override` | Override requests per minute limit |
+| **Opt** | `--tpm-override` | Override tokens per minute limit |
 | **Opt** | `--seed` | Random seed for reproducibility |
+| **Opt** | `--persona` / `-p` | Persona config YAML (auto-detected if not specified) |
 | **Opt** | `--quiet` / `-q` | Suppress progress output |
 | **Opt** | `--verbose` / `-v` | Show detailed logs |
 | **Opt** | `--debug` | Show debug-level logs |
@@ -488,6 +511,59 @@ Validate a spec file at any point in the pipeline. Checks for structural issues,
 
 ---
 
+## Estimate Simulation Cost
+
+```bash
+entropy estimate austin/scenario.yaml
+entropy estimate austin/scenario.yaml --verbose
+entropy estimate austin/scenario.yaml --pivotal-model gpt-5 --routine-model gpt-5-mini
+```
+
+Predict the cost of a simulation run without making any API calls. Uses a simplified SIR-like propagation model to estimate how many agents reason per timestep, then calculates token counts and USD costs from the model pricing database.
+
+### What you get
+
+```
+COST ESTIMATE: austin_congestion_tax
+──────────────────────────────────────
+Population: 500 agents | Avg degree: 20
+Max timesteps: 50 | Effective: 38 (early stopping predicted)
+
+Models: gpt-5 (Pass 1) / gpt-5-mini (Pass 2)
+
+LLM CALLS
+  Pass 1 (reasoning):     1,847 calls
+  Pass 2 (classification): 1,847 calls
+
+TOKENS
+  Pass 1 input:    2.4M tokens
+  Pass 1 output:   184K tokens
+  Pass 2 input:    923K tokens
+  Pass 2 output:   92K tokens
+
+COST
+  Pass 1:  $4.12
+  Pass 2:  $0.38
+  Total:   $4.50
+```
+
+### The `--verbose` flag
+
+Shows a per-timestep breakdown: how many agents are newly exposed, how many reason, and cumulative cost at each timestep. Useful for understanding the cost curve and where early stopping kicks in.
+
+### Arguments & options
+
+| | Name | Description |
+|---|---|---|
+| **Arg** | `scenario_file` | Scenario spec YAML |
+| **Opt** | `--model` / `-m` | Model for both passes |
+| **Opt** | `--pivotal-model` | Model for Pass 1 reasoning |
+| **Opt** | `--routine-model` | Model for Pass 2 classification |
+| **Opt** | `--threshold` / `-t` | Multi-touch threshold (default: `3`) |
+| **Opt** | `--verbose` / `-v` | Show per-timestep breakdown |
+
+---
+
 ## Managing Configuration
 
 ```bash
@@ -514,6 +590,9 @@ Config is stored at `~/.config/entropy/config.json` and managed exclusively thro
 | `simulation.pivotal_model` | Model for Pass 1 (role-play reasoning) | provider default |
 | `simulation.routine_model` | Model for Pass 2 (classification) | provider default |
 | `simulation.max_concurrent` | Max concurrent LLM calls during simulation | `50` |
+| `simulation.rate_tier` | Rate limit tier (1-4, higher = more generous limits) | `None` (Tier 1) |
+| `simulation.rpm_override` | Override requests per minute limit | `None` |
+| `simulation.tpm_override` | Override tokens per minute limit | `None` |
 
 ### Resolution Order
 
@@ -545,13 +624,22 @@ API keys are always read from environment variables (never stored in config):
 entropy spec "500 Austin TX commuters who drive into downtown for work" -o austin/base.yaml
 entropy extend austin/base.yaml -s "Response to a $15/day downtown congestion tax" -o austin/population.yaml
 entropy sample austin/population.yaml -o austin/agents.json --seed 42
-entropy network austin/agents.json -o austin/network.json --seed 42
+entropy network austin/agents.json -o austin/network.json -p austin/population.yaml --seed 42
 entropy persona austin/population.yaml --agents austin/agents.json
 entropy scenario -p austin/population.yaml -a austin/agents.json -n austin/network.json -o austin/scenario.yaml
+
+# Estimate cost before running
+entropy estimate austin/scenario.yaml
+
+# Run simulation
 entropy simulate austin/scenario.yaml -o austin/results/ --seed 42
 
 # View results
 entropy results austin/results/
 entropy results austin/results/ --segment income
 entropy results austin/results/ --timeline
+
+# Validate at any point
+entropy validate austin/population.yaml
+entropy validate austin/scenario.yaml
 ```
