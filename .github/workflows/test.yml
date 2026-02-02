@@ -13,6 +13,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
       - run: uv python install 3.12
       - run: uv sync --group dev
       - run: uv run ruff check .
@@ -26,6 +28,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
       - run: uv python install ${{ matrix.python-version }}
       - run: uv sync --group dev
       - run: uv run pytest --tb=short -q
