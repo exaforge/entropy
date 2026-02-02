@@ -106,6 +106,10 @@ class NetworkConfig(BaseModel):
         rewire_prob: Watts-Strogatz rewiring probability
         similarity_threshold: Sigmoid threshold for edge probability
         similarity_steepness: Sigmoid steepness for edge probability
+        triadic_closure_prob: Probability of closing open triads (A-B, B-C -> A-C).
+            Higher values create more realistic clustering. Default 0.4.
+        target_clustering: Target clustering coefficient (0.3-0.5 is realistic).
+            Triadic closure runs until this is reached or max iterations hit.
         attribute_weights: Weights for similarity calculation
         degree_multipliers: Multipliers for degree correction
         edge_type_rules: Rules for inferring edge types (evaluated by priority)
@@ -122,6 +126,12 @@ class NetworkConfig(BaseModel):
     rewire_prob: float = 0.05
     similarity_threshold: float = 0.3
     similarity_steepness: float = 10.0
+    triadic_closure_prob: float = 0.6
+    target_clustering: float = 0.35
+    target_modularity: float = 0.55  # Target modularity (0.4-0.7 range)
+    community_count: int | None = None  # Auto-detected if None
+    inter_community_scale: float = 0.3  # Initial edge prob between communities vs within
+    max_calibration_iterations: int = 12  # Max iterations for adaptive calibration
     attribute_weights: dict[str, AttributeWeightConfig] = Field(default_factory=dict)
     degree_multipliers: list[DegreeMultiplierConfig] = Field(default_factory=list)
     edge_type_rules: list[EdgeTypeRule] = Field(default_factory=list)

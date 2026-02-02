@@ -206,15 +206,17 @@ def _build_prompt(
             line += f" [{attr.category}]"
         if hasattr(attr, "sampling") and attr.sampling:
             dist = attr.sampling.distribution
-            if dist and dist.options:
-                opts = ", ".join(dist.options[:8])
-                if len(dist.options) > 8:
-                    opts += f", ... ({len(dist.options)} total)"
+            dist_options = getattr(dist, 'options', None) if dist else None
+            if dist_options:
+                opts = ", ".join(dist_options[:8])
+                if len(dist_options) > 8:
+                    opts += f", ... ({len(dist_options)} total)"
                 line += f": options=[{opts}]"
             elif dist and dist.type:
                 line += f": {dist.type}"
-                if dist.mean is not None:
-                    line += f" (mean={dist.mean})"
+                dist_mean = getattr(dist, 'mean', None)
+                if dist_mean is not None:
+                    line += f" (mean={dist_mean})"
         attr_lines.append(line)
 
     attr_summary = "\n".join(attr_lines)
@@ -333,10 +335,19 @@ def _validate_config(data: dict, population_spec: PopulationSpec) -> list[str]:
 
 
 def _make_validator(population_spec: PopulationSpec) -> ValidatorCallback:
-    """Create a validator callback for reasoning_call retry."""
+    """Create a validator callback for reasoning_call retry.
 
-    def validator(data: dict) -> list[str]:
-        return _validate_config(data, population_spec)
+    Returns a validator that conforms to ValidatorCallback signature:
+    (data: dict) -> tuple[bool, str] where bool is validity and str is error message.
+    """
+
+    def validator(data: dict) -> tuple[bool, str]:
+        errors = _validate_config(data, population_spec)
+        if not errors:
+            return True, ""
+        # Format errors for retry prompt - include all errors so LLM can fix them
+        error_msg = "VALIDATION FAILED. Fix these errors:\n" + "\n".join(f"- {e}" for e in errors)
+        return False, error_msg
 
     return validator
 

@@ -77,6 +77,8 @@ class ClaudeProvider(LLMProvider):
 
     """
 
+    provider_name = "anthropic"
+
     def __init__(self, api_key: str = "") -> None:
         if not api_key:
             raise ValueError(
@@ -151,6 +153,9 @@ class ClaudeProvider(LLMProvider):
         client = self._get_client()
         tool = _make_structured_tool(schema_name, response_schema)
 
+        # Acquire rate limit capacity before making the call
+        self._acquire_rate_limit(prompt, model, max_output=max_tokens or 4096)
+
         logger.info(
             f"[Claude] simple_call starting - model={model}, schema={schema_name}"
         )
@@ -224,6 +229,9 @@ class ClaudeProvider(LLMProvider):
             effective_prompt = f"{previous_errors}\n\n---\n\n{prompt}"
 
         def _call(ep: str) -> dict:
+            # Acquire rate limit capacity before each API call
+            self._acquire_rate_limit(ep, model, max_output=16384)
+
             response = self._with_retry(
                 lambda: client.messages.create(
                     model=model,
@@ -286,6 +294,9 @@ class ClaudeProvider(LLMProvider):
                 f"{ep}\n\n"
                 f"After researching, call the '{schema_name}' tool with your structured findings."
             )
+
+            # Acquire rate limit capacity before each API call
+            self._acquire_rate_limit(research_prompt, model, max_output=16384)
 
             logger.info(f"[Claude] agentic_research - model={model}")
 

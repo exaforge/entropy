@@ -25,6 +25,8 @@ logger = logging.getLogger(__name__)
 class OpenAIProvider(LLMProvider):
     """OpenAI LLM provider using the Responses API."""
 
+    provider_name = "openai"
+
     def __init__(self, api_key: str = "") -> None:
         if not api_key:
             raise ValueError(
@@ -116,6 +118,9 @@ class OpenAIProvider(LLMProvider):
     ) -> dict:
         model = model or self.default_simple_model
         client = self._get_client()
+
+        # Acquire rate limit capacity before making the call
+        self._acquire_rate_limit(prompt, model, max_output=max_tokens or 4096)
 
         request_params = {
             "model": model,
@@ -214,6 +219,9 @@ class OpenAIProvider(LLMProvider):
             effective_prompt = f"{previous_errors}\n\n---\n\n{prompt}"
 
         def _call(ep: str) -> dict:
+            # Acquire rate limit capacity before each API call
+            self._acquire_rate_limit(ep, model, max_output=16384)
+
             request_params = {
                 "model": model,
                 "reasoning": {"effort": reasoning_effort},
@@ -274,6 +282,9 @@ class OpenAIProvider(LLMProvider):
         all_sources: list[str] = []
 
         def _call(ep: str) -> dict:
+            # Acquire rate limit capacity before each API call
+            self._acquire_rate_limit(ep, model, max_output=16384)
+
             request_params = {
                 "model": model,
                 "input": ep,

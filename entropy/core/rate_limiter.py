@@ -194,6 +194,20 @@ class RateLimiter:
             Actual wait time in seconds (0 if no wait needed)
         """
         total_wait = 0.0
+
+        # Cap estimates to bucket capacity to avoid infinite loops
+        # (can't acquire more than capacity, so just use capacity as upper bound)
+        if self._has_split_tokens:
+            estimated_input_tokens = min(estimated_input_tokens, int(self.itpm_bucket.capacity * 0.9))
+            estimated_output_tokens = min(estimated_output_tokens, int(self.otpm_bucket.capacity * 0.9))
+        else:
+            max_total = int(self.tpm_bucket.capacity * 0.9)
+            if estimated_input_tokens + estimated_output_tokens > max_total:
+                # Scale down proportionally
+                ratio = max_total / (estimated_input_tokens + estimated_output_tokens)
+                estimated_input_tokens = int(estimated_input_tokens * ratio)
+                estimated_output_tokens = int(estimated_output_tokens * ratio)
+
         estimated_total = estimated_input_tokens + estimated_output_tokens
 
         while True:
@@ -247,6 +261,91 @@ class RateLimiter:
                 )
 
             await asyncio.sleep(wait_time)
+
+    def acquire_sync(
+        self,
+        estimated_input_tokens: int = 600,
+        estimated_output_tokens: int = 200,
+    ) -> float:
+        """Blocking wait until we have capacity, then consume.
+
+        Sync version of acquire() for use in pipeline (non-async) code paths.
+
+        Args:
+            estimated_input_tokens: Estimated input tokens for the request
+            estimated_output_tokens: Estimated output tokens for the request
+
+        Returns:
+            Actual wait time in seconds (0 if no wait needed)
+        """
+        total_wait = 0.0
+
+        # Cap estimates to bucket capacity to avoid infinite loops
+        # (can't acquire more than capacity, so just use capacity as upper bound)
+        if self._has_split_tokens:
+            estimated_input_tokens = min(estimated_input_tokens, int(self.itpm_bucket.capacity * 0.9))
+            estimated_output_tokens = min(estimated_output_tokens, int(self.otpm_bucket.capacity * 0.9))
+        else:
+            max_total = int(self.tpm_bucket.capacity * 0.9)
+            if estimated_input_tokens + estimated_output_tokens > max_total:
+                # Scale down proportionally
+                ratio = max_total / (estimated_input_tokens + estimated_output_tokens)
+                estimated_input_tokens = int(estimated_input_tokens * ratio)
+                estimated_output_tokens = int(estimated_output_tokens * ratio)
+
+        estimated_total = estimated_input_tokens + estimated_output_tokens
+
+        while True:
+            # Check RPM bucket
+            rpm_wait = self.rpm_bucket.try_acquire(1.0)
+
+            if self._has_split_tokens:
+                # Anthropic: check both input and output token buckets
+                itpm_wait = self.itpm_bucket.try_acquire(float(estimated_input_tokens))
+                otpm_wait = self.otpm_bucket.try_acquire(float(estimated_output_tokens))
+
+                if rpm_wait == 0.0 and itpm_wait == 0.0 and otpm_wait == 0.0:
+                    self.total_acquired += 1
+                    self.total_wait_time += total_wait
+                    return total_wait
+
+                # Release what was acquired
+                if rpm_wait == 0.0:
+                    self.rpm_bucket.tokens += 1.0
+                if itpm_wait == 0.0:
+                    self.itpm_bucket.tokens += float(estimated_input_tokens)
+                if otpm_wait == 0.0:
+                    self.otpm_bucket.tokens += float(estimated_output_tokens)
+
+                wait_time = max(rpm_wait, itpm_wait, otpm_wait)
+            else:
+                # OpenAI: check combined token bucket
+                tpm_wait = self.tpm_bucket.try_acquire(float(estimated_total))
+
+                if rpm_wait == 0.0 and tpm_wait == 0.0:
+                    self.total_acquired += 1
+                    self.total_wait_time += total_wait
+                    return total_wait
+
+                # Release what was acquired
+                if rpm_wait == 0.0:
+                    self.rpm_bucket.tokens += 1.0
+                if tpm_wait == 0.0:
+                    self.tpm_bucket.tokens += float(estimated_total)
+
+                wait_time = max(rpm_wait, tpm_wait)
+
+            # Cap single wait to 30 seconds to stay responsive
+            wait_time = min(wait_time, 30.0)
+            total_wait += wait_time
+
+            if total_wait > 0.5:  # Only log if significant wait
+                logger.info(
+                    f"[RATE_LIMIT] {self.provider}/{self.model} waiting {wait_time:.1f}s "
+                    f"(total_wait={total_wait:.1f}s)"
+                )
+
+            time.sleep(wait_time)
 
     def update_from_headers(self, headers: dict[str, str] | None) -> None:
         """Adjust limits based on API response headers.

@@ -1,7 +1,10 @@
 """Abstract base class for LLM providers."""
 
 from abc import ABC, abstractmethod
-from typing import Callable
+from typing import Callable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..rate_limiter import RateLimiter
 
 
 # Type for validation callbacks: takes response data, returns (is_valid, error_message)
@@ -9,6 +12,11 @@ ValidatorCallback = Callable[[dict], tuple[bool, str]]
 
 # Type for retry notification callbacks: (attempt, max_retries, short_error_summary)
 RetryCallback = Callable[[int, int, str], None]
+
+
+def estimate_tokens(text: str) -> int:
+    """Estimate token count from text (rough heuristic: ~4 chars per token)."""
+    return max(100, len(text) // 4)
 
 
 class LLMProvider(ABC):
@@ -21,9 +29,54 @@ class LLMProvider(ABC):
         api_key: API key or access token for the provider.
     """
 
+    # Provider name for rate limiter initialization (override in subclasses)
+    provider_name: str = "unknown"
+
+    # Set to True to disable rate limiting (for tests)
+    _disable_rate_limiting: bool = False
+
     def __init__(self, api_key: str) -> None:
         self._api_key = api_key
         self._cached_async_client = None
+        self._rate_limiter: "RateLimiter | None" = None
+
+    def _ensure_rate_limiter(self, model: str = "") -> "RateLimiter":
+        """Lazily initialize rate limiter for this provider.
+
+        Uses Tier 1 limits by default. Called before each API request.
+        """
+        # Defensive check for tests that use __new__ without __init__
+        if not hasattr(self, "_rate_limiter") or self._rate_limiter is None:
+            from ..rate_limiter import RateLimiter
+
+            self._rate_limiter = RateLimiter.for_provider(
+                provider=self.provider_name,
+                model=model,
+                tier=1,  # Default to Tier 1 (most restrictive)
+            )
+        return self._rate_limiter
+
+    def _acquire_rate_limit(self, prompt: str, model: str = "", max_output: int = 1000) -> float:
+        """Acquire rate limit capacity before making an API call.
+
+        Args:
+            prompt: The prompt text (used to estimate input tokens)
+            model: Model name (for rate limiter initialization)
+            max_output: Estimated max output tokens
+
+        Returns:
+            Wait time in seconds (0 if no wait needed)
+        """
+        # Skip rate limiting if disabled (e.g., in tests)
+        if getattr(self, "_disable_rate_limiting", False):
+            return 0.0
+
+        limiter = self._ensure_rate_limiter(model)
+        estimated_input = estimate_tokens(prompt)
+        return limiter.acquire_sync(
+            estimated_input_tokens=estimated_input,
+            estimated_output_tokens=max_output,
+        )
 
     async def close_async(self) -> None:
         """Close the cached async client to release connections cleanly.

@@ -13,6 +13,11 @@ from entropy.core.providers.openai import OpenAIProvider
 from entropy.core.providers.claude import ClaudeProvider
 
 
+# Disable rate limiting for all provider tests (avoid waits with mocked clients)
+OpenAIProvider._disable_rate_limiting = True
+ClaudeProvider._disable_rate_limiting = True
+
+
 # =============================================================================
 # Mock response factories
 # =============================================================================
