@@ -135,7 +135,9 @@ def _eval_ast(node: ast.AST, context: dict[str, Any]) -> Any:
         for op, comparator in zip(node.ops, node.comparators):
             op_type = type(op)
             if op_type not in _SAFE_CMP_OPS:
-                raise FormulaError(f"Comparison operator not allowed: {op_type.__name__}")
+                raise FormulaError(
+                    f"Comparison operator not allowed: {op_type.__name__}"
+                )
             right = _eval_ast(comparator, context)
             if not _SAFE_CMP_OPS[op_type](left, right):
                 return False
