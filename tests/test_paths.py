@@ -88,7 +88,9 @@ class TestMakeRelativeTo:
                 os.chdir(tmpdir)
                 # When cwd is tmpdir, "study/population.yaml" should become "population.yaml"
                 # relative to "study/scenario.yaml"
-                result = make_relative_to("study/population.yaml", Path("study/scenario.yaml"))
+                result = make_relative_to(
+                    "study/population.yaml", Path("study/scenario.yaml")
+                )
                 assert result == "population.yaml"
             finally:
                 os.chdir(orig_cwd)
