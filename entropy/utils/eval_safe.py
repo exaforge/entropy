@@ -95,6 +95,9 @@ def _eval_ast(node: ast.AST, context: dict[str, Any]) -> Any:
         return {_eval_ast(elt, context) for elt in node.elts}
 
     if isinstance(node, ast.Dict):
+        for key in node.keys:
+            if key is None:
+                raise FormulaError("Dict unpacking is not allowed")
         return {
             _eval_ast(key, context): _eval_ast(val, context)
             for key, val in zip(node.keys, node.values)

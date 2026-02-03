@@ -193,6 +193,28 @@ def _validate_safe_expression_tree(tree: ast.AST) -> str | None:
         ast.BinOp,
         ast.UnaryOp,
         ast.Compare,
+        ast.Add,
+        ast.Sub,
+        ast.Mult,
+        ast.Div,
+        ast.FloorDiv,
+        ast.Mod,
+        ast.Pow,
+        ast.UAdd,
+        ast.USub,
+        ast.Not,
+        ast.And,
+        ast.Or,
+        ast.Eq,
+        ast.NotEq,
+        ast.Lt,
+        ast.LtE,
+        ast.Gt,
+        ast.GtE,
+        ast.In,
+        ast.NotIn,
+        ast.Is,
+        ast.IsNot,
         ast.Name,
         ast.Constant,
         ast.List,
@@ -252,6 +274,11 @@ def _validate_safe_expression_tree(tree: ast.AST) -> str | None:
             for op in node.ops:
                 if not isinstance(op, allowed_cmp_ops):
                     return f"comparison operator not allowed: {type(op).__name__}"
+
+        if isinstance(node, ast.Dict):
+            for key in node.keys:
+                if key is None:
+                    return "dict unpacking is not allowed"
 
         if isinstance(node, ast.Call):
             if not isinstance(node.func, ast.Name):
