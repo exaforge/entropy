@@ -11,14 +11,15 @@ class TestSimulationProgress:
     def test_initial_state(self):
         """Fresh instance has zeros and empty dicts."""
         p = SimulationProgress()
-        assert p.timestep == 0
-        assert p.max_timesteps == 0
-        assert p.agents_total == 0
-        assert p.agents_done == 0
-        assert p.exposure_rate == 0.0
-        assert p.position_counts == {}
-        assert p.avg_sentiment is None
-        assert p.avg_conviction is None
+        snap = p.snapshot()
+        assert snap["timestep"] == 0
+        assert snap["max_timesteps"] == 0
+        assert snap["agents_total"] == 0
+        assert snap["agents_done"] == 0
+        assert snap["exposure_rate"] == 0.0
+        assert snap["position_counts"] == {}
+        assert snap["avg_sentiment"] is None
+        assert snap["avg_conviction"] is None
 
     def test_begin_timestep(self):
         """begin_timestep sets fields and resets agents_done."""
@@ -65,8 +66,9 @@ class TestSimulationProgress:
         p.record_agent_done(position="adopt", sentiment=0.8, conviction=0.7)
         p.record_agent_done(position="reject", sentiment=0.2, conviction=0.3)
 
-        assert p.avg_sentiment == pytest.approx(0.5)
-        assert p.avg_conviction == pytest.approx(0.5)
+        snap = p.snapshot()
+        assert snap["avg_sentiment"] == pytest.approx(0.5)
+        assert snap["avg_conviction"] == pytest.approx(0.5)
 
     def test_running_averages_none_values(self):
         """None sentiment/conviction values are excluded from averages."""
@@ -74,8 +76,9 @@ class TestSimulationProgress:
         p.record_agent_done(position="adopt", sentiment=0.6, conviction=None)
         p.record_agent_done(position="reject", sentiment=None, conviction=0.4)
 
-        assert p.avg_sentiment == pytest.approx(0.6)
-        assert p.avg_conviction == pytest.approx(0.4)
+        snap = p.snapshot()
+        assert snap["avg_sentiment"] == pytest.approx(0.6)
+        assert snap["avg_conviction"] == pytest.approx(0.4)
 
     def test_snapshot_returns_copy(self):
         """Modifying snapshot dict doesn't affect original state."""
