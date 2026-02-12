@@ -148,36 +148,14 @@ def validate_expression_syntax(expr: str | None) -> str | None:
     if not expr:
         return None
 
-    # Check for unterminated strings
-    if expr.count('"') % 2 != 0:
-        return "unterminated string literal (unmatched double quote)"
-
-    if expr.count("'") % 2 != 0:
-        return "unterminated string literal (unmatched single quote)"
-
-    # Check for unbalanced parentheses
-    if expr.count("(") != expr.count(")"):
-        return (
-            f"unbalanced parentheses ({expr.count('(')} open, {expr.count(')')} close)"
-        )
-
-    # Check for unbalanced brackets
-    if expr.count("[") != expr.count("]"):
-        return f"unbalanced brackets ({expr.count('[')} open, {expr.count(']')} close)"
-
     # Try to parse as Python expression
     try:
-        ast.parse(expr, mode="eval")
+        tree = ast.parse(expr, mode="eval")
     except SyntaxError as e:
         error_msg = str(e.msg) if hasattr(e, "msg") else str(e)
         return f"invalid Python syntax: {error_msg}"
 
     # Validate allowed AST nodes to keep expressions safe and consistent
-    try:
-        tree = ast.parse(expr, mode="eval")
-    except SyntaxError:
-        return None
-
     safety_error = _validate_safe_expression_tree(tree)
     if safety_error:
         return safety_error

@@ -19,7 +19,10 @@ from entropy.population.validator import (
     ValidationIssue,
     Severity,
 )
-from entropy.utils.expressions import extract_names_from_expression
+from entropy.utils.expressions import (
+    extract_names_from_expression,
+    validate_expression_syntax,
+)
 
 
 def make_spec(
@@ -154,6 +157,18 @@ class TestExtractNamesFromExpression:
         names = extract_names_from_expression("is_active == True")
         assert names == {"is_active"}
         assert "True" not in names
+
+
+class TestValidateExpressionSyntax:
+    """Tests for expression syntax validation edge cases."""
+
+    def test_escaped_apostrophe_is_valid(self):
+        expr = "education_level in ['bachelor\\'s', 'graduate degree']"
+        assert validate_expression_syntax(expr) is None
+
+    def test_parenthesis_inside_string_is_valid(self):
+        expr = "label == 'Plan (A)' and score > 0.5"
+        assert validate_expression_syntax(expr) is None
 
 
 class TestTypeModifierCompatibility:
