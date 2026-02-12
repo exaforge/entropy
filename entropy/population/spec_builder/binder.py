@@ -14,7 +14,48 @@ from ...core.models import (
     GroundingSummary,
     SamplingConfig,
 )
-from ...utils import topological_sort
+from ...utils import topological_sort, extract_names_from_expression
+
+
+def _infer_expression_dependencies(
+    attr: HydratedAttribute, known_names: set[str]
+) -> tuple[list[str], list[str], list[str]]:
+    """Infer dependencies referenced in formulas/conditions.
+
+    Returns:
+        - merged_depends_on: declared + inferred refs (known names only)
+        - inferred_refs: known references that were auto-added
+        - unknown_refs: references not present in known_names
+    """
+    declared = [d for d in attr.depends_on if d in known_names]
+    declared_set = set(declared)
+
+    referenced: set[str] = set()
+
+    # Derived formulas
+    if attr.sampling.formula:
+        referenced.update(extract_names_from_expression(attr.sampling.formula))
+
+    # Distribution-level formulas
+    dist = attr.sampling.distribution
+    if dist is not None:
+        for field in ("mean_formula", "std_formula", "min_formula", "max_formula"):
+            expr = getattr(dist, field, None)
+            if expr:
+                referenced.update(extract_names_from_expression(expr))
+
+    # Conditional modifier expressions
+    for mod in attr.sampling.modifiers:
+        if mod.when:
+            referenced.update(extract_names_from_expression(mod.when))
+
+    inferred_refs = sorted(
+        name for name in referenced if name in known_names and name not in declared_set
+    )
+    unknown_refs = sorted(name for name in referenced if name not in known_names)
+
+    merged_depends_on = declared + inferred_refs
+    return merged_depends_on, inferred_refs, unknown_refs
 
 
 def bind_constraints(
@@ -26,9 +67,10 @@ def bind_constraints(
 
     This step:
     1. Validates all dependencies reference existing or context attributes
-    2. Checks for circular dependencies
-    3. Computes topological sort for sampling order
-    4. Converts HydratedAttribute to final AttributeSpec
+    2. Auto-infers dependencies from formulas/conditions
+    3. Checks for circular dependencies
+    4. Computes topological sort for sampling order
+    5. Converts HydratedAttribute to final AttributeSpec
 
     When context is provided (extend mode), dependencies on context
     attributes are valid - they're treated as already-sampled.
@@ -66,8 +108,20 @@ def bind_constraints(
             for dep in unknown_deps:
                 warnings.append(f"{attr.name}: removed unknown dependency '{dep}'")
 
-        # Filter depends_on to only known attributes
-        filtered_depends_on = [d for d in attr.depends_on if d in known_names]
+        # Infer dependencies from formulas/conditions and merge with declared deps
+        filtered_depends_on, inferred_refs, unknown_expr_refs = (
+            _infer_expression_dependencies(attr, known_names)
+        )
+
+        if inferred_refs:
+            warnings.append(
+                f"{attr.name}: auto-added depends_on from expressions: {', '.join(inferred_refs)}"
+            )
+
+        if unknown_expr_refs:
+            warnings.append(
+                f"{attr.name}: expression references unknown attributes: {', '.join(unknown_expr_refs)}"
+            )
 
         # Create new SamplingConfig with filtered depends_on
         filtered_sampling = SamplingConfig(
