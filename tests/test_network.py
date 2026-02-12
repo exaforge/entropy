@@ -49,8 +49,12 @@ REFERENCE_NETWORK_CONFIG = NetworkConfig(
             range_value=1,
         ),
         "care_level": AttributeWeightConfig(weight=1.0, match_type="exact"),
-        "age": AttributeWeightConfig(weight=1.0, match_type="numeric_range", range_value=10),
-        "participation_in_research": AttributeWeightConfig(weight=0.5, match_type="exact"),
+        "age": AttributeWeightConfig(
+            weight=1.0, match_type="numeric_range", range_value=10
+        ),
+        "participation_in_research": AttributeWeightConfig(
+            weight=0.5, match_type="exact"
+        ),
         "professional_society_membership": AttributeWeightConfig(
             weight=0.5, match_type="exact"
         ),

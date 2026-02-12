@@ -208,7 +208,9 @@ class SimulationEngine:
         required = [o for o in categorical if o.required]
         primary = required[0] if required else (categorical[0] if categorical else None)
         self._primary_position_outcome = primary.name if primary else None
-        self._primary_position_options = primary.options if primary and primary.options else []
+        self._primary_position_options = (
+            primary.options if primary and primary.options else []
+        )
         self._primary_option_friction: dict[str, float] = {}
         if primary and getattr(primary, "option_friction", None):
             for option, score in primary.option_friction.items():
@@ -418,7 +420,9 @@ class SimulationEngine:
                 firm_threshold=_FIRM_CONVICTION,
             )
         if decayed:
-            logger.info(f"[TIMESTEP {timestep}] Conviction decay applied to {decayed} agents")
+            logger.info(
+                f"[TIMESTEP {timestep}] Conviction decay applied to {decayed} agents"
+            )
 
         # 3. Compute and save timestep summary — own transaction
         with self.state_manager.transaction():
@@ -625,7 +629,10 @@ class SimulationEngine:
             public_will_share = response.will_share
             public_position = response.position
 
-            if old_public_conviction is not None and old_public_conviction >= _FIRM_CONVICTION:
+            if (
+                old_public_conviction is not None
+                and old_public_conviction >= _FIRM_CONVICTION
+            ):
                 if (
                     old_public_position is not None
                     and response.position is not None
@@ -641,14 +648,11 @@ class SimulationEngine:
                         public_position = old_public_position
 
             if (
-                (
-                    response.conviction is not None
-                    and response.conviction <= _SHARING_CONVICTION_THRESHOLD
-                )
-                or (
-                    public_conviction is not None
-                    and public_conviction <= _SHARING_CONVICTION_THRESHOLD
-                )
+                response.conviction is not None
+                and response.conviction <= _SHARING_CONVICTION_THRESHOLD
+            ) or (
+                public_conviction is not None
+                and public_conviction <= _SHARING_CONVICTION_THRESHOLD
             ):
                 public_will_share = False
 
@@ -674,8 +678,10 @@ class SimulationEngine:
 
             private_conviction = public_conviction
             if old_private_conviction is not None and public_conviction is not None:
-                private_conviction = old_private_conviction + _PRIVATE_ADJUSTMENT_RHO * (
-                    public_conviction - old_private_conviction
+                private_conviction = (
+                    old_private_conviction
+                    + _PRIVATE_ADJUSTMENT_RHO
+                    * (public_conviction - old_private_conviction)
                 )
                 private_conviction = max(0.0, min(1.0, private_conviction))
 
@@ -711,15 +717,12 @@ class SimulationEngine:
             ):
                 public_friction = self._position_action_friction(public_position)
                 required_conviction = (
-                    0.90
-                    if public_friction >= 0.65
-                    else _PRIVATE_FLIP_CONVICTION
+                    0.90 if public_friction >= 0.65 else _PRIVATE_FLIP_CONVICTION
                 )
                 required_sources = 2 if public_friction >= 0.65 else 1
                 if (
-                    (public_conviction or 0.0) >= required_conviction
-                    and recent_source_count >= required_sources
-                ):
+                    public_conviction or 0.0
+                ) >= required_conviction and recent_source_count >= required_sources:
                     private_position = public_position
 
             private_outcomes = (
@@ -820,7 +823,15 @@ class SimulationEngine:
             "no_change",
         )
         medium = ("reduce", "abandon", "pause")
-        high = ("switch", "migrate", "cancel", "subscribe", "purchase", "buy", "upgrade")
+        high = (
+            "switch",
+            "migrate",
+            "cancel",
+            "subscribe",
+            "purchase",
+            "buy",
+            "upgrade",
+        )
 
         if any(k in token for k in low):
             return 0.2
@@ -922,10 +933,14 @@ class SimulationEngine:
             True if state changed
         """
         old_private_sentiment = (
-            old.private_sentiment if old.private_sentiment is not None else old.sentiment
+            old.private_sentiment
+            if old.private_sentiment is not None
+            else old.sentiment
         )
         new_private_sentiment = (
-            new.private_sentiment if new.private_sentiment is not None else new.sentiment
+            new.private_sentiment
+            if new.private_sentiment is not None
+            else new.sentiment
         )
         old_public_sentiment = (
             old.public_sentiment if old.public_sentiment is not None else old.sentiment
@@ -943,16 +958,24 @@ class SimulationEngine:
                 return True
 
         old_private_conviction = (
-            old.private_conviction if old.private_conviction is not None else old.conviction
+            old.private_conviction
+            if old.private_conviction is not None
+            else old.conviction
         )
         new_private_conviction = (
-            new.private_conviction if new.private_conviction is not None else new.conviction
+            new.private_conviction
+            if new.private_conviction is not None
+            else new.conviction
         )
         old_public_conviction = (
-            old.public_conviction if old.public_conviction is not None else old.conviction
+            old.public_conviction
+            if old.public_conviction is not None
+            else old.conviction
         )
         new_public_conviction = (
-            new.public_conviction if new.public_conviction is not None else new.conviction
+            new.public_conviction
+            if new.public_conviction is not None
+            else new.conviction
         )
 
         # Conviction shift (private or public).
@@ -964,9 +987,13 @@ class SimulationEngine:
                 return True
 
         # Position change on either track.
-        if (old.private_position or old.position) != (new.private_position or new.position):
+        if (old.private_position or old.position) != (
+            new.private_position or new.position
+        ):
             return True
-        if (old.public_position or old.position) != (new.public_position or new.position):
+        if (old.public_position or old.position) != (
+            new.public_position or new.position
+        ):
             return True
 
         # Sharing intent change

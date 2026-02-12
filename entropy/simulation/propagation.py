@@ -265,10 +265,7 @@ def propagate_through_network(
         sharer_hop = state_manager.get_network_hop_depth(sharer_id)
         next_hop = (sharer_hop + 1) if sharer_hop is not None else 1
 
-        if (
-            scenario.spread.max_hops is not None
-            and next_hop > scenario.spread.max_hops
-        ):
+        if scenario.spread.max_hops is not None and next_hop > scenario.spread.max_hops:
             continue
 
         # Get neighbors from network (use adjacency list if available)

@@ -345,8 +345,12 @@ class StateManager:
             exposures=exposures,
             last_reasoning_timestep=row["last_reasoning_timestep"],
             position=row["private_position"] or row["position"],
-            sentiment=row["private_sentiment"] if row["private_sentiment"] is not None else row["sentiment"],
-            conviction=row["private_conviction"] if row["private_conviction"] is not None else row["conviction"],
+            sentiment=row["private_sentiment"]
+            if row["private_sentiment"] is not None
+            else row["sentiment"],
+            conviction=row["private_conviction"]
+            if row["private_conviction"] is not None
+            else row["conviction"],
             public_statement=row["public_statement"],
             action_intent=row["action_intent"],
             will_share=bool(row["will_share"]),
@@ -792,8 +796,12 @@ class StateManager:
                 state.public_sentiment,
                 state.public_conviction,
                 state.private_position or state.position,
-                state.private_sentiment if state.private_sentiment is not None else state.sentiment,
-                state.private_conviction if state.private_conviction is not None else state.conviction,
+                state.private_sentiment
+                if state.private_sentiment is not None
+                else state.sentiment,
+                state.private_conviction
+                if state.private_conviction is not None
+                else state.conviction,
                 1 if state.committed else 0,
                 outcomes_json,
                 private_outcomes_json,
@@ -856,8 +864,12 @@ class StateManager:
                     state.public_sentiment,
                     state.public_conviction,
                     state.private_position or state.position,
-                    state.private_sentiment if state.private_sentiment is not None else state.sentiment,
-                    state.private_conviction if state.private_conviction is not None else state.conviction,
+                    state.private_sentiment
+                    if state.private_sentiment is not None
+                    else state.sentiment,
+                    state.private_conviction
+                    if state.private_conviction is not None
+                    else state.conviction,
                     1 if state.committed else 0,
                     outcomes_json,
                     private_outcomes_json,

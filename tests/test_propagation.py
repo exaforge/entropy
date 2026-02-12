@@ -601,7 +601,9 @@ class TestPropagateNetwork:
 
         # Seed a0, then allow only a0 to share.
         self._setup_sharer(sm, "a0", timestep=0)
-        first = propagate_through_network(1, scenario, ten_agents, linear_network, sm, rng)
+        first = propagate_through_network(
+            1, scenario, ten_agents, linear_network, sm, rng
+        )
         assert first == 1  # a0 -> a1
 
         # Make a1 a sharer, stop a0 from sharing again.

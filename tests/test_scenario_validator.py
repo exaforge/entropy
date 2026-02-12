@@ -88,7 +88,7 @@ def test_validate_scenario_surfaces_errors(tmp_path: Path):
 
     population_path.write_text("placeholder: true\n")
     agents_path.write_text("[]\n")
-    network_path.write_text("{\"meta\": {}, \"edges\": []}\n")
+    network_path.write_text('{"meta": {}, "edges": []}\n')
 
     spec = _make_scenario_spec(
         str(population_path),
@@ -123,7 +123,9 @@ def test_load_and_validate_scenario_resolves_relative_paths(
 
     _, result = load_and_validate_scenario(scenario_path)
 
-    file_errors = [issue for issue in result.errors if issue.category == "file_reference"]
+    file_errors = [
+        issue for issue in result.errors if issue.category == "file_reference"
+    ]
     assert not file_errors
     assert result.valid
 
@@ -136,7 +138,7 @@ def test_validate_scenario_allows_edge_weight_in_spread_modifier(tmp_path: Path)
 
     population_path.write_text("placeholder: true\n")
     agents_path.write_text("[]\n")
-    network_path.write_text("{\"meta\": {}, \"edges\": []}\n")
+    network_path.write_text('{"meta": {}, "edges": []}\n')
 
     spec = _make_scenario_spec(
         str(population_path),
