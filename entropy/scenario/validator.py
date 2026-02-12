@@ -60,6 +60,7 @@ def validate_scenario(
     population_spec: PopulationSpec | None = None,
     agent_count: int | None = None,
     network: dict | None = None,
+    spec_file: Path | str | None = None,
 ) -> ValidationResult:
     """
     Validate a scenario spec for correctness.
@@ -77,6 +78,7 @@ def validate_scenario(
         population_spec: Optional population spec for attribute validation
         agent_count: Optional count of agents for consistency checks
         network: Optional network dict for edge type validation
+        spec_file: Optional scenario file path used to resolve relative file references
 
     Returns:
         ValidationResult with errors and warnings
@@ -256,11 +258,11 @@ def validate_scenario(
             # Check attribute/edge type references
             refs = extract_names_from_expression(modifier.when)
 
-            # Allow 'edge_type' as a special reference
-            refs_without_edge_type = refs - {"edge_type"}
+            # Allow edge attributes injected during propagation
+            refs_without_edge_fields = refs - {"edge_type", "edge_weight"}
 
             if population_spec:
-                unknown_refs = refs_without_edge_type - known_attributes
+                unknown_refs = refs_without_edge_fields - known_attributes
                 if unknown_refs:
                     errors.append(
                         ValidationError(
@@ -404,7 +406,18 @@ def validate_scenario(
     # =========================================================================
 
     # Check if referenced files exist
-    population_path = Path(spec.meta.population_spec)
+    if spec_file is not None:
+        from ..utils import resolve_relative_to
+
+        base_file = Path(spec_file)
+        population_path = resolve_relative_to(spec.meta.population_spec, base_file)
+        agents_path = resolve_relative_to(spec.meta.agents_file, base_file)
+        network_path = resolve_relative_to(spec.meta.network_file, base_file)
+    else:
+        population_path = Path(spec.meta.population_spec)
+        agents_path = Path(spec.meta.agents_file)
+        network_path = Path(spec.meta.network_file)
+
     if not population_path.exists():
         errors.append(
             ValidationError(
@@ -415,7 +428,6 @@ def validate_scenario(
             )
         )
 
-    agents_path = Path(spec.meta.agents_file)
     if not agents_path.exists():
         errors.append(
             ValidationError(
@@ -426,7 +438,6 @@ def validate_scenario(
             )
         )
 
-    network_path = Path(spec.meta.network_file)
     if not network_path.exists():
         errors.append(
             ValidationError(
@@ -451,11 +462,7 @@ def validate_scenario(
                 )
             )
 
-    return ValidationResult(
-        valid=len(errors) == 0,
-        errors=errors,
-        warnings=warnings,
-    )
+    return ValidationResult(issues=[*errors, *warnings])
 
 
 def get_agent_count(path: Path) -> int | None:
@@ -547,6 +554,12 @@ def load_and_validate_scenario(
             pass
 
     # Validate
-    result = validate_scenario(spec, population_spec, agent_count, network)
+    result = validate_scenario(
+        spec,
+        population_spec,
+        agent_count,
+        network,
+        spec_file=scenario_path,
+    )
 
     return spec, result

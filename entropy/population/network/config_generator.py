@@ -94,8 +94,11 @@ NETWORK_CONFIG_SCHEMA = {
                         "description": "Attribute name",
                     },
                     "condition_value": {
-                        "type": "string",
-                        "description": "Value that triggers the multiplier (exact match)",
+                        "type": ["string", "number", "boolean"],
+                        "description": (
+                            "Value that triggers the multiplier (exact match). "
+                            "Use native booleans/numbers for boolean/numeric attributes."
+                        ),
                     },
                     "multiplier": {
                         "type": "number",
@@ -285,7 +288,7 @@ IMPORTANT:
 - Only reference attribute names that exist in the Available Attributes list above
 - For within_n match type, you MUST provide ordinal_levels mapping
 - For edge type conditions, use a_{{attribute}} and b_{{attribute}} syntax
-- condition_value for degree_multipliers must be a string (use "true"/"false" for booleans)
+- For degree_multipliers condition_value, use the same type as the attribute (boolean/number/string)
 """
 
 
@@ -376,6 +379,55 @@ def _convert_to_network_config(
     data: dict, population_spec: PopulationSpec
 ) -> NetworkConfig:
     """Convert validated LLM response dict to a NetworkConfig."""
+    attribute_types = {attr.name: attr.type for attr in population_spec.attributes}
+
+    def coerce_condition_value(attribute: str, value: object) -> object:
+        """Coerce degree multiplier condition to the runtime attribute type."""
+        attr_type = attribute_types.get(attribute)
+        if attr_type is None:
+            return value
+
+        if attr_type == "boolean":
+            if isinstance(value, bool):
+                return value
+            if isinstance(value, str):
+                lowered = value.strip().lower()
+                if lowered == "true":
+                    return True
+                if lowered == "false":
+                    return False
+            return value
+
+        if attr_type == "int":
+            if isinstance(value, bool):
+                return value
+            if isinstance(value, int):
+                return value
+            if isinstance(value, float) and value.is_integer():
+                return int(value)
+            if isinstance(value, str):
+                text = value.strip()
+                try:
+                    return int(text)
+                except ValueError:
+                    return value
+            return value
+
+        if attr_type == "float":
+            if isinstance(value, bool):
+                return value
+            if isinstance(value, (int, float)):
+                return float(value)
+            if isinstance(value, str):
+                text = value.strip()
+                try:
+                    return float(text)
+                except ValueError:
+                    return value
+            return value
+
+        return value
+
     # Build attribute weights
     attribute_weights: dict[str, AttributeWeightConfig] = {}
     ordinal_levels: dict[str, dict[str, int]] = {}
@@ -405,7 +457,7 @@ def _convert_to_network_config(
     degree_multipliers = [
         DegreeMultiplierConfig(
             attribute=dm["attribute"],
-            condition=dm["condition_value"],
+            condition=coerce_condition_value(dm["attribute"], dm["condition_value"]),
             multiplier=dm["multiplier"],
             rationale=dm["rationale"],
         )

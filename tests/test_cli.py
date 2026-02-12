@@ -1,8 +1,11 @@
 """CLI smoke tests using typer's CliRunner."""
 
+from pathlib import Path
+
 from typer.testing import CliRunner
 
 from entropy.cli.app import app
+from entropy.cli.commands.validate import _is_scenario_file
 
 runner = CliRunner()
 
@@ -42,6 +45,11 @@ class TestValidateCommand:
     def test_validate_nonexistent_file(self):
         result = runner.invoke(app, ["validate", "/nonexistent/path.yaml"])
         assert result.exit_code != 0
+
+    def test_scenario_filename_detection(self):
+        assert _is_scenario_file(Path("scenario.yaml"))
+        assert _is_scenario_file(Path("foo.scenario.yaml"))
+        assert not _is_scenario_file(Path("population.yaml"))
 
 
 class TestVersionFlag:

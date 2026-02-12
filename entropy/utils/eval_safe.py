@@ -12,6 +12,9 @@ from typing import Any
 SAFE_BUILTINS = {
     "True": True,
     "False": False,
+    # Accept lowercase JSON-style booleans for config/runtime consistency.
+    "true": True,
+    "false": False,
     "None": None,
     "abs": abs,
     "min": min,

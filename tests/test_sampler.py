@@ -93,6 +93,12 @@ class TestEvalSafe:
         result = eval_safe("age >= 18 and age <= 65", {"age": 35})
         assert result is True
 
+    def test_lowercase_boolean_literals(self):
+        """Lowercase JSON-style booleans should evaluate correctly."""
+        assert eval_safe("true", {}) is True
+        assert eval_safe("false", {}) is False
+        assert eval_safe("true and 1 == 1", {}) is True
+
     def test_string_operations(self):
         """Test string operations in expressions."""
         result = eval_safe("role == 'chief'", {"role": "chief"})
@@ -179,6 +185,11 @@ class TestEvalCondition:
         # Invalid syntax returns False
         result = eval_condition("invalid (( syntax", {"age": 45})
         assert result is False
+
+    def test_lowercase_boolean_condition_literals(self):
+        """Lowercase booleans in conditions should be supported."""
+        assert eval_condition("is_member == true", {"is_member": True}) is True
+        assert eval_condition("is_member == false", {"is_member": False}) is True
 
 
 class TestDistributionSampling:

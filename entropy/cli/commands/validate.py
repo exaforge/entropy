@@ -12,7 +12,11 @@ from ..utils import Output, ExitCode, format_validation_for_json
 
 def _is_scenario_file(path: Path) -> bool:
     """Check if file is a scenario spec based on naming convention."""
-    return path.name.endswith(".scenario.yaml") or path.name.endswith(".scenario.yml")
+    return (
+        path.name.endswith(".scenario.yaml")
+        or path.name.endswith(".scenario.yml")
+        or path.name in {"scenario.yaml", "scenario.yml"}
+    )
 
 
 def _validate_population_spec(spec_file: Path, strict: bool, out: Output) -> int:
