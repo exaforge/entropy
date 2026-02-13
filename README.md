@@ -25,6 +25,8 @@ extropy spec → extropy extend → extropy sample → extropy network → extro
 pip install extropy-run
 ```
 
+`extropy-run` is the PyPI package name. The CLI command and Python import remain `extropy`.
+
 Or from source:
 
 ```bash
