@@ -1,0 +1,14 @@
+study                      | top_outcome                                                             | top_share | timesteps | reasoning_calls | stop_reason
+---------------------------+-------------------------------------------------------------------------+-----------+-----------+-----------------+------------
+apple-att-privacy          | tracking_decision:deny_tracking                                         | 0.767     | 8         | n/a             | n/a        
+bud-light-boycott          | beer_purchase_behavior:maintain_bud_light                               | 0.858     | 10        | n/a             | n/a        
+london-ulez-expansion-2023 | ulez_response_strategy:reduce_zone_trips                                | 0.583     | 6         | n/a             | n/a        
+netflix-ad-tier-launch     | subscription_response:maintain_current_plan                             | 0.767     | 6         | n/a             | n/a        
+netflix-password-sharing   | password_sharing_response:remove_shared_access                          | 0.558     | 11        | n/a             | n/a        
+nyc-congestion-pricing     | commute_response:continue_driving_and_pay_toll                          | 0.475     | 6         | n/a             | n/a        
+plant-based-meat           | plant_based_purchase_strategy:avoid_and_continue_with_conventional_meat | 0.858     | 7         | n/a             | n/a        
+reddit-api-protest         | reddit_response_action:actively_protest                                 | 0.408     | 12        | n/a             | n/a        
+snapchat-plus-launch       | subscription_response:continue_free_satisfied                           | 0.933     | 10        | n/a             | n/a        
+spotify-price-hike         | subscription_response:accept_price_increase_continue_same_plan          | 0.958     | 10        | n/a             | n/a        
+threads-launch             | threads_adoption_action:sign_up_but_consume_only                        | 0.342     | 10        | n/a             | n/a        
+x-premium-adoption         | premium_verification_response:continue_using_without_premium            | 0.625     | 12        | n/a             | n/a        
