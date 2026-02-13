@@ -4,6 +4,7 @@ Applies PersonaConfig to individual agents to produce first-person persona text.
 Pure computation — no LLM calls.
 """
 
+import re
 from typing import Any
 
 from .config import (
@@ -13,6 +14,46 @@ from .config import (
     RelativePhrasing,
     ConcretePhrasing,
 )
+
+
+_NONE_LIKE_VALUES = {
+    "none",
+    "none_of_the_above",
+    "not_applicable",
+    "not applicable",
+    "na",
+    "n/a",
+    "null",
+    "unknown",
+    "unspecified",
+    "no_preference",
+    "no preference",
+}
+
+
+def _normalize_value(value: str) -> str:
+    """Normalize categorical option values for comparison."""
+    return value.strip().lower().replace("-", "_")
+
+
+def _is_none_like(value: str) -> bool:
+    """Check whether a categorical option represents an explicit 'none' value."""
+    norm = _normalize_value(value)
+    return norm in _NONE_LIKE_VALUES
+
+
+def _contains_raw_option_token(phrase: str, option: str) -> bool:
+    """Detect whether phrase contains the raw categorical token text."""
+    normalized_phrase = phrase.lower().replace("_", " ")
+    normalized_option = option.lower().replace("_", " ")
+    # Word-boundary match avoids false positives inside other words.
+    pattern = r"\b" + re.escape(normalized_option) + r"\b"
+    return re.search(pattern, normalized_phrase) is not None
+
+
+def _none_like_fallback_phrase() -> str:
+    """Generic natural-language fallback for 'none-like' categorical values."""
+    return "I don't have a specific preference here"
 
 
 def _format_time(decimal_hours: float, use_12hr: bool = True) -> str:
@@ -133,22 +174,44 @@ def _format_categorical_value(value: Any, phrasing: CategoricalPhrasing) -> str:
 
     # Try exact match
     if str_value in phrasing.phrases:
-        return phrasing.phrases[str_value]
+        selected = phrasing.phrases[str_value]
+        if _is_none_like(str_value) and _contains_raw_option_token(selected, str_value):
+            if phrasing.fallback and not _contains_raw_option_token(
+                phrasing.fallback, str_value
+            ):
+                return phrasing.fallback
+            return _none_like_fallback_phrase()
+        return selected
 
     # Try case-insensitive match
     for k, v in phrasing.phrases.items():
         if k.lower() == str_value.lower():
+            if _is_none_like(str_value) and _contains_raw_option_token(v, str_value):
+                if phrasing.fallback and not _contains_raw_option_token(
+                    phrasing.fallback, str_value
+                ):
+                    return phrasing.fallback
+                return _none_like_fallback_phrase()
             return v
 
     # Try with underscores replaced
     normalized = str_value.replace(" ", "_").lower()
     for k, v in phrasing.phrases.items():
         if k.replace(" ", "_").lower() == normalized:
+            if _is_none_like(str_value) and _contains_raw_option_token(v, str_value):
+                if phrasing.fallback and not _contains_raw_option_token(
+                    phrasing.fallback, str_value
+                ):
+                    return phrasing.fallback
+                return _none_like_fallback_phrase()
             return v
 
     # Fallback
     if phrasing.fallback:
         return phrasing.fallback
+
+    if _is_none_like(str_value):
+        return _none_like_fallback_phrase()
 
     # Last resort: just format the value nicely
     return str_value.replace("_", " ").title()
