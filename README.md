@@ -4,7 +4,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/extropy-run.svg?cacheSeconds=300)](https://pypi.org/project/extropy-run/)
 [![Python](https://img.shields.io/pypi/pyversions/extropy-run.svg?cacheSeconds=300)](https://pypi.org/project/extropy-run/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![DeepWiki](https://deepwiki.com/badge-maker?url=https%3A%2F%2Fdeepwiki.com%2Fexaforge%2Fextropy)](https://deepwiki.com/exaforge/extropy)
+[![DeepWiki](https://deepwiki.com/badge.svg?url=https%3A%2F%2Fdeepwiki.com%2Fexaforge%2Fextropy)](https://deepwiki.com/exaforge/extropy)
 
 Predictive intelligence through agent-based population simulation. Create synthetic populations grounded in real-world data, simulate how they respond to events, and watch opinions emerge through social networks.
 

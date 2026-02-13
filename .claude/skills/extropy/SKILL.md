@@ -1,6 +1,6 @@
 ---
 name: extropy
-description: Autonomous operator for Extropy: run end-to-end pipelines, execute/manage simulation experiments, triage failures, and perform post-run analysis. Use when the user wants hands-on execution, simulation operations, debugging, or data-science deep dives.
+description: "Autonomous operator for Extropy: run end-to-end pipelines, execute/manage simulation experiments, triage failures, and perform post-run analysis. Use when the user wants hands-on execution, simulation operations, debugging, or data-science deep dives."
 allowed-tools: Read, Grep, Glob, Bash, Edit, Write
 argument-hint: "[goal or experiment request]"
 ---
